@@ -76,7 +76,7 @@ function nowAsDatetimeString() {
 }
 
 // ================== HASHTAG SUGGESTIONS ======================================
-const COMMON_HASHTAGS = ['#pers', '#cons', '#job', '#event', '#control'];
+const COMMON_HASHTAGS = ['#pers', '#cons', '#job', '#event', '#control', '#class'];
 
 function renderHashtagSuggestions() {
     const container = document.getElementById('hashtag-suggestions');
