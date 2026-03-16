@@ -837,8 +837,7 @@ if ('serviceWorker' in navigator) {
 // ================== INIT =====================================================
 async function bootApp() {
     await api('init');
-    switchScreen('screen-dashboard');
-    loadDashboard();
+    switchScreen('screen-planner');
 
     if (typeof firebase !== 'undefined') {
         messaging = firebase.messaging();
