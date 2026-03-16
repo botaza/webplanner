@@ -716,12 +716,20 @@ async function loadDashboard() {
 }
 
 // ================== PUSH NOTIFICATIONS (FCM) =================================
-async function registerFcmToken(token) {
-    const storageKey = 'fcm_registered_token';
-    const savedToken = localStorage.getItem(storageKey);
+// ── Notification state keys ──────────────────────────────────────────────────
+// 'fcm_registered_token' — the last successfully saved token
+// 'fcm_token_saved'      — set to '1' once a token has ever been saved to server
+//                          After this is set, no alerts or retries are shown to user
 
-    if (savedToken === token) {
-        console.log('FCM token unchanged, skipping re-registration.');
+async function registerFcmToken(token) {
+    const storageKey   = 'fcm_registered_token';
+    const savedKey     = 'fcm_token_saved';
+    const savedToken   = localStorage.getItem(storageKey);
+    const alreadySaved = localStorage.getItem(savedKey) === '1';
+
+    // Token unchanged and already confirmed saved — nothing to do
+    if (savedToken === token && alreadySaved) {
+        console.log('FCM token unchanged and confirmed saved.');
         return;
     }
 
@@ -733,32 +741,40 @@ async function registerFcmToken(token) {
         });
 
         if (res.ok) {
-            const isFirstTime = !savedToken;
             localStorage.setItem(storageKey, token);
-            if (isFirstTime) {
-                alert("Notifications enabled! You'll receive event reminders.");
-            } else {
-                console.log('FCM token refreshed silently.');
-            }
+            localStorage.setItem(savedKey, '1'); // mark as permanently saved
+            console.log('FCM token saved to server.');
+            // No alert — ever. Success is silent.
         } else {
-            console.error('Failed to save FCM token on server.');
+            console.error('Failed to save FCM token on server — will retry next launch.');
+            // Do NOT set fcm_token_saved so it retries next time
         }
     } catch (err) {
-        console.error('Error saving FCM token:', err);
+        console.error('Error saving FCM token — will retry next launch:', err);
+        // Do NOT set fcm_token_saved so it retries next time
     }
 }
 
 async function enableNotifications() {
     if (typeof firebase === 'undefined') {
-        console.warn("Firebase SDK not loaded.");
+        console.warn('Firebase SDK not loaded.');
         return;
     }
+
+    // If already confirmed saved, just silently refresh token in case it rotated
+    const alreadySaved = localStorage.getItem('fcm_token_saved') === '1';
+
     try {
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') {
-            alert("Notifications blocked. You can change this in your browser settings.");
-            return;
+        // Request permission only if not yet granted
+        if (Notification.permission === 'default') {
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                console.warn('Notification permission denied.');
+                return;
+            }
         }
+
+        if (Notification.permission !== 'granted') return;
 
         const registration = await navigator.serviceWorker.register('firebase-messaging-sw.js');
         const token = await messaging.getToken({
@@ -767,14 +783,14 @@ async function enableNotifications() {
         });
 
         if (token) {
-            console.log('FCM Token obtained.');
-            await registerFcmToken(token);
+            await registerFcmToken(token); // silent — no alerts
         } else {
-            console.warn('No FCM token received — check VAPID key and service worker.');
+            // No token yet — will retry on next launch automatically
+            console.warn('No FCM token received — will retry next launch.');
         }
     } catch (err) {
-        console.error('Error enabling notifications:', err);
-        alert("Could not enable notifications: " + err.message);
+        // Silent fail — will retry next launch
+        console.error('enableNotifications failed — will retry next launch:', err);
     }
 }
 
@@ -846,19 +862,13 @@ async function bootApp() {
         initForegroundMessaging();
     }
 
-    if (Notification.permission === 'default') {
+    // Always attempt notification setup on every launch:
+    // - First launch: requests permission, gets token, saves to server
+    // - Subsequent launches: silently refreshes token if rotated
+    // - If previous attempt failed (no fcm_token_saved): retries silently
+    // - Once fcm_token_saved is set: fully silent, no user interaction
+    if (messaging) {
         await enableNotifications();
-    } else if (Notification.permission === 'granted' && messaging) {
-        try {
-            const registration = await navigator.serviceWorker.register('firebase-messaging-sw.js');
-            const token = await messaging.getToken({
-                vapidKey: VAPID_KEY,
-                serviceWorkerRegistration: registration
-            });
-            if (token) await registerFcmToken(token);
-        } catch (err) {
-            console.warn('Silent token refresh failed:', err);
-        }
     }
 }
 
