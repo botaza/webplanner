@@ -218,6 +218,8 @@ const EXPENSE_CATEGORIES = [
     {emoji: "🎁", name: "gifts"},
     {emoji: "📲", name: "sbp"},
     {emoji: "📦", name: "other"},
+    {emoji: "🏋️", name: "gym"},
+    {emoji: "💳", name: "loans"},
 ];
 
 let selectedExpenseCategory = null;
@@ -274,10 +276,50 @@ async function api(action, body = {}) {
 }
 
 // ================== EVENTS / PLANNER =========================================
+let activePlannerHashtag = null;
+
+function renderPlannerHashtagFilter() {
+    const container = document.getElementById('planner-hashtag-filter');
+    if (!container) return;
+    // "All" chip + one per hashtag
+    const chips = ['all', ...COMMON_HASHTAGS];
+    container.innerHTML = chips.map(tag => {
+        const isAll    = tag === 'all';
+        const isActive = isAll ? !activePlannerHashtag : activePlannerHashtag === tag;
+        return `<div class="hashtag-chip ${isActive ? 'active' : ''}"
+                     data-tag="${tag}"
+                     onclick="setPlannerHashtagFilter('${tag}')">
+                    ${isAll ? 'All' : tag}
+                </div>`;
+    }).join('');
+}
+
+function setPlannerHashtagFilter(tag) {
+    activePlannerHashtag = tag === 'all' ? null : tag;
+    renderPlannerHashtagFilter();
+    applyPlannerFilter();
+}
+
+function applyPlannerFilter() {
+    const term = (document.getElementById('planner-filter')?.value || '').toLowerCase();
+    let filtered = eventsData;
+    if (activePlannerHashtag) {
+        filtered = filtered.filter(e => e.hashtag === activePlannerHashtag);
+    }
+    if (term) {
+        filtered = filtered.filter(e =>
+            (e.desc?.toLowerCase().includes(term)) ||
+            (e.hashtag?.toLowerCase().includes(term))
+        );
+    }
+    renderPlanner(filtered);
+}
+
 async function loadPlanner() {
     const data = await api('get_events');
     eventsData = data || [];
-    renderPlanner(eventsData);
+    renderPlannerHashtagFilter();
+    applyPlannerFilter();
 }
 
 function renderPlanner(list) {
@@ -312,12 +354,7 @@ function renderPlanner(list) {
 }
 
 function filterPlanner() {
-    const term = document.getElementById('planner-filter').value.toLowerCase();
-    const filtered = eventsData.filter(e =>
-        (e.desc?.toLowerCase().includes(term)) ||
-        (e.hashtag?.toLowerCase().includes(term))
-    );
-    renderPlanner(filtered);
+    applyPlannerFilter();
 }
 
 // Default occurrence counts per recurrence type
