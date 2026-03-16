@@ -279,10 +279,20 @@ async function api(action, body = {}) {
 // ================== EVENTS / PLANNER =========================================
 let activePlannerHashtag = null;
 
+// Persist which month groups are open/closed
+const GROUPS_KEY = 'planner_open_groups';
+function getOpenGroups() {
+    try { return JSON.parse(localStorage.getItem(GROUPS_KEY) || '{}'); } catch { return {}; }
+}
+function setGroupOpen(key, open) {
+    const groups = getOpenGroups();
+    groups[key] = open;
+    localStorage.setItem(GROUPS_KEY, JSON.stringify(groups));
+}
+
 function renderPlannerHashtagFilter() {
     const container = document.getElementById('planner-hashtag-filter');
     if (!container) return;
-    // "All" chip + one per hashtag
     const chips = ['all', ...COMMON_HASHTAGS];
     container.innerHTML = chips.map(tag => {
         const isAll    = tag === 'all';
@@ -326,31 +336,108 @@ async function loadPlanner() {
 function renderPlanner(list) {
     const container = document.getElementById('planner-list');
     container.innerHTML = '';
+
+    if (!list.length) {
+        container.innerHTML = '<div class="text-zinc-500 text-sm text-center py-8">No events</div>';
+        return;
+    }
+
+    // Group by YYYY-MM
+    const groups = {};
     list.forEach(ev => {
-        const dt   = new Date(ev.dt.replace(' ', 'T'));
-        const card = document.createElement('div');
-        card.className = 'bg-zinc-900 rounded-3xl p-5 card flex gap-4';
-        const timeStr = dt.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
-        card.innerHTML = `
-            <div class="flex-1">
-                <div class="text-xs text-zinc-500">${dt.toLocaleDateString('ru-RU', {weekday:'short', day:'numeric', month:'short'})}</div>
-                <div class="font-medium text-lg mt-1">${ev.desc}</div>
-                <div class="flex gap-2 text-xs mt-2 flex-wrap items-center">
-                    <span class="text-emerald-400 font-medium">🕐 ${timeStr}</span>
-                    ${ev.hashtag  ? `<span class="bg-zinc-800 px-3 py-1 rounded-2xl">${ev.hashtag}</span>` : ''}
-                    ${ev.place    ? `<span class="bg-zinc-800 px-3 py-1 rounded-2xl">📍 ${ev.place}</span>` : ''}
-                    ${ev.duration ? `<span class="bg-zinc-800 px-3 py-1 rounded-2xl">⏱ ${ev.duration} min</span>` : ''}
-                </div>
+        const key = (ev.dt || '').slice(0, 7); // "YYYY-MM"
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(ev);
+    });
+
+    const nowStr      = nowAsDatetimeString();
+    const currentMonth = nowAsDatetimeString().slice(0, 7);
+    const openGroups  = getOpenGroups();
+    const sortedKeys  = Object.keys(groups).sort();
+
+    sortedKeys.forEach(monthKey => {
+        const events   = groups[monthKey];
+        const isPast   = monthKey < currentMonth;
+        const isCurrent = monthKey === currentMonth;
+
+        // Default: current month open, past months closed, future open
+        let isOpen;
+        if (monthKey in openGroups) {
+            isOpen = openGroups[monthKey];
+        } else {
+            isOpen = !isPast; // past closed, current+future open
+        }
+
+        // Month label
+        const [year, month] = monthKey.split('-');
+        const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const label = monthNames[parseInt(month) - 1] + ' ' + year;
+        const pastCount = isPast ? events.length : 0;
+
+        // Header
+        const header = document.createElement('div');
+        header.className = 'flex items-center justify-between px-1 py-2 cursor-pointer select-none';
+        header.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span class="text-sm font-semibold ${isPast ? 'text-zinc-500' : isCurrent ? 'text-emerald-400' : 'text-zinc-200'}">${label}</span>
+                ${isPast ? `<span class="text-xs text-zinc-600">(${pastCount})</span>` : ''}
+                ${isCurrent ? '<span class="text-xs text-emerald-600 font-medium">current</span>' : ''}
             </div>
-            <div class="flex flex-col items-end justify-between">
-                <div onclick="editEvent('${ev.id}'); event.stopPropagation()"
-                     class="text-emerald-400 text-xl cursor-pointer">✏️</div>
-                <div onclick="deleteEvent('${ev.id}'); event.stopPropagation()"
-                     class="text-red-400 text-xl cursor-pointer">🗑</div>
-            </div>
+            <span class="text-zinc-500 text-sm transition-transform duration-200" id="chevron-${monthKey}">${isOpen ? '▼' : '▶'}</span>
         `;
-        card.onclick = () => markComplete(ev.id);
-        container.appendChild(card);
+        header.onclick = () => {
+            const body    = document.getElementById('group-' + monthKey);
+            const chevron = document.getElementById('chevron-' + monthKey);
+            const nowOpen = body.style.display !== 'none';
+            body.style.display  = nowOpen ? 'none' : 'block';
+            chevron.textContent = nowOpen ? '▶' : '▼';
+            setGroupOpen(monthKey, !nowOpen);
+        };
+        container.appendChild(header);
+
+        // Divider
+        const divider = document.createElement('div');
+        divider.className = 'border-t border-zinc-800 mb-2';
+        container.appendChild(divider);
+
+        // Events body
+        const body = document.createElement('div');
+        body.id    = 'group-' + monthKey;
+        body.className = 'space-y-2 mb-4';
+        body.style.display = isOpen ? 'block' : 'none';
+
+        events.forEach(ev => {
+            const dt       = new Date(ev.dt.replace(' ', 'T'));
+            const timeStr  = dt.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
+            const dateStr  = dt.toLocaleDateString('ru-RU', {weekday:'short', day:'numeric'});
+            const isPastEv = (ev.dt || '') < nowStr;
+
+            const card = document.createElement('div');
+            card.className = `bg-zinc-900 rounded-2xl px-4 py-3 card flex gap-3 ${isPastEv ? 'opacity-50' : ''}`;
+            card.innerHTML = `
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-xs font-medium ${isPastEv ? 'text-zinc-500' : 'text-emerald-400'}">${dateStr} ${timeStr}</span>
+                        ${ev.hashtag ? `<span class="text-xs bg-zinc-800 px-2 py-0.5 rounded-xl">${ev.hashtag}</span>` : ''}
+                    </div>
+                    <div class="font-medium mt-0.5 text-sm ${isPastEv ? 'text-zinc-500' : ''}">${ev.desc}</div>
+                    <div class="flex gap-2 text-xs mt-1 text-zinc-500 flex-wrap">
+                        ${ev.place    ? `<span>📍 ${ev.place}</span>`          : ''}
+                        ${ev.duration ? `<span>⏱ ${ev.duration} min</span>`   : ''}
+                    </div>
+                </div>
+                <div class="flex flex-col items-end justify-between shrink-0">
+                    <div onclick="editEvent('${ev.id}'); event.stopPropagation()"
+                         class="text-emerald-400 text-base cursor-pointer">✏️</div>
+                    <div onclick="deleteEvent('${ev.id}'); event.stopPropagation()"
+                         class="text-red-400 text-base cursor-pointer">🗑</div>
+                </div>
+            `;
+            card.onclick = () => markComplete(ev.id);
+            body.appendChild(card);
+        });
+
+        container.appendChild(body);
     });
 }
 
