@@ -196,6 +196,7 @@ if ($action === 'log_notification') {
     $entry = [
         'id'           => time() . rand(1000, 9999),
         'dt'           => date('Y-m-d H:i:s'),
+        'rule'         => $_POST['rule']         ?? '',
         'title'        => $_POST['title']        ?? '',
         'body'         => $_POST['body']         ?? '',
         'event_id'     => $_POST['event_id']     ?? '',

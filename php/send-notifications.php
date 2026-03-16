@@ -1,6 +1,16 @@
 <?php
 // php/send-notifications.php
-// Crontab: */15 * * * * php /var/www/html/php/send-notifications.php >> /var/log/planner-notif.log 2>&1
+//
+// Notification rules:
+//   1. 1 hour before any event (once per event)
+//   2. Daily 17:00 — all #event hashtag events upcoming
+//   3. Daily 19:00 — all #control hashtag events upcoming
+//   4. Daily 21:00 — all #pers hashtag events upcoming
+//   5. Daily 23:00 — all events tomorrow
+//   6. Daily 08:00 — events within 3, 7, 14 days (one message each horizon)
+//
+// Crontab / systemd: runs every 15 minutes
+// ─────────────────────────────────────────────────────────────────────────────
 
 date_default_timezone_set('Asia/Vladivostok');
 
@@ -10,297 +20,398 @@ define('DATA_DIR',             '/var/www/html/testingdomainru.ru/eluvpmf0091/dat
 define('TOKENS_FILE',          DATA_DIR . '/fcm-tokens.json');
 define('EVENTS_FILE',          DATA_DIR . '/events.json');
 define('NOTIFIED_FILE',        DATA_DIR . '/notified.json');
-define('REMIND_MINUTES',       60);
+define('LOG_FILE',             DATA_DIR . '/notification-log.json');
 
-// ─── FUNCTIONS ────────────────────────────────────────────────────────────────
-
-function logNotification(array $ev, string $title, string $body, int $tokensCount, string $status): void
-{
-    $apiUrl = 'http://localhost/php/api.php'; // adjust to your actual local path
-    // Use file-based log directly to avoid HTTP round-trip
-    $logFile = DATA_DIR . '/notification-log.json';
-    $entry   = [
-        'id'           => time() . rand(1000, 9999),
-        'dt'           => date('Y-m-d H:i:s'),
-        'title'        => $title,
-        'body'         => $body,
-        'event_id'     => $ev['id']   ?? '',
-        'event_desc'   => $ev['desc'] ?? '',
-        'tokens_count' => $tokensCount,
-        'status'       => $status,
-    ];
-    $all   = file_exists($logFile) ? (json_decode(file_get_contents($logFile), true) ?: []) : [];
-    $all[] = $entry;
-    if (count($all) > 2000) $all = array_slice($all, -2000);
-    $result = file_put_contents($logFile, json_encode($all, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-    if ($result === false) {
-        echo date('Y-m-d H:i:s') . " ERROR: Could not write to log file: $logFile
-";
-        echo date('Y-m-d H:i:s') . " Check permissions on: " . dirname($logFile) . "
-";
-    } else {
-        echo date('Y-m-d H:i:s') . " Notification logged to: $logFile
-";
-    }
-}
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function base64UrlEncode(string $data): string
 {
     return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
 }
 
-/**
- * Builds and signs a JWT using the service account private key.
- * Uses openssl_pkcs7_sign as a fallback path to avoid any openssl_sign issues.
- */
-function buildJwt(array $sa): ?string
-{
-    $now = time();
-
-    $headerJson  = json_encode(['alg' => 'RS256', 'typ' => 'JWT'], JSON_UNESCAPED_SLASHES);
-    $payloadJson = json_encode([
-        'iss'   => $sa['client_email'],
-        'sub'   => $sa['client_email'],
-        'aud'   => 'https://oauth2.googleapis.com/token',
-        'iat'   => $now,
-        'exp'   => $now + 3600,
-        'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
-    ], JSON_UNESCAPED_SLASHES);
-
-    $header  = base64UrlEncode($headerJson);
-    $payload = base64UrlEncode($payloadJson);
-    $input   = "$header.$payload";
-
-    // Write private key to a temp file for signing
-    $tmpKey = tempnam(sys_get_temp_dir(), 'pkey_');
-    file_put_contents($tmpKey, $sa['private_key']);
-
-    // Write data to sign to a temp file
-    $tmpData = tempnam(sys_get_temp_dir(), 'jdata_');
-    file_put_contents($tmpData, $input);
-
-    // Output file for signature
-    $tmpSig = tempnam(sys_get_temp_dir(), 'jsig_');
-
-    // Use openssl CLI directly — completely bypasses PHP openssl extension quirks
-    $cmd    = "openssl dgst -sha256 -sign " . escapeshellarg($tmpKey)
-            . " -out " . escapeshellarg($tmpSig)
-            . " " . escapeshellarg($tmpData)
-            . " 2>&1";
-    $output = shell_exec($cmd);
-    $sigRaw = file_get_contents($tmpSig);
-
-    // Clean up temp files
-    @unlink($tmpKey);
-    @unlink($tmpData);
-    @unlink($tmpSig);
-
-    if (!$sigRaw || strlen($sigRaw) < 64) {
-        echo date('Y-m-d H:i:s') . " openssl CLI signing failed: $output\n";
-        // Fall back to PHP openssl extension
-        $sigRaw = null;
-        $pkey   = openssl_pkey_get_private($sa['private_key']);
-        if ($pkey && openssl_sign($input, $sig, $pkey, OPENSSL_ALGO_SHA256)) {
-            $sigRaw = $sig;
-            echo date('Y-m-d H:i:s') . " Used PHP openssl fallback.\n";
-        } else {
-            echo date('Y-m-d H:i:s') . " Both signing methods failed.\n";
-            return null;
-        }
-    }
-
-    return $input . '.' . base64UrlEncode($sigRaw);
-}
-
 function getOAuthAccessToken(string $serviceAccountFile): ?string
 {
     if (!file_exists($serviceAccountFile)) {
-        echo date('Y-m-d H:i:s') . " Service account file not found: $serviceAccountFile\n";
-        return null;
+        echo date('Y-m-d H:i:s') . " Service account file not found.\n"; return null;
     }
-
     $sa = json_decode(file_get_contents($serviceAccountFile), true);
     if (!$sa || empty($sa['private_key']) || empty($sa['client_email'])) {
-        echo date('Y-m-d H:i:s') . " Invalid service account JSON.\n";
-        return null;
+        echo date('Y-m-d H:i:s') . " Invalid service account JSON.\n"; return null;
     }
-
-    $jwt = buildJwt($sa);
-    if (!$jwt) {
-        echo date('Y-m-d H:i:s') . " Failed to build JWT.\n";
-        return null;
+    $now     = time();
+    $header  = base64UrlEncode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
+    $payload = base64UrlEncode(json_encode([
+        'iss'   => $sa['client_email'], 'sub' => $sa['client_email'],
+        'aud'   => 'https://oauth2.googleapis.com/token',
+        'iat'   => $now, 'exp' => $now + 3600,
+        'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+    ]));
+    $input   = "$header.$payload";
+    $tmpKey  = tempnam(sys_get_temp_dir(), 'pkey_');
+    $tmpData = tempnam(sys_get_temp_dir(), 'jdata_');
+    $tmpSig  = tempnam(sys_get_temp_dir(), 'jsig_');
+    file_put_contents($tmpKey, $sa['private_key']);
+    file_put_contents($tmpData, $input);
+    shell_exec("openssl dgst -sha256 -sign " . escapeshellarg($tmpKey)
+        . " -out " . escapeshellarg($tmpSig) . " " . escapeshellarg($tmpData) . " 2>&1");
+    $sigRaw = file_get_contents($tmpSig);
+    @unlink($tmpKey); @unlink($tmpData); @unlink($tmpSig);
+    if (!$sigRaw || strlen($sigRaw) < 64) {
+        $pkey = openssl_pkey_get_private($sa['private_key']);
+        if (!$pkey || !openssl_sign($input, $sigRaw, $pkey, OPENSSL_ALGO_SHA256)) {
+            echo date('Y-m-d H:i:s') . " JWT signing failed.\n"; return null;
+        }
     }
-
-    echo date('Y-m-d H:i:s') . " JWT built. Requesting OAuth token...\n";
-
-    $ch = curl_init('https://oauth2.googleapis.com/token');
+    $jwt = $input . '.' . base64UrlEncode($sigRaw);
+    $ch  = curl_init('https://oauth2.googleapis.com/token');
     curl_setopt_array($ch, [
-        CURLOPT_POST           => true,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POSTFIELDS     => http_build_query([
-            'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-            'assertion'  => $jwt,
+        CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15,
+        CURLOPT_POSTFIELDS => http_build_query([
+            'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer', 'assertion' => $jwt,
         ]),
-        CURLOPT_HTTPHEADER     => ['Content-Type: application/x-www-form-urlencoded'],
-        CURLOPT_TIMEOUT        => 15,
-        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
     ]);
-
-    $response  = curl_exec($ch);
-    $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-
-    if ($curlError) {
-        echo date('Y-m-d H:i:s') . " cURL error: $curlError\n";
-        return null;
-    }
-
     if ($httpCode !== 200) {
-        echo date('Y-m-d H:i:s') . " OAuth failed (HTTP $httpCode): $response\n";
-        return null;
+        echo date('Y-m-d H:i:s') . " OAuth failed (HTTP $httpCode): $response\n"; return null;
     }
-
     $data = json_decode($response, true);
-    if (empty($data['access_token'])) {
-        echo date('Y-m-d H:i:s') . " No access_token in response: $response\n";
-        return null;
-    }
-
-    echo date('Y-m-d H:i:s') . " OAuth token obtained successfully.\n";
-    return $data['access_token'];
+    echo date('Y-m-d H:i:s') . " OAuth token obtained.\n";
+    return $data['access_token'] ?? null;
 }
 
 function sendFcmV1(string $accessToken, string $deviceToken, string $title, string $body): bool
 {
     $url     = 'https://fcm.googleapis.com/v1/projects/' . PROJECT_ID . '/messages:send';
-    $payload = json_encode([
-        'message' => [
-            'token'        => $deviceToken,
-            'notification' => ['title' => $title, 'body' => $body],
-            'webpush'      => [
-                'notification' => [
-                    'title'    => $title,
-                    'body'     => $body,
-                    'icon'     => '/icon-192.png',
-                    'badge'    => '/icon-96.png',
-                    'vibrate'  => [200, 100, 200],
-                    'tag'      => 'planner-notification',
-                    'renotify' => true,
-                ],
-                'fcm_options' => ['link' => '/'],
+    $payload = json_encode(['message' => [
+        'token'        => $deviceToken,
+        'notification' => ['title' => $title, 'body' => $body],
+        'webpush'      => [
+            'notification' => [
+                'title' => $title, 'body' => $body,
+                'icon'  => '/icon-192.png', 'badge' => '/icon-96.png',
+                'vibrate' => [200, 100, 200], 'tag' => 'planner-' . md5($title . $body),
+                'renotify' => true,
             ],
+            'fcm_options' => ['link' => '/'],
         ],
-    ]);
-
+    ]]);
     $ch = curl_init($url);
     curl_setopt_array($ch, [
-        CURLOPT_POST           => true,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER     => [
-            'Authorization: Bearer ' . $accessToken,
-            'Content-Type: application/json',
-        ],
+        CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10,
+        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $accessToken, 'Content-Type: application/json'],
         CURLOPT_POSTFIELDS => $payload,
-        CURLOPT_TIMEOUT    => 10,
     ]);
-
     $response = curl_exec($ch);
-    $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-
     if ($httpCode !== 200) {
-        echo date('Y-m-d H:i:s') . " FCM send failed (HTTP $httpCode): $response\n";
+        echo date('Y-m-d H:i:s') . " FCM failed (HTTP $httpCode): $response\n";
         return false;
     }
-
     return true;
+}
+
+/**
+ * Send a notification to all tokens, log it, return success bool.
+ */
+function notify(string $accessToken, array $tokens, string $title, string $body,
+                string $rule, string $eventId = '', string $eventDesc = ''): bool
+{
+    $allOk = true;
+    foreach ($tokens as $token) {
+        $ok = sendFcmV1($accessToken, $token, $title, $body);
+        echo date('Y-m-d H:i:s') . " [{$rule}] " . ($ok ? "OK" : "FAILED") . " → $body\n";
+        if (!$ok) $allOk = false;
+    }
+    logNotification($title, $body, $rule, count($tokens), $eventId, $eventDesc, $allOk ? 'sent' : 'partial');
+    return $allOk;
+}
+
+function logNotification(string $title, string $body, string $rule,
+                         int $tokensCount, string $eventId, string $eventDesc, string $status): void
+{
+    $entry = [
+        'id'           => time() . rand(1000, 9999),
+        'dt'           => date('Y-m-d H:i:s'),
+        'rule'         => $rule,
+        'title'        => $title,
+        'body'         => $body,
+        'event_id'     => $eventId,
+        'event_desc'   => $eventDesc,
+        'tokens_count' => $tokensCount,
+        'status'       => $status,
+    ];
+    $all = file_exists(LOG_FILE) ? (json_decode(file_get_contents(LOG_FILE), true) ?: []) : [];
+    $all[] = $entry;
+    if (count($all) > 2000) $all = array_slice($all, -2000);
+    $result = file_put_contents(LOG_FILE, json_encode($all, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    if ($result === false) {
+        echo date('Y-m-d H:i:s') . " ERROR: Could not write log to " . LOG_FILE . "\n";
+    }
+}
+
+/**
+ * Dedup key check — prevents the same rule+event firing more than once per day
+ * (or per occurrence for the 1-hour rule).
+ * Key format: "rule:event_id:date" or "rule:event_id:datetime_hour"
+ */
+function alreadyNotified(array &$notified, string $key): bool
+{
+    return isset($notified[$key]);
+}
+
+function markNotified(array &$notified, string $key): void
+{
+    $notified[$key] = time();
+}
+
+function cleanNotified(array &$notified): void
+{
+    // Keep entries for 48 hours to safely cover daily rules
+    $cutoff  = time() - (48 * 60 * 60);
+    $notified = array_filter($notified, fn($ts) => $ts > $cutoff);
+}
+
+// ─── Utility date helpers ─────────────────────────────────────────────────────
+
+function isWithinTimeWindow(int $hour, int $minute = 0, int $toleranceMin = 7): bool
+{
+    $now        = time();
+    $todayHhmm  = (int)date('Hi');
+    $windowStart = $hour * 100 + $minute;
+    $windowEnd   = $windowStart + $toleranceMin;
+    // handle hour rollover e.g. 2357-2404
+    return $todayHhmm >= $windowStart && $todayHhmm < $windowEnd;
+}
+
+function todayDate(): string { return date('Y-m-d'); }
+function tomorrowDate(): string { return date('Y-m-d', strtotime('+1 day')); }
+
+function daysFromNow(string $dt): float
+{
+    return (strtotime(explode(' ', $dt)[0]) - strtotime(todayDate())) / 86400;
+}
+
+function formatEventLine(array $ev): string
+{
+    $time = isset($ev['dt']) ? date('H:i', strtotime($ev['dt'])) : '';
+    $place = !empty($ev['place']) && $ev['place'] !== '?' ? ' @ ' . $ev['place'] : '';
+    $dur   = !empty($ev['duration']) && $ev['duration'] !== '?' ? ' (' . $ev['duration'] . ' min)' : '';
+    return $time . ' ' . ($ev['desc'] ?? '') . $place . $dur;
 }
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 
 echo date('Y-m-d H:i:s') . " send-notifications.php started.\n";
 
-// 1. Load tokens
-if (!file_exists(TOKENS_FILE)) {
-    echo date('Y-m-d H:i:s') . " No tokens file found. Exiting.\n";
-    exit;
-}
+// Load tokens
+if (!file_exists(TOKENS_FILE)) { echo date('Y-m-d H:i:s') . " No tokens. Exiting.\n"; exit; }
 $tokens = json_decode(file_get_contents(TOKENS_FILE), true) ?: [];
-if (empty($tokens)) {
-    echo date('Y-m-d H:i:s') . " No tokens stored. Exiting.\n";
-    exit;
-}
-echo date('Y-m-d H:i:s') . " Tokens loaded: " . count($tokens) . "\n";
+if (empty($tokens)) { echo date('Y-m-d H:i:s') . " No tokens stored. Exiting.\n"; exit; }
+echo date('Y-m-d H:i:s') . " Tokens: " . count($tokens) . "\n";
 
-// 2. Load notified cache
-$notified = file_exists(NOTIFIED_FILE)
-    ? (json_decode(file_get_contents(NOTIFIED_FILE), true) ?: [])
-    : [];
-$cutoff   = time() - (24 * 60 * 60);
-$notified = array_filter($notified, fn($ts) => $ts > $cutoff);
-
-// 3. Load events
-if (!file_exists(EVENTS_FILE)) {
-    echo date('Y-m-d H:i:s') . " No events file found. Exiting.\n";
-    exit;
-}
+// Load events
+if (!file_exists(EVENTS_FILE)) { echo date('Y-m-d H:i:s') . " No events. Exiting.\n"; exit; }
 $events = json_decode(file_get_contents(EVENTS_FILE), true) ?: [];
-echo date('Y-m-d H:i:s') . " Events loaded: " . count($events) . "\n";
+echo date('Y-m-d H:i:s') . " Events: " . count($events) . "\n";
 
-$now    = time();
-$window = REMIND_MINUTES * 60;
+// Load + clean notified cache
+$notified = file_exists(NOTIFIED_FILE) ? (json_decode(file_get_contents(NOTIFIED_FILE), true) ?: []) : [];
+cleanNotified($notified);
 
-$due = array_filter($events, function ($ev) use ($now, $window, $notified) {
-    if (empty($ev['dt']) || empty($ev['id'])) return false;
-    if (isset($notified[$ev['id']])) return false;
+$now     = time();
+$today   = todayDate();
+$tomorrow = tomorrowDate();
+$needsToken = false;
+$accessToken = null;
+
+// Helper to lazily get OAuth token only when first needed
+function getToken(): ?string {
+    global $accessToken, $needsToken;
+    if (!$accessToken) {
+        $accessToken = getOAuthAccessToken(SERVICE_ACCOUNT_FILE);
+    }
+    return $accessToken;
+}
+
+$anythingToDo = false;
+
+// ── RULE 1: 1 hour before any event ──────────────────────────────────────────
+foreach ($events as $ev) {
+    if (empty($ev['dt']) || empty($ev['id'])) continue;
     $diff = strtotime($ev['dt']) - $now;
-    return $diff > 0 && $diff <= $window;
-});
+    if ($diff <= 0 || $diff > 3600) continue; // not in the next hour
 
-echo date('Y-m-d H:i:s') . " Events due: " . count($due) . "\n";
+    $key = '1h:' . $ev['id'];
+    if (alreadyNotified($notified, $key)) continue;
 
-if (empty($due)) {
-    echo date('Y-m-d H:i:s') . " No events due for notification.\n";
-    file_put_contents(NOTIFIED_FILE, json_encode($notified, JSON_PRETTY_PRINT));
-    exit;
-}
+    $anythingToDo = true;
+    $diffMins = (int)round($diff / 60);
+    $title    = '⏰ Starting soon';
+    $body     = formatEventLine($ev) . ' — in ' . $diffMins . ' min';
 
-// 4. Get OAuth token
-$accessToken = getOAuthAccessToken(SERVICE_ACCOUNT_FILE);
-if (!$accessToken) {
-    exit;
-}
-
-// 5. Send notifications
-foreach ($due as $ev) {
-    $diffMins  = (int) round((strtotime($ev['dt']) - $now) / 60);
-    $eventTime = date('H:i', strtotime($ev['dt']));
-    $title     = 'Planner Reminder';
-    $body      = sprintf(
-        '%s at %s (in %d min)%s',
-        $ev['desc'] ?? 'Upcoming event',
-        $eventTime,
-        $diffMins,
-        !empty($ev['place']) ? ' @ ' . $ev['place'] : ''
-    );
-
-    $allOk = true;
-    foreach ($tokens as $token) {
-        $result = sendFcmV1($accessToken, $token, $title, $body);
-        echo date('Y-m-d H:i:s') . " -> " . ($result ? "OK" : "FAILED")
-            . " [{$ev['desc']}] in {$diffMins} min\n";
-        if (!$result) $allOk = false;
-    }
-
-    $status = $allOk ? 'sent' : 'partial';
-    logNotification($ev, $title, $body, count($tokens), $status);
-
-    if ($allOk) {
-        $notified[$ev['id']] = $now;
+    if (!getToken()) break;
+    if (notify($accessToken, $tokens, $title, $body, 'rule1_1hour', $ev['id'], $ev['desc'] ?? '')) {
+        markNotified($notified, $key);
     }
 }
 
-// 6. Save notified cache
+// ── RULE 2: Daily 17:00 — #event hashtag upcoming events ─────────────────────
+if (isWithinTimeWindow(17, 0)) {
+    $key = 'daily_event:' . $today;
+    if (!alreadyNotified($notified, $key)) {
+        $upcoming = array_filter($events, fn($e) =>
+            !empty($e['dt']) && ($e['hashtag'] ?? '') === '#event' && strtotime($e['dt']) > $now
+        );
+        usort($upcoming, fn($a, $b) => strtotime($a['dt']) - strtotime($b['dt']));
+        $upcoming = array_slice(array_values($upcoming), 0, 10);
+
+        if (!empty($upcoming)) {
+            $anythingToDo = true;
+            $title = '📅 Upcoming #event';
+            $lines = array_map(fn($e) => '• ' . date('d MMM', strtotime($e['dt'])) . ' ' . formatEventLine($e), $upcoming);
+            // Format dates properly
+            $lines = array_map(function($e) {
+                return '• ' . date('d M', strtotime($e['dt'])) . ' ' . formatEventLine($e);
+            }, $upcoming);
+            $body  = implode("\n", $lines);
+
+            if (!getToken()) goto saveNotified;
+            if (notify($accessToken, $tokens, $title, $body, 'rule2_event_hashtag')) {
+                markNotified($notified, $key);
+            }
+        } else {
+            echo date('Y-m-d H:i:s') . " [rule2] No #event events upcoming.\n";
+            markNotified($notified, $key); // mark so we don't re-check until tomorrow
+        }
+    }
+}
+
+// ── RULE 3: Daily 19:00 — #control hashtag upcoming events ───────────────────
+if (isWithinTimeWindow(19, 0)) {
+    $key = 'daily_control:' . $today;
+    if (!alreadyNotified($notified, $key)) {
+        $upcoming = array_filter($events, fn($e) =>
+            !empty($e['dt']) && ($e['hashtag'] ?? '') === '#control' && strtotime($e['dt']) > $now
+        );
+        usort($upcoming, fn($a, $b) => strtotime($a['dt']) - strtotime($b['dt']));
+        $upcoming = array_slice(array_values($upcoming), 0, 10);
+
+        if (!empty($upcoming)) {
+            $anythingToDo = true;
+            $title = '🎛 Upcoming #control';
+            $lines = array_map(function($e) {
+                return '• ' . date('d M', strtotime($e['dt'])) . ' ' . formatEventLine($e);
+            }, $upcoming);
+            $body  = implode("\n", $lines);
+
+            if (!getToken()) goto saveNotified;
+            if (notify($accessToken, $tokens, $title, $body, 'rule3_control_hashtag')) {
+                markNotified($notified, $key);
+            }
+        } else {
+            echo date('Y-m-d H:i:s') . " [rule3] No #control events upcoming.\n";
+            markNotified($notified, $key);
+        }
+    }
+}
+
+// ── RULE 4: Daily 21:00 — #pers hashtag upcoming events ──────────────────────
+if (isWithinTimeWindow(21, 0)) {
+    $key = 'daily_pers:' . $today;
+    if (!alreadyNotified($notified, $key)) {
+        $upcoming = array_filter($events, fn($e) =>
+            !empty($e['dt']) && ($e['hashtag'] ?? '') === '#pers' && strtotime($e['dt']) > $now
+        );
+        usort($upcoming, fn($a, $b) => strtotime($a['dt']) - strtotime($b['dt']));
+        $upcoming = array_slice(array_values($upcoming), 0, 10);
+
+        if (!empty($upcoming)) {
+            $anythingToDo = true;
+            $title = '👤 Upcoming #pers';
+            $lines = array_map(function($e) {
+                return '• ' . date('d M', strtotime($e['dt'])) . ' ' . formatEventLine($e);
+            }, $upcoming);
+            $body  = implode("\n", $lines);
+
+            if (!getToken()) goto saveNotified;
+            if (notify($accessToken, $tokens, $title, $body, 'rule4_pers_hashtag')) {
+                markNotified($notified, $key);
+            }
+        } else {
+            echo date('Y-m-d H:i:s') . " [rule4] No #pers events upcoming.\n";
+            markNotified($notified, $key);
+        }
+    }
+}
+
+// ── RULE 5: Daily 23:00 — all events tomorrow ─────────────────────────────────
+if (isWithinTimeWindow(23, 0)) {
+    $key = 'tomorrow:' . $today;
+    if (!alreadyNotified($notified, $key)) {
+        $tomorrowEvents = array_filter($events, fn($e) =>
+            !empty($e['dt']) && strpos($e['dt'], $tomorrow) === 0
+        );
+        usort($tomorrowEvents, fn($a, $b) => strtotime($a['dt']) - strtotime($b['dt']));
+        $tomorrowEvents = array_values($tomorrowEvents);
+
+        if (!empty($tomorrowEvents)) {
+            $anythingToDo = true;
+            $title = '📋 Tomorrow\'s events';
+            $lines = array_map(fn($e) => '• ' . formatEventLine($e), $tomorrowEvents);
+            $body  = implode("\n", $lines);
+
+            if (!getToken()) goto saveNotified;
+            if (notify($accessToken, $tokens, $title, $body, 'rule5_tomorrow')) {
+                markNotified($notified, $key);
+            }
+        } else {
+            echo date('Y-m-d H:i:s') . " [rule5] No events tomorrow.\n";
+            markNotified($notified, $key);
+        }
+    }
+}
+
+// ── RULE 6: Daily 08:00 — events within 3, 7, 14 days (separate messages) ────
+if (isWithinTimeWindow(8, 0)) {
+    foreach ([3, 7, 14] as $horizon) {
+        $key = "horizon_{$horizon}d:" . $today;
+        if (alreadyNotified($notified, $key)) continue;
+
+        $horizonEvents = array_filter($events, function($e) use ($now, $horizon) {
+            if (empty($e['dt'])) return false;
+            $days = daysFromNow($e['dt']);
+            return $days > 0 && $days <= $horizon;
+        });
+        usort($horizonEvents, fn($a, $b) => strtotime($a['dt']) - strtotime($b['dt']));
+        $horizonEvents = array_values($horizonEvents);
+
+        if (!empty($horizonEvents)) {
+            $anythingToDo = true;
+            $title = "📆 Events in {$horizon} days";
+            $lines = array_map(function($e) {
+                return '• ' . date('d M', strtotime($e['dt'])) . ' ' . formatEventLine($e);
+            }, $horizonEvents);
+            $body  = implode("\n", $lines);
+
+            if (!getToken()) break;
+            if (notify($accessToken, $tokens, $title, $body, "rule6_horizon_{$horizon}d")) {
+                markNotified($notified, $key);
+            }
+        } else {
+            echo date('Y-m-d H:i:s') . " [rule6] No events within {$horizon} days.\n";
+            markNotified($notified, $key);
+        }
+    }
+}
+
+if (!$anythingToDo) {
+    echo date('Y-m-d H:i:s') . " Nothing to notify.\n";
+}
+
+saveNotified:
 file_put_contents(NOTIFIED_FILE, json_encode($notified, JSON_PRETTY_PRINT));
 echo date('Y-m-d H:i:s') . " Done.\n";

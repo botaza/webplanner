@@ -906,17 +906,33 @@ async function loadNotifications(page = 1) {
         return;
     }
 
+    const ruleLabels = {
+        'rule1_1hour':          '⏰ 1h before',
+        'rule2_event_hashtag':  '📅 #event daily',
+        'rule3_control_hashtag':'🎛 #control daily',
+        'rule4_pers_hashtag':   '👤 #pers daily',
+        'rule5_tomorrow':       '📋 Tomorrow',
+        'rule6_horizon_3d':     '📆 3-day horizon',
+        'rule6_horizon_7d':     '📆 7-day horizon',
+        'rule6_horizon_14d':    '📆 14-day horizon',
+    };
+
     container.innerHTML = items.map(n => {
         const statusColor = n.status === 'sent' ? 'text-emerald-400' : 'text-yellow-400';
         const statusIcon  = n.status === 'sent' ? '✅' : '⚠️';
+        const ruleLabel   = ruleLabels[n.rule] || n.rule || '';
+        const bodyLines   = (n.body || '').split('\n');
+        const bodyHtml    = bodyLines.map(l => `<div>${l}</div>`).join('');
         return `
             <div class="bg-zinc-900 rounded-2xl px-4 py-3">
                 <div class="flex justify-between items-start gap-2">
                     <div class="flex-1 min-w-0">
-                        <div class="text-sm font-medium truncate">${n.body}</div>
-                        <div class="text-xs text-zinc-500 mt-0.5">${n.dt} · ${n.tokens_count} device${n.tokens_count !== 1 ? 's' : ''}</div>
+                        <div class="text-xs text-emerald-500 font-medium mb-1">${ruleLabel}</div>
+                        <div class="text-sm font-medium">${n.title || ''}</div>
+                        <div class="text-xs text-zinc-400 mt-0.5">${bodyHtml}</div>
+                        <div class="text-xs text-zinc-600 mt-1">${n.dt} · ${n.tokens_count} device${n.tokens_count !== 1 ? 's' : ''}</div>
                     </div>
-                    <span class="text-xs ${statusColor} shrink-0">${statusIcon}</span>
+                    <span class="text-sm shrink-0 ml-2">${statusIcon}</span>
                 </div>
             </div>
         `;
