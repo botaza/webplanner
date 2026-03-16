@@ -695,17 +695,17 @@ async function loadDashboard() {
             const dateStr = dt.toLocaleDateString('ru-RU', {day: 'numeric', month: 'short'});
             return `
                 <div class="bg-zinc-900 rounded-3xl p-4 text-sm flex justify-between items-center">
-                    <div>
+                    <div class="flex-1 min-w-0">
                         <div class="font-medium">${e.desc}</div>
-                        <div class="text-xs text-zinc-500 mt-0.5">
-                            ${e.hashtag ? `<span>${e.hashtag}</span>` : ''}
-                            ${e.place   ? `<span class="ml-1">📍 ${e.place}</span>` : ''}
-                            ${e.duration ? `<span class="ml-1">⏱ ${e.duration} min</span>` : ''}
+                        <div class="text-xs text-zinc-500 mt-0.5 flex flex-wrap gap-1 items-center">
+                            <span class="text-emerald-400 font-medium">🕐 ${timeStr}</span>
+                            ${e.hashtag  ? `<span class="bg-zinc-800 px-2 py-0.5 rounded-xl">${e.hashtag}</span>` : ''}
+                            ${e.place    ? `<span>📍 ${e.place}</span>` : ''}
+                            ${e.duration ? `<span>⏱ ${e.duration} min</span>` : ''}
                         </div>
                     </div>
-                    <div class="text-emerald-400 text-right shrink-0 ml-3">
-                        <div>${dateStr}</div>
-                        <div class="text-xs">${timeStr}</div>
+                    <div class="text-zinc-400 text-right shrink-0 ml-3 text-xs">
+                        <div class="font-medium text-sm text-zinc-300">${dateStr}</div>
                     </div>
                 </div>
             `;
