@@ -1,10 +1,29 @@
 // js/app.js
 let currentScreen = 'screen-dashboard';
-let eventsData = [];
-let expensesData = [];
-let incomeData = [];
+let eventsData    = [];
+let expensesData  = [];
+let incomeData    = [];
+let messaging     = null;
 
-// ================== HASHTAG SUGGESTIONS ==================
+const VAPID_KEY = 'BMlwBTFnXAZuDBkyK8UENXQz-kUTTzZGy1HEoNXbV6l-MmUyTilUJmXbVNs-vetYYHUvjLfAfk24hTHU4lJMxYY';
+
+// ================== UTC+10 DATE HELPERS ======================================
+const UTC_OFFSET_MS = 10 * 60 * 60 * 1000;
+
+function nowUTC10()         { return new Date(Date.now() + UTC_OFFSET_MS); }
+function todayString()      { return nowUTC10().toISOString().slice(0, 10); }
+function nowDatetimeLocal() { return nowUTC10().toISOString().slice(0, 16); }
+function currentMonthKey()  { return nowUTC10().toISOString().slice(0, 7);  }
+
+/**
+ * Returns current UTC+10 time as a comparable "YYYY-MM-DD HH:MM" string.
+ * Used for plain string comparison against stored event dt values.
+ */
+function nowAsDatetimeString() {
+    return nowUTC10().toISOString().slice(0, 16).replace('T', ' ');
+}
+
+// ================== HASHTAG SUGGESTIONS ======================================
 const COMMON_HASHTAGS = [
     "#meeting", "#call", "#doctor", "#gym", "#study",
     "#travel", "#birthday", "#payment", "#deadline", "#family",
@@ -15,7 +34,7 @@ function renderHashtagSuggestions() {
     const container = document.getElementById('hashtag-suggestions');
     if (!container) return;
     container.innerHTML = COMMON_HASHTAGS.map(tag => `
-        <div class="hashtag-chip" 
+        <div class="hashtag-chip"
              onclick="selectHashtag('${tag}')"
              data-tag="${tag}">
             ${tag}
@@ -26,24 +45,23 @@ function renderHashtagSuggestions() {
 function selectHashtag(tag) {
     const input = document.getElementById('event-hashtag');
     input.value = tag;
-    
     document.querySelectorAll('#hashtag-suggestions .hashtag-chip').forEach(chip => {
         chip.classList.toggle('active', chip.dataset.tag === tag);
     });
 }
 
-// ================== EXPENSE TOOLS ==================
+// ================== EXPENSE TOOLS ============================================
 const EXPENSE_TOOLS = [
-    {code: "gp",     name: "GP (Gas)"},
-    {code: "hal",    name: "Halal"},
-    {code: "sb",     name: "SB (Supermarket)"},
-    {code: "ren",    name: "Rent"},
-    {code: "oz",     name: "OZON"},
-    {code: "ya",     name: "Yandex"},
-    {code: "cert",   name: "Certificate"},
-    {code: "cash",   name: "Cash"},
+    {code: "gp",       name: "GP (Gas)"},
+    {code: "hal",      name: "Halal"},
+    {code: "sb",       name: "SB (Supermarket)"},
+    {code: "ren",      name: "Rent"},
+    {code: "oz",       name: "OZON"},
+    {code: "ya",       name: "Yandex"},
+    {code: "cert",     name: "Certificate"},
+    {code: "cash",     name: "Cash"},
     {code: "transfer", name: "Transfer"},
-    {code: "other",  name: "Other…"}
+    {code: "other",    name: "Other…"}
 ];
 
 let selectedExpenseTool = null;
@@ -52,7 +70,7 @@ function renderExpenseTools() {
     const container = document.getElementById('exp-tool-buttons');
     if (!container) return;
     container.innerHTML = EXPENSE_TOOLS.map(t => `
-        <div class="tool-btn ${t.code === selectedExpenseTool ? 'active' : ''}" 
+        <div class="tool-btn ${t.code === selectedExpenseTool ? 'active' : ''}"
              data-code="${t.code}"
              onclick="selectExpenseTool('${t.code}')">
             ${t.name}
@@ -74,7 +92,7 @@ function selectExpenseTool(code) {
     }
 }
 
-// ================== EXPENSE CATEGORIES (emoji) ==================
+// ================== EXPENSE CATEGORIES =======================================
 const EXPENSE_CATEGORIES = [
     {emoji: "🍔", name: "food"},
     {emoji: "🚗", name: "transport"},
@@ -98,7 +116,7 @@ function renderExpenseCategories() {
     const container = document.getElementById('exp-category-buttons');
     if (!container) return;
     container.innerHTML = EXPENSE_CATEGORIES.map(c => `
-        <div class="category-btn ${c.name === selectedExpenseCategory ? 'active' : ''}" 
+        <div class="category-btn ${c.name === selectedExpenseCategory ? 'active' : ''}"
              title="${c.name}"
              onclick="selectExpenseCategory('${c.name}')">
             ${c.emoji}
@@ -113,19 +131,20 @@ function selectExpenseCategory(name) {
     });
 }
 
-// ================== CORE FUNCTIONS ==================
+// ================== CORE FUNCTIONS ===========================================
 function switchScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
-    
+
     document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-    const idx = ['dashboard','planner','expenses','income','more'].indexOf(screenId.split('-')[1]);
+    const idx = ['dashboard','planner','expenses','income','more']
+        .indexOf(screenId.split('-')[1]);
     if (idx >= 0) document.querySelectorAll('.nav-item')[idx].classList.add('active');
-    
+
     currentScreen = screenId;
-    if (screenId === 'screen-planner') loadPlanner();
-    if (screenId === 'screen-expenses') loadExpenses();
-    if (screenId === 'screen-income') loadIncome();
+    if (screenId === 'screen-planner')   loadPlanner();
+    if (screenId === 'screen-expenses')  loadExpenses();
+    if (screenId === 'screen-income')    loadIncome();
     if (screenId === 'screen-dashboard') loadDashboard();
 }
 
@@ -133,12 +152,8 @@ async function api(action, body = {}) {
     const form = new FormData();
     form.append('action', action);
     Object.keys(body).forEach(k => form.append(k, body[k]));
-    
     try {
-        const res = await fetch('php/api.php', {
-            method: 'POST',
-            body: form
-        });
+        const res  = await fetch('php/api.php', { method: 'POST', body: form });
         const data = await res.json();
         return data;
     } catch (err) {
@@ -147,7 +162,7 @@ async function api(action, body = {}) {
     }
 }
 
-// ================== EVENTS / PLANNER ==================
+// ================== EVENTS / PLANNER =========================================
 async function loadPlanner() {
     const data = await api('get_events');
     eventsData = data || [];
@@ -157,9 +172,8 @@ async function loadPlanner() {
 function renderPlanner(list) {
     const container = document.getElementById('planner-list');
     container.innerHTML = '';
-    
     list.forEach(ev => {
-        const dt = new Date(ev.dt);
+        const dt   = new Date(ev.dt.replace(' ', 'T'));
         const card = document.createElement('div');
         card.className = 'bg-zinc-900 rounded-3xl p-5 card flex gap-4';
         card.innerHTML = `
@@ -172,9 +186,9 @@ function renderPlanner(list) {
                 </div>
             </div>
             <div class="flex flex-col items-end justify-between">
-                <div onclick="editEvent('${ev.id}'); event.stopPropagation()" 
+                <div onclick="editEvent('${ev.id}'); event.stopPropagation()"
                      class="text-emerald-400 text-xl cursor-pointer">✏️</div>
-                <div onclick="deleteEvent('${ev.id}'); event.stopPropagation()" 
+                <div onclick="deleteEvent('${ev.id}'); event.stopPropagation()"
                      class="text-red-400 text-xl cursor-pointer">🗑</div>
             </div>
         `;
@@ -185,7 +199,7 @@ function renderPlanner(list) {
 
 function filterPlanner() {
     const term = document.getElementById('planner-filter').value.toLowerCase();
-    const filtered = eventsData.filter(e => 
+    const filtered = eventsData.filter(e =>
         (e.desc?.toLowerCase().includes(term)) ||
         (e.hashtag?.toLowerCase().includes(term))
     );
@@ -193,31 +207,28 @@ function filterPlanner() {
 }
 
 function showAddEventModal() {
-    document.getElementById('event-dt').value = new Date().toISOString().slice(0,16);
-    document.getElementById('event-desc').value = '';
-    document.getElementById('event-hashtag').value = '';
-    document.getElementById('event-place').value = '';
+    document.getElementById('event-dt').value         = nowDatetimeLocal();
+    document.getElementById('event-desc').value       = '';
+    document.getElementById('event-hashtag').value    = '';
+    document.getElementById('event-place').value      = '';
     document.getElementById('event-recurrence').value = 'none';
-    
+
     document.getElementById('modal-event').classList.remove('hidden');
     document.getElementById('modal-event').classList.add('flex');
-    
+
     renderHashtagSuggestions();
     selectHashtag('');
 }
 
 async function saveEvent() {
     const dt = document.getElementById('event-dt').value;
-    if (!dt) {
-        alert("Please select date and time");
-        return;
-    }
+    if (!dt) { alert("Please select date and time"); return; }
 
     const payload = {
-        dt: dt.replace('T', ' '),
-        desc: document.getElementById('event-desc').value.trim() || '(no description)',
-        hashtag: document.getElementById('event-hashtag').value.trim(),
-        place: document.getElementById('event-place').value.trim(),
+        dt:         dt.replace('T', ' '),
+        desc:       document.getElementById('event-desc').value.trim() || '(no description)',
+        hashtag:    document.getElementById('event-hashtag').value.trim(),
+        place:      document.getElementById('event-place').value.trim(),
         recurrence: document.getElementById('event-recurrence').value
     };
 
@@ -240,10 +251,10 @@ async function editEvent(id) {
     const ev = eventsData.find(e => e.id == id);
     if (!ev) return;
 
-    document.getElementById('event-dt').value = ev.dt.replace(' ', 'T');
-    document.getElementById('event-desc').value = ev.desc || '';
-    document.getElementById('event-hashtag').value = ev.hashtag || '';
-    document.getElementById('event-place').value = ev.place || '';
+    document.getElementById('event-dt').value         = ev.dt.replace(' ', 'T');
+    document.getElementById('event-desc').value       = ev.desc    || '';
+    document.getElementById('event-hashtag').value    = ev.hashtag || '';
+    document.getElementById('event-place').value      = ev.place   || '';
     document.getElementById('event-recurrence').value = ev.recurrence || 'none';
 
     const saveBtn = document.querySelector('#modal-event button[onclick^="saveEvent"]');
@@ -262,10 +273,10 @@ async function updateEvent(id) {
 
     const payload = {
         id,
-        dt: dt.replace('T', ' '),
-        desc: document.getElementById('event-desc').value.trim(),
-        hashtag: document.getElementById('event-hashtag').value.trim(),
-        place: document.getElementById('event-place').value.trim(),
+        dt:         dt.replace('T', ' '),
+        desc:       document.getElementById('event-desc').value.trim(),
+        hashtag:    document.getElementById('event-hashtag').value.trim(),
+        place:      document.getElementById('event-place').value.trim(),
         recurrence: document.getElementById('event-recurrence').value
     };
 
@@ -298,7 +309,7 @@ async function markComplete(id) {
     loadDashboard();
 }
 
-// ================== EXPENSES ==================
+// ================== EXPENSES =================================================
 async function loadExpenses() {
     const data = await api('get_expenses');
     expensesData = data || [];
@@ -315,63 +326,54 @@ function renderExpenses(list) {
                 <div class="text-sm text-zinc-400 mt-1">
                     ${exp.tool || '?'}
                     ${exp.category ? ` • ${exp.category}` : ''}
-                    ${exp.desc ? ` • ${exp.desc}` : ''}
+                    ${exp.desc     ? ` • ${exp.desc}`     : ''}
                 </div>
             </div>
-            <div onclick="deleteExpense('${exp.id}'); event.stopPropagation()" 
+            <div onclick="deleteExpense('${exp.id}'); event.stopPropagation()"
                  class="text-red-400 text-2xl cursor-pointer">🗑</div>
         </div>
     `).join('');
 }
 
 function showAddExpenseModal() {
-    document.getElementById('exp-date').value = new Date().toISOString().slice(0,10);
+    document.getElementById('exp-date').value   = todayString();
     document.getElementById('exp-amount').value = '';
-    document.getElementById('exp-desc').value = '';
-    selectedExpenseTool = null;
+    document.getElementById('exp-desc').value   = '';
+    selectedExpenseTool     = null;
     selectedExpenseCategory = null;
-    
+
     document.getElementById('modal-expense').classList.remove('hidden');
     document.getElementById('modal-expense').classList.add('flex');
-    
+
     renderExpenseTools();
     renderExpenseCategories();
     document.getElementById('exp-tool-other-group').classList.add('hidden');
 }
 
 async function saveExpense() {
-    if (!selectedExpenseTool) {
-        alert("Please select a tool");
-        return;
-    }
-    if (!selectedExpenseCategory) {
-        alert("Please select a category");
-        return;
-    }
+    if (!selectedExpenseTool)     { alert("Please select a tool");     return; }
+    if (!selectedExpenseCategory) { alert("Please select a category"); return; }
 
     let toolValue = selectedExpenseTool;
     if (selectedExpenseTool === 'other') {
         const custom = document.getElementById('exp-tool-other').value.trim();
-        if (!custom) {
-            alert("Please specify the other tool");
-            return;
-        }
+        if (!custom) { alert("Please specify the other tool"); return; }
         toolValue = custom;
     }
 
     const amountStr = document.getElementById('exp-amount').value.trim();
-    const amount = parseFloat(amountStr);
+    const amount    = parseFloat(amountStr);
     if (!amountStr || isNaN(amount) || amount <= 0) {
         alert("Please enter a valid positive amount");
         return;
     }
 
     const payload = {
-        date: document.getElementById('exp-date').value,
-        amount: amount,
-        tool: toolValue,
+        date:     document.getElementById('exp-date').value,
+        amount,
+        tool:     toolValue,
         category: selectedExpenseCategory,
-        desc: document.getElementById('exp-desc').value.trim()
+        desc:     document.getElementById('exp-desc').value.trim()
     };
 
     try {
@@ -396,12 +398,12 @@ async function deleteExpense(id) {
     loadDashboard();
 }
 
-// ================== INCOME ==================
+// ================== INCOME ===================================================
 async function showAddIncomeModal() {
-    document.getElementById('inc-date').value = new Date().toISOString().slice(0,10);
+    document.getElementById('inc-date').value   = todayString();
     document.getElementById('inc-amount').value = '';
-    document.getElementById('inc-desc').value = '';
-    
+    document.getElementById('inc-desc').value   = '';
+
     document.getElementById('modal-income').classList.remove('hidden');
     document.getElementById('modal-income').classList.add('flex');
 }
@@ -414,9 +416,9 @@ async function saveIncome() {
     }
 
     const payload = {
-        date: document.getElementById('inc-date').value,
-        amount: amount,
-        desc: document.getElementById('inc-desc').value.trim()
+        date:   document.getElementById('inc-date').value,
+        amount,
+        desc:   document.getElementById('inc-desc').value.trim()
     };
 
     try {
@@ -447,9 +449,9 @@ function renderIncome(list) {
             <div>
                 <div class="text-xs text-zinc-500">${inc.date}</div>
                 <div class="font-semibold text-xl text-emerald-400">+${parseFloat(inc.amount).toLocaleString('ru-RU')}</div>
-                <div class="text-sm text-zinc-400">${inc.desc||''}</div>
+                <div class="text-sm text-zinc-400">${inc.desc || ''}</div>
             </div>
-            <div onclick="deleteIncome('${inc.id}');event.stopPropagation()" 
+            <div onclick="deleteIncome('${inc.id}'); event.stopPropagation()"
                  class="text-red-400 text-2xl cursor-pointer">🗑</div>
         </div>
     `).join('');
@@ -462,40 +464,135 @@ async function deleteIncome(id) {
     loadDashboard();
 }
 
-// ================== DASHBOARD ==================
+// ================== DASHBOARD ================================================
 async function loadDashboard() {
-    const now = new Date();
-    const monthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    
+    const monthKey = currentMonthKey();
+
     const exps = await api('get_expenses') || [];
-    const incs = await api('get_income') || [];
-    
-    let expTotal = exps
+    const incs = await api('get_income')   || [];
+
+    const expTotal = exps
         .filter(e => e.date.startsWith(monthKey))
         .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
-    
-    let incTotal = incs
+
+    const incTotal = incs
         .filter(i => i.date.startsWith(monthKey))
         .reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
-    
+
     document.getElementById('dash-exp-total').textContent = `−${expTotal.toLocaleString('ru-RU')}`;
     document.getElementById('dash-inc-total').textContent = `+${incTotal.toLocaleString('ru-RU')}`;
-    
-    const evs = await api('get_events') || [];
+
+    const evs    = await api('get_events') || [];
+    const nowStr = nowAsDatetimeString(); // e.g. "2026-03-16 14:30"
+
+    // Plain string comparison works perfectly for "YYYY-MM-DD HH:MM:SS" format
     const upcoming = evs
-        .filter(e => new Date(e.dt) > now)
-        .sort((a,b) => new Date(a.dt) - new Date(b.dt))
-        .slice(0,3);
-    
-    document.getElementById('upcoming-list').innerHTML = upcoming.map(e => `
-        <div class="bg-zinc-900 rounded-3xl p-4 text-sm flex justify-between">
-            <div>${e.desc}</div>
-            <div class="text-emerald-400">${new Date(e.dt).toLocaleDateString('ru-RU', {day:'numeric', month:'short'})}</div>
-        </div>
-    `).join('');
+        .filter(e => (e.dt || '') > nowStr)
+        .sort((a, b) => (a.dt > b.dt ? 1 : -1))
+        .slice(0, 5); // show up to 5 upcoming events on dashboard
+
+    document.getElementById('upcoming-list').innerHTML = upcoming.length
+        ? upcoming.map(e => {
+            const dt      = new Date(e.dt.replace(' ', 'T'));
+            const timeStr = dt.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
+            const dateStr = dt.toLocaleDateString('ru-RU', {day: 'numeric', month: 'short'});
+            return `
+                <div class="bg-zinc-900 rounded-3xl p-4 text-sm flex justify-between items-center">
+                    <div>
+                        <div class="font-medium">${e.desc}</div>
+                        ${e.place ? `<div class="text-xs text-zinc-500 mt-0.5">${e.place}</div>` : ''}
+                    </div>
+                    <div class="text-emerald-400 text-right shrink-0 ml-3">
+                        <div>${dateStr}</div>
+                        <div class="text-xs">${timeStr}</div>
+                    </div>
+                </div>
+            `;
+          }).join('')
+        : `<div class="text-zinc-500 text-sm text-center py-4">No upcoming events</div>`;
 }
 
-// ================== UTILITIES ==================
+// ================== PUSH NOTIFICATIONS (FCM) =================================
+
+async function registerFcmToken(token) {
+    const storageKey = 'fcm_registered_token';
+    const savedToken = localStorage.getItem(storageKey);
+
+    // Token unchanged — skip server call entirely
+    if (savedToken === token) {
+        console.log('FCM token unchanged, skipping re-registration.');
+        return;
+    }
+
+    try {
+        const res = await fetch('php/save-subscription.php', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ token })
+        });
+
+        if (res.ok) {
+            const isFirstTime = !savedToken;
+            localStorage.setItem(storageKey, token);
+            if (isFirstTime) {
+                alert("Notifications enabled! You'll receive event reminders.");
+            } else {
+                console.log('FCM token refreshed silently.');
+            }
+        } else {
+            console.error('Failed to save FCM token on server.');
+        }
+    } catch (err) {
+        console.error('Error saving FCM token:', err);
+    }
+}
+
+async function enableNotifications() {
+    if (typeof firebase === 'undefined') {
+        console.warn("Firebase SDK not loaded.");
+        return;
+    }
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            alert("Notifications blocked. You can change this in your browser settings.");
+            return;
+        }
+
+        const registration = await navigator.serviceWorker.register('firebase-messaging-sw.js');
+        const token = await messaging.getToken({
+            vapidKey: VAPID_KEY,
+            serviceWorkerRegistration: registration
+        });
+
+        if (token) {
+            console.log('FCM Token obtained.');
+            await registerFcmToken(token);
+        } else {
+            console.warn('No FCM token received — check VAPID key and service worker.');
+        }
+    } catch (err) {
+        console.error('Error enabling notifications:', err);
+        alert("Could not enable notifications: " + err.message);
+    }
+}
+
+function initForegroundMessaging() {
+    if (!messaging) return;
+    messaging.onMessage(payload => {
+        console.log('Foreground FCM message:', payload);
+        const { title, body } = payload.notification || {};
+        if (title) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-lg z-[200] text-sm font-medium';
+            toast.textContent = `🔔 ${title}: ${body}`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
+        }
+    });
+}
+
+// ================== UTILITIES ================================================
 async function takeSnapshot() {
     const res = await api('snapshot');
     if (res.success) alert('Snapshot created!');
@@ -517,10 +614,13 @@ async function exportData() {
     const exps = await api('get_expenses');
     const incs = await api('get_income');
     const evs  = await api('get_events');
-    const blob = new Blob([JSON.stringify({events:evs, expenses:exps, income:incs}, null, 2)], {type: 'application/json'});
+    const blob  = new Blob(
+        [JSON.stringify({events: evs, expenses: exps, income: incs}, null, 2)],
+        {type: 'application/json'}
+    );
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
+    const a   = document.createElement('a');
+    a.href     = url;
     a.download = 'planner-backup.json';
     a.click();
 }
@@ -529,18 +629,37 @@ function showMonthPicker(type) {
     alert("Month stats coming soon...");
 }
 
-// PWA service worker
+// ================== SERVICE WORKER (cache) ===================================
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
+    navigator.serviceWorker.register('sw.js')
+        .then(() => console.log('Cache SW registered'))
+        .catch(err => console.error('Cache SW failed:', err));
 }
 
-// INIT
+// ================== INIT =====================================================
 window.onload = async () => {
     await api('init');
     switchScreen('screen-dashboard');
     loadDashboard();
-    
+
+    if (typeof firebase !== 'undefined') {
+        messaging = firebase.messaging();
+        initForegroundMessaging();
+    }
+
     if (Notification.permission === 'default') {
-        Notification.requestPermission();
+        await enableNotifications();
+    } else if (Notification.permission === 'granted' && messaging) {
+        // Silently refresh token if it rotated — no alert
+        try {
+            const registration = await navigator.serviceWorker.register('firebase-messaging-sw.js');
+            const token = await messaging.getToken({
+                vapidKey: VAPID_KEY,
+                serviceWorkerRegistration: registration
+            });
+            if (token) await registerFcmToken(token);
+        } catch (err) {
+            console.warn('Silent token refresh failed:', err);
+        }
     }
 };

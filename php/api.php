@@ -1,5 +1,8 @@
 <?php
 // php/api.php
+date_default_timezone_set('Australia/Brisbane'); // UTC+10, no DST
+// Change to 'Australia/Sydney' if you want DST adjustments
+
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
@@ -44,11 +47,11 @@ if ($action === 'get_events') {
 if ($action === 'add_event') {
     $data = read($files['events']);
     $data[] = [
-        'id' => time() . rand(10000,99999),
-        'dt' => $_POST['dt'] ?? '',
-        'desc' => $_POST['desc'] ?? '',
-        'hashtag' => $_POST['hashtag'] ?? '',
-        'place' => $_POST['place'] ?? '',
+        'id'         => time() . rand(10000, 99999),
+        'dt'         => $_POST['dt']         ?? '',
+        'desc'       => $_POST['desc']       ?? '',
+        'hashtag'    => $_POST['hashtag']    ?? '',
+        'place'      => $_POST['place']      ?? '',
         'recurrence' => $_POST['recurrence'] ?? 'none'
     ];
     write($files['events'], $data);
@@ -60,10 +63,10 @@ if ($action === 'update_event') {
     $data = read($files['events']);
     foreach ($data as &$e) {
         if ($e['id'] == $_POST['id']) {
-            $e['dt'] = $_POST['dt'] ?? $e['dt'];
-            $e['desc'] = $_POST['desc'] ?? $e['desc'];
-            $e['hashtag'] = $_POST['hashtag'] ?? $e['hashtag'];
-            $e['place'] = $_POST['place'] ?? $e['place'];
+            $e['dt']         = $_POST['dt']         ?? $e['dt'];
+            $e['desc']       = $_POST['desc']       ?? $e['desc'];
+            $e['hashtag']    = $_POST['hashtag']    ?? $e['hashtag'];
+            $e['place']      = $_POST['place']      ?? $e['place'];
             $e['recurrence'] = $_POST['recurrence'] ?? $e['recurrence'];
             break;
         }
@@ -105,9 +108,9 @@ if ($action === 'get_expenses') {
 if ($action === 'add_expense') {
     $data = read($files['expenses']);
     $data[] = [
-        'id'       => time() . rand(10000,99999),
+        'id'       => time() . rand(10000, 99999),
         'date'     => $_POST['date']     ?? '',
-        'amount'   => (float)($_POST['amount']   ?? 0),
+        'amount'   => (float)($_POST['amount'] ?? 0),
         'tool'     => $_POST['tool']     ?? '',
         'category' => $_POST['category'] ?? '',
         'desc'     => $_POST['desc']     ?? ''
@@ -133,10 +136,10 @@ if ($action === 'get_income') {
 if ($action === 'add_income') {
     $data = read($files['income']);
     $data[] = [
-        'id' => time() . rand(10000,99999),
-        'date' => $_POST['date'] ?? '',
+        'id'     => time() . rand(10000, 99999),
+        'date'   => $_POST['date']   ?? '',
         'amount' => (float)($_POST['amount'] ?? 0),
-        'desc' => $_POST['desc'] ?? ''
+        'desc'   => $_POST['desc']   ?? ''
     ];
     write($files['income'], $data);
     echo json_encode(['success' => true]);
@@ -152,7 +155,7 @@ if ($action === 'delete_income') {
 }
 
 if ($action === 'snapshot') {
-    $ts = date('Ymd_His');
+    $ts     = date('Ymd_His'); // now uses UTC+10
     $target = $snapDir . '/' . $ts;
     mkdir($target, 0777, true);
     foreach ($files as $name => $path) {

@@ -1,17 +1,20 @@
 body {
     -webkit-tap-highlight-color: transparent;
 }
+
 .screen {
     display: none;
 }
 .screen.active {
     display: block;
 }
+
 input[type="datetime-local"],
 input[type="date"] {
     color-scheme: dark;
 }
 
+/* ── Chips / buttons ─────────────────────────────────────────────────────── */
 .hashtag-chip,
 .tool-btn,
 .category-btn {
@@ -27,13 +30,11 @@ input[type="date"] {
     user-select: none;
     -webkit-tap-highlight-color: transparent;
 }
-
 .hashtag-chip:hover,
 .tool-btn:hover,
 .category-btn:hover {
     background: #3a3a40;
 }
-
 .hashtag-chip.active,
 .tool-btn.active,
 .category-btn.active {
@@ -56,18 +57,92 @@ input[type="date"] {
     aspect-ratio: 1 / 1;
 }
 
-/* Improve modal scroll behavior on mobile */
-#modal-expense > div {
-    max-height: 85vh;
-}
-
-#modal-expense .overflow-y-auto {
-    -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
-}
-
-/* Make sure inputs don't zoom on focus */
+/* ── Prevent input zoom on iOS ───────────────────────────────────────────── */
 input[type="date"],
+input[type="datetime-local"],
 input[type="number"],
-input[type="text"] {
+input[type="text"],
+select,
+textarea {
     font-size: 16px !important;
+}
+
+/* ── Modal base: sits at bottom, slides up ───────────────────────────────── */
+.modal-sheet {
+    /* full-screen overlay */
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 100;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+/* ── Modal inner panel ───────────────────────────────────────────────────── */
+.modal-sheet > div {
+    width: 100%;
+    max-width: 40rem;          /* max-w-xl */
+    background: #18181b;       /* zinc-900 */
+    border-radius: 1.5rem 1.5rem 0 0;
+
+    /* Key fix: limit height so it never covers the full screen,
+       and always leave room to scroll to the top fields */
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+
+    /* Smooth scroll momentum on iOS */
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ── Scrollable body inside the panel ───────────────────────────────────── */
+.modal-sheet .modal-body {
+    overflow-y: auto;
+    flex: 1;
+    /* Extra bottom padding so last field clears the keyboard */
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+/* ── Expense modal specifically (already has overflow-y-auto in HTML) ────── */
+#modal-expense > div {
+    max-height: 90vh;
+}
+#modal-expense .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    /* Ensure you can always scroll up to Date field */
+    overscroll-behavior: contain;
+}
+
+/* ── Event modal — make the content block scrollable too ─────────────────── */
+#modal-event > div {
+    max-height: 90vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+/* ── Keep the sticky action buttons always visible at the bottom ─────────── */
+#modal-event   .flex.gap-3.mt-8,
+#modal-income  .flex.gap-3.mt-8 {
+    position: sticky;
+    bottom: 0;
+    background: #18181b;
+    padding-top: 12px;
+    margin-top: 12px;
+    /* Respect home-bar on newer iPhones */
+    padding-bottom: env(safe-area-inset-bottom, 12px);
+}
+
+/* ── Income modal ─────────────────────────────────────────────────────────── */
+#modal-income > div {
+    max-height: 90vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+/* ── Safe-area padding for the bottom nav ────────────────────────────────── */
+nav.fixed.bottom-0 {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
 }

@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="css/style.css">
+
+    <!-- Google Fonts -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
         body { font-family: 'Inter', system-ui, sans-serif; }
@@ -16,7 +18,28 @@
         .card:active { transform: scale(0.98); }
         input, select, textarea { font-size: 16px; } /* prevent zoom on iOS */
     </style>
+
+    <!-- Firebase SDK – load once, early -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"></script>
+
+    <!-- Your Firebase config -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAMJaYSMXKgxpkaYfkyLXfR-u6ZuXpKef4",
+            authDomain: "plannernotifications-bd4b1.firebaseapp.com",
+            projectId: "plannernotifications-bd4b1",
+            storageBucket: "plannernotifications-bd4b1.firebasestorage.app",
+            messagingSenderId: "531159501999",
+            appId: "1:531159501999:web:2fcf2be70a3fb13f09185a",
+            measurementId: "G-21YWJ81ZRG"
+        };
+
+        // Initialize Firebase as early as possible
+        firebase.initializeApp(firebaseConfig);
+    </script>
 </head>
+
 <body class="bg-zinc-950 text-zinc-200 min-h-screen pb-20">
 
     <!-- HEADER -->
@@ -25,7 +48,7 @@
             <div class="w-8 h-8 bg-emerald-500 rounded-xl flex items-center justify-center text-white font-bold text-xl">P</div>
             <h1 class="text-2xl font-semibold tracking-tight">Planner</h1>
         </div>
-        <button onclick="takeSnapshot()" 
+        <button onclick="takeSnapshot()"
                 class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium flex items-center gap-2">
             <span class="text-emerald-400">📸</span>
             <span>Snapshot</span>
@@ -33,48 +56,43 @@
     </header>
 
     <main class="pt-16 px-4 max-w-xl mx-auto">
-
         <!-- DASHBOARD -->
         <div id="screen-dashboard" class="screen">
             <div class="grid grid-cols-2 gap-4 mb-8">
-                <div onclick="switchScreen('screen-expenses')" 
+                <div onclick="switchScreen('screen-expenses')"
                      class="card bg-zinc-900 rounded-3xl p-5 cursor-pointer">
                     <div class="text-emerald-400 text-sm font-medium">EXPENSES</div>
                     <div id="dash-exp-total" class="text-4xl font-semibold mt-2">0</div>
                     <div class="text-xs text-zinc-500 mt-1">this month</div>
                 </div>
-                <div onclick="switchScreen('screen-income')" 
+                <div onclick="switchScreen('screen-income')"
                      class="card bg-zinc-900 rounded-3xl p-5 cursor-pointer">
                     <div class="text-emerald-400 text-sm font-medium">INCOME</div>
                     <div id="dash-inc-total" class="text-4xl font-semibold mt-2">0</div>
                     <div class="text-xs text-zinc-500 mt-1">this month</div>
                 </div>
             </div>
-
             <div class="mb-6">
                 <div class="flex justify-between items-center mb-3">
                     <div class="font-medium text-lg">Upcoming</div>
-                    <button onclick="switchScreen('screen-planner')" 
+                    <button onclick="switchScreen('screen-planner')"
                             class="text-emerald-400 text-sm font-medium">All →</button>
                 </div>
                 <div id="upcoming-list" class="space-y-3"></div>
             </div>
-
             <div class="text-xs text-zinc-500 text-center mt-12">Tap bottom bar to navigate</div>
         </div>
 
         <!-- PLANNER -->
         <div id="screen-planner" class="screen hidden">
             <div class="flex justify-between items-center mb-4">
-                <input id="planner-filter" 
+                <input id="planner-filter"
                        onkeyup="filterPlanner()"
-                       placeholder="Filter hashtag or text..." 
+                       placeholder="Filter hashtag or text..."
                        class="bg-zinc-900 border border-zinc-700 focus:border-emerald-500 rounded-3xl px-5 py-3 w-full text-base">
             </div>
-            
             <div id="planner-list" class="space-y-3"></div>
-            
-            <button onclick="showAddEventModal()" 
+            <button onclick="showAddEventModal()"
                     class="fixed bottom-24 right-4 w-14 h-14 bg-emerald-500 hover:bg-emerald-600 rounded-3xl shadow-2xl flex items-center justify-center text-3xl leading-none z-40">
                 +
             </button>
@@ -83,9 +101,9 @@
         <!-- EXPENSES -->
         <div id="screen-expenses" class="screen hidden">
             <div class="flex gap-3 mb-4">
-                <button onclick="showAddExpenseModal()" 
+                <button onclick="showAddExpenseModal()"
                         class="flex-1 bg-emerald-500 hover:bg-emerald-600 py-4 rounded-3xl text-lg font-medium">+ Expense</button>
-                <button onclick="showMonthPicker('exp')" 
+                <button onclick="showMonthPicker('exp')"
                         class="flex-1 bg-zinc-800 hover:bg-zinc-700 py-4 rounded-3xl text-lg font-medium">Stats</button>
             </div>
             <div id="expenses-list" class="space-y-3"></div>
@@ -94,9 +112,9 @@
         <!-- INCOME -->
         <div id="screen-income" class="screen hidden">
             <div class="flex gap-3 mb-4">
-                <button onclick="showAddIncomeModal()" 
+                <button onclick="showAddIncomeModal()"
                         class="flex-1 bg-emerald-500 hover:bg-emerald-600 py-4 rounded-3xl text-lg font-medium">+ Income</button>
-                <button onclick="showMonthPicker('inc')" 
+                <button onclick="showMonthPicker('inc')"
                         class="flex-1 bg-zinc-800 hover:bg-zinc-700 py-4 rounded-3xl text-lg font-medium">Stats</button>
             </div>
             <div id="income-list" class="space-y-3"></div>
@@ -112,17 +130,15 @@
                         <div class="text-xs text-zinc-500">Backup all data</div>
                     </div>
                 </div>
-                
                 <div class="bg-zinc-900 rounded-3xl p-5">
                     <div class="font-medium mb-3">Quick actions</div>
                     <div class="grid grid-cols-2 gap-3 text-sm">
-                        <button onclick="clearAllData()" 
+                        <button onclick="clearAllData()"
                                 class="bg-red-950 hover:bg-red-900 py-6 rounded-2xl">Clear all data</button>
-                        <button onclick="exportData()" 
+                        <button onclick="exportData()"
                                 class="bg-zinc-800 hover:bg-zinc-700 py-6 rounded-2xl">Export JSON</button>
                     </div>
                 </div>
-                
                 <div class="text-[10px] text-zinc-500 text-center mt-10">
                     Hosted in second-layer folder<br>
                     Future: Android push via PWA
@@ -134,27 +150,27 @@
     <!-- BOTTOM NAV -->
     <nav class="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 z-50">
         <div class="max-w-xl mx-auto grid grid-cols-5 text-[10px] font-medium">
-            <button onclick="switchScreen('screen-dashboard')" 
+            <button onclick="switchScreen('screen-dashboard')"
                     class="nav-item active flex flex-col items-center py-3 text-emerald-400">
                 <span class="text-2xl mb-0.5">🏠</span>
                 <span>Home</span>
             </button>
-            <button onclick="switchScreen('screen-planner')" 
+            <button onclick="switchScreen('screen-planner')"
                     class="nav-item flex flex-col items-center py-3">
                 <span class="text-2xl mb-0.5">📅</span>
                 <span>Planner</span>
             </button>
-            <button onclick="switchScreen('screen-expenses')" 
+            <button onclick="switchScreen('screen-expenses')"
                     class="nav-item flex flex-col items-center py-3">
                 <span class="text-2xl mb-0.5">💸</span>
                 <span>Expense</span>
             </button>
-            <button onclick="switchScreen('screen-income')" 
+            <button onclick="switchScreen('screen-income')"
                     class="nav-item flex flex-col items-center py-3">
                 <span class="text-2xl mb-0.5">💰</span>
                 <span>Income</span>
             </button>
-            <button onclick="switchScreen('screen-more')" 
+            <button onclick="switchScreen('screen-more')"
                     class="nav-item flex flex-col items-center py-3">
                 <span class="text-2xl mb-0.5">⋯</span>
                 <span>More</span>
@@ -162,6 +178,7 @@
         </div>
     </nav>
 
+    <!-- MODALS (unchanged from your version) -->
     <!-- ADD EVENT MODAL -->
     <div id="modal-event" class="hidden fixed inset-0 bg-black/80 flex items-end z-[100]">
         <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto p-6">
@@ -169,7 +186,6 @@
                 <div class="text-xl font-semibold">New Event</div>
                 <button onclick="hideModal('modal-event')" class="text-3xl leading-none">×</button>
             </div>
-            
             <div class="space-y-5">
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Date & Time</label>
@@ -177,18 +193,18 @@
                 </div>
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Description</label>
-                    <input id="event-desc" type="text" placeholder="Meeting with client" 
+                    <input id="event-desc" type="text" placeholder="Meeting with client"
                            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
                 </div>
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Hashtag</label>
-                    <input id="event-hashtag" type="text" placeholder="#meeting" 
+                    <input id="event-hashtag" type="text" placeholder="#meeting"
                            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
                     <div class="hashtag-row mt-3" id="hashtag-suggestions"></div>
                 </div>
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Place</label>
-                    <input id="event-place" type="text" placeholder="Office" 
+                    <input id="event-place" type="text" placeholder="Office"
                            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
                 </div>
                 <div>
@@ -202,24 +218,22 @@
                     </select>
                 </div>
             </div>
-            
             <div class="flex gap-3 mt-8">
-                <button onclick="hideModal('modal-event')" 
+                <button onclick="hideModal('modal-event')"
                         class="flex-1 py-5 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
-                <button onclick="saveEvent()" 
+                <button onclick="saveEvent()"
                         class="flex-1 py-5 bg-emerald-500 rounded-3xl text-lg font-medium">Save Event</button>
             </div>
         </div>
     </div>
 
-    <!-- ADD EXPENSE MODAL – improved layout -->
+    <!-- ADD EXPENSE MODAL -->
     <div id="modal-expense" class="hidden fixed inset-0 bg-black/80 flex items-end z-[100]">
         <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto max-h-[85vh] overflow-hidden flex flex-col">
             <div class="flex justify-between items-center px-6 pt-5 pb-3 border-b border-zinc-800">
                 <div class="text-xl font-semibold">New Expense</div>
                 <button onclick="hideModal('modal-expense')" class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
             </div>
-            
             <div class="p-6 overflow-y-auto flex-1 space-y-4">
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Date</label>
@@ -227,14 +241,14 @@
                 </div>
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Amount</label>
-                    <input id="exp-amount" type="number" step="0.01" placeholder="0.00" 
+                    <input id="exp-amount" type="number" step="0.01" placeholder="0.00"
                            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
                 </div>
                 <div>
                     <label class="text-xs text-zinc-400 block mb-2">Tool</label>
                     <div class="grid grid-cols-3 gap-3 mb-3" id="exp-tool-buttons"></div>
                     <div id="exp-tool-other-group" class="hidden">
-                        <input id="exp-tool-other" type="text" placeholder="Specify other tool…" 
+                        <input id="exp-tool-other" type="text" placeholder="Specify other tool…"
                                class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base mt-2">
                     </div>
                 </div>
@@ -244,15 +258,14 @@
                 </div>
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Description</label>
-                    <input id="exp-desc" type="text" placeholder="Lunch / Taxi / Gift for mom" 
+                    <input id="exp-desc" type="text" placeholder="Lunch / Taxi / Gift for mom"
                            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
                 </div>
             </div>
-            
             <div class="px-6 py-4 border-t border-zinc-800 flex gap-3">
-                <button onclick="hideModal('modal-expense')" 
+                <button onclick="hideModal('modal-expense')"
                         class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
-                <button onclick="saveExpense()" 
+                <button onclick="saveExpense()"
                         class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Save Expense</button>
             </div>
         </div>
@@ -272,24 +285,25 @@
                 </div>
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Amount</label>
-                    <input id="inc-amount" type="number" step="0.01" placeholder="0" 
+                    <input id="inc-amount" type="number" step="0.01" placeholder="0"
                            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
                 </div>
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Description</label>
-                    <input id="inc-desc" type="text" placeholder="Salary / Freelance" 
+                    <input id="inc-desc" type="text" placeholder="Salary / Freelance"
                            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
                 </div>
             </div>
             <div class="flex gap-3 mt-8">
-                <button onclick="hideModal('modal-income')" 
+                <button onclick="hideModal('modal-income')"
                         class="flex-1 py-5 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
-                <button onclick="saveIncome()" 
+                <button onclick="saveIncome()"
                         class="flex-1 py-5 bg-emerald-500 rounded-3xl text-lg font-medium">Save Income</button>
             </div>
         </div>
     </div>
 
+    <!-- Your main app logic – loaded last -->
     <script src="js/app.js"></script>
 </body>
 </html>
