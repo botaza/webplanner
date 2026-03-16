@@ -122,6 +122,18 @@
         <!-- MORE -->
         <div id="screen-more" class="screen hidden">
             <div class="space-y-4">
+
+                <!-- Notification status card -->
+                <div class="bg-zinc-900 rounded-3xl p-5">
+                    <div class="font-medium mb-3">Notifications</div>
+                    <div id="notif-status" class="text-sm text-zinc-400">Checking...</div>
+                    <button onclick="retryNotifications()"
+                            id="notif-retry-btn"
+                            class="hidden mt-3 w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-2xl text-sm font-medium">
+                        Retry
+                    </button>
+                </div>
+
                 <div onclick="takeSnapshot()" class="bg-zinc-900 rounded-3xl p-5 flex gap-4 items-center cursor-pointer">
                     <div class="text-3xl">📸</div>
                     <div>

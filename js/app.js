@@ -256,6 +256,7 @@ function switchScreen(screenId) {
     if (screenId === 'screen-expenses')  loadExpenses();
     if (screenId === 'screen-income')    loadIncome();
     if (screenId === 'screen-dashboard') loadDashboard();
+    if (screenId === 'screen-more')      updateNotifStatus();
 }
 
 async function api(action, body = {}) {
@@ -744,7 +745,7 @@ async function registerFcmToken(token) {
             localStorage.setItem(storageKey, token);
             localStorage.setItem(savedKey, '1'); // mark as permanently saved
             console.log('FCM token saved to server.');
-            // No alert — ever. Success is silent.
+            updateNotifStatus(); // refresh More screen if open
         } else {
             console.error('Failed to save FCM token on server — will retry next launch.');
             // Do NOT set fcm_token_saved so it retries next time
@@ -850,6 +851,41 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
         .then(() => console.log('Cache SW registered'))
         .catch(err => console.error('Cache SW failed:', err));
+}
+
+// ================== NOTIFICATION STATUS =====================================
+
+function updateNotifStatus() {
+    const el      = document.getElementById('notif-status');
+    const retryBtn = document.getElementById('notif-retry-btn');
+    if (!el) return;
+
+    const permission  = Notification.permission;
+    const tokenSaved  = localStorage.getItem('fcm_token_saved') === '1';
+    const token       = localStorage.getItem('fcm_registered_token');
+
+    if (permission === 'denied') {
+        el.innerHTML = '<span style="color:#f87171">🚫 Blocked — enable in browser settings</span>';
+        if (retryBtn) retryBtn.classList.add('hidden');
+    } else if (permission === 'default') {
+        el.innerHTML = '<span style="color:#facc15">⚠️ Permission not granted yet</span>';
+        if (retryBtn) { retryBtn.classList.remove('hidden'); retryBtn.textContent = 'Enable notifications'; }
+    } else if (!tokenSaved) {
+        el.innerHTML = '<span style="color:#facc15">⚠️ Token not yet saved to server</span>';
+        if (retryBtn) { retryBtn.classList.remove('hidden'); retryBtn.textContent = 'Retry'; }
+    } else {
+        const short = token ? ('…' + token.slice(-12)) : '';
+        el.innerHTML = '<span style="color:#4ade80">✅ Active</span>'
+            + (short ? `<span style="color:#52525b;font-size:11px;margin-left:8px;">${short}</span>` : '');
+        if (retryBtn) retryBtn.classList.add('hidden');
+    }
+}
+
+async function retryNotifications() {
+    const el = document.getElementById('notif-status');
+    if (el) el.innerHTML = '<span style="color:#a1a1aa">⏳ Trying...</span>';
+    await enableNotifications();
+    updateNotifStatus();
 }
 
 // ================== INIT =====================================================
