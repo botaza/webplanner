@@ -723,17 +723,12 @@ async function loadDashboard() {
 //                          After this is set, no alerts or retries are shown to user
 
 async function registerFcmToken(token) {
-    const storageKey   = 'fcm_registered_token';
-    const savedKey     = 'fcm_token_saved';
-    const savedToken   = localStorage.getItem(storageKey);
-    const alreadySaved = localStorage.getItem(savedKey) === '1';
+    const storageKey = 'fcm_registered_token';
+    const savedKey   = 'fcm_token_saved';
 
-    // Token unchanged and already confirmed saved — nothing to do
-    if (savedToken === token && alreadySaved) {
-        console.log('FCM token unchanged and confirmed saved.');
-        return;
-    }
-
+    // Always send token to server on every launch — PHP deduplicates on its end.
+    // This ensures every device/browser gets its token stored even if a previous
+    // attempt failed silently, or localStorage was cleared.
     try {
         const res = await fetch('php/save-subscription.php', {
             method:  'POST',
@@ -743,16 +738,18 @@ async function registerFcmToken(token) {
 
         if (res.ok) {
             localStorage.setItem(storageKey, token);
-            localStorage.setItem(savedKey, '1'); // mark as permanently saved
+            localStorage.setItem(savedKey, '1');
             console.log('FCM token saved to server.');
-            updateNotifStatus(); // refresh More screen if open
+            updateNotifStatus();
         } else {
-            console.error('Failed to save FCM token on server — will retry next launch.');
-            // Do NOT set fcm_token_saved so it retries next time
+            // Clear saved flag so next launch retries
+            localStorage.removeItem(savedKey);
+            console.error('Failed to save FCM token — will retry next launch.');
         }
     } catch (err) {
+        // Clear saved flag so next launch retries
+        localStorage.removeItem(savedKey);
         console.error('Error saving FCM token — will retry next launch:', err);
-        // Do NOT set fcm_token_saved so it retries next time
     }
 }
 
