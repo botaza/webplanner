@@ -286,13 +286,15 @@ function renderPlanner(list) {
         const dt   = new Date(ev.dt.replace(' ', 'T'));
         const card = document.createElement('div');
         card.className = 'bg-zinc-900 rounded-3xl p-5 card flex gap-4';
+        const timeStr = dt.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
         card.innerHTML = `
             <div class="flex-1">
                 <div class="text-xs text-zinc-500">${dt.toLocaleDateString('ru-RU', {weekday:'short', day:'numeric', month:'short'})}</div>
                 <div class="font-medium text-lg mt-1">${ev.desc}</div>
-                <div class="flex gap-2 text-xs mt-2 flex-wrap">
-                    ${ev.hashtag ? `<span class="bg-zinc-800 px-3 py-1 rounded-2xl">${ev.hashtag}</span>` : ''}
-                    ${ev.place   ? `<span class="bg-zinc-800 px-3 py-1 rounded-2xl">📍 ${ev.place}</span>` : ''}
+                <div class="flex gap-2 text-xs mt-2 flex-wrap items-center">
+                    <span class="text-emerald-400 font-medium">🕐 ${timeStr}</span>
+                    ${ev.hashtag  ? `<span class="bg-zinc-800 px-3 py-1 rounded-2xl">${ev.hashtag}</span>` : ''}
+                    ${ev.place    ? `<span class="bg-zinc-800 px-3 py-1 rounded-2xl">📍 ${ev.place}</span>` : ''}
                     ${ev.duration ? `<span class="bg-zinc-800 px-3 py-1 rounded-2xl">⏱ ${ev.duration} min</span>` : ''}
                 </div>
             </div>
