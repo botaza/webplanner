@@ -1,7 +1,6 @@
 <?php
 // php/api.php
-date_default_timezone_set('Australia/Brisbane'); // UTC+10, no DST
-// Change to 'Australia/Sydney' if you want DST adjustments
+date_default_timezone_set('Asia/Vladivostok'); // UTC+10, no DST
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
@@ -45,13 +44,14 @@ if ($action === 'get_events') {
 }
 
 if ($action === 'add_event') {
-    $data = read($files['events']);
+    $data   = read($files['events']);
     $data[] = [
         'id'         => time() . rand(10000, 99999),
         'dt'         => $_POST['dt']         ?? '',
         'desc'       => $_POST['desc']       ?? '',
         'hashtag'    => $_POST['hashtag']    ?? '',
         'place'      => $_POST['place']      ?? '',
+        'duration'   => $_POST['duration']   ?? '',
         'recurrence' => $_POST['recurrence'] ?? 'none'
     ];
     write($files['events'], $data);
@@ -67,6 +67,7 @@ if ($action === 'update_event') {
             $e['desc']       = $_POST['desc']       ?? $e['desc'];
             $e['hashtag']    = $_POST['hashtag']    ?? $e['hashtag'];
             $e['place']      = $_POST['place']      ?? $e['place'];
+            $e['duration']   = $_POST['duration']   ?? ($e['duration'] ?? '');
             $e['recurrence'] = $_POST['recurrence'] ?? $e['recurrence'];
             break;
         }
@@ -106,7 +107,7 @@ if ($action === 'get_expenses') {
 }
 
 if ($action === 'add_expense') {
-    $data = read($files['expenses']);
+    $data   = read($files['expenses']);
     $data[] = [
         'id'       => time() . rand(10000, 99999),
         'date'     => $_POST['date']     ?? '',
@@ -134,7 +135,7 @@ if ($action === 'get_income') {
 }
 
 if ($action === 'add_income') {
-    $data = read($files['income']);
+    $data   = read($files['income']);
     $data[] = [
         'id'     => time() . rand(10000, 99999),
         'date'   => $_POST['date']   ?? '',
@@ -155,7 +156,7 @@ if ($action === 'delete_income') {
 }
 
 if ($action === 'snapshot') {
-    $ts     = date('Ymd_His'); // now uses UTC+10
+    $ts     = date('Ymd_His');
     $target = $snapDir . '/' . $ts;
     mkdir($target, 0777, true);
     foreach ($files as $name => $path) {

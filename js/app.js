@@ -14,21 +14,12 @@ function nowUTC10()         { return new Date(Date.now() + UTC_OFFSET_MS); }
 function todayString()      { return nowUTC10().toISOString().slice(0, 10); }
 function nowDatetimeLocal() { return nowUTC10().toISOString().slice(0, 16); }
 function currentMonthKey()  { return nowUTC10().toISOString().slice(0, 7);  }
-
-/**
- * Returns current UTC+10 time as a comparable "YYYY-MM-DD HH:MM" string.
- * Used for plain string comparison against stored event dt values.
- */
 function nowAsDatetimeString() {
     return nowUTC10().toISOString().slice(0, 16).replace('T', ' ');
 }
 
 // ================== HASHTAG SUGGESTIONS ======================================
-const COMMON_HASHTAGS = [
-    "#meeting", "#call", "#doctor", "#gym", "#study",
-    "#travel", "#birthday", "#payment", "#deadline", "#family",
-    "#shopping", "#repair", "#course", "#exam", "#flight"
-];
+const COMMON_HASHTAGS = ['#pers', '#cons', '#job', '#event', '#control'];
 
 function renderHashtagSuggestions() {
     const container = document.getElementById('hashtag-suggestions');
@@ -44,18 +35,80 @@ function renderHashtagSuggestions() {
 
 function selectHashtag(tag) {
     const input = document.getElementById('event-hashtag');
+    // Toggle off if already selected
+    if (input.value === tag) {
+        input.value = '';
+        document.querySelectorAll('#hashtag-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
+        return;
+    }
     input.value = tag;
     document.querySelectorAll('#hashtag-suggestions .hashtag-chip').forEach(chip => {
         chip.classList.toggle('active', chip.dataset.tag === tag);
     });
 }
 
+// ================== PLACE QUICK BUTTONS ======================================
+const PLACE_SUGGESTIONS = ['?', 'Office', 'Home', 'Online'];
+
+function renderPlaceSuggestions() {
+    const container = document.getElementById('place-suggestions');
+    if (!container) return;
+    container.innerHTML = PLACE_SUGGESTIONS.map(p => `
+        <div class="hashtag-chip"
+             onclick="selectPlace('${p}')"
+             data-place="${p}">
+            ${p}
+        </div>
+    `).join('');
+}
+
+function selectPlace(val) {
+    const input = document.getElementById('event-place');
+    if (input.value === val) {
+        input.value = '';
+        document.querySelectorAll('#place-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
+        return;
+    }
+    input.value = val;
+    document.querySelectorAll('#place-suggestions .hashtag-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.place === val);
+    });
+}
+
+// ================== DURATION QUICK BUTTONS ===================================
+const DURATION_SUGGESTIONS = ['?', '15', '30', '45', '60', '90', '120'];
+
+function renderDurationSuggestions() {
+    const container = document.getElementById('duration-suggestions');
+    if (!container) return;
+    container.innerHTML = DURATION_SUGGESTIONS.map(d => `
+        <div class="hashtag-chip"
+             onclick="selectDuration('${d}')"
+             data-dur="${d}">
+            ${d === '?' ? '?' : d + ' min'}
+        </div>
+    `).join('');
+}
+
+function selectDuration(val) {
+    const input = document.getElementById('event-duration');
+    if (input.value === val) {
+        input.value = '';
+        document.querySelectorAll('#duration-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
+        return;
+    }
+    input.value = val;
+    document.querySelectorAll('#duration-suggestions .hashtag-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.dur === val);
+    });
+}
+
 // ================== EXPENSE TOOLS ============================================
 const EXPENSE_TOOLS = [
-    {code: "gp",       name: "GP (Gas)"},
-    {code: "hal",      name: "Halal"},
-    {code: "sb",       name: "SB (Supermarket)"},
-    {code: "ren",      name: "Rent"},
+    {code: "gp",       name: "GP"},
+    {code: "hal",      name: "Hal"},
+    {code: "sb",       name: "SB"},
+    {code: "ren",      name: "Ren"},
     {code: "oz",       name: "OZON"},
     {code: "ya",       name: "Yandex"},
     {code: "cert",     name: "Certificate"},
@@ -180,9 +233,10 @@ function renderPlanner(list) {
             <div class="flex-1">
                 <div class="text-xs text-zinc-500">${dt.toLocaleDateString('ru-RU', {weekday:'short', day:'numeric', month:'short'})}</div>
                 <div class="font-medium text-lg mt-1">${ev.desc}</div>
-                <div class="flex gap-2 text-xs mt-2">
-                    <span class="bg-zinc-800 px-3 py-1 rounded-2xl">${ev.hashtag || '#'}</span>
-                    ${ev.place ? `<span class="bg-zinc-800 px-3 py-1 rounded-2xl">${ev.place}</span>` : ''}
+                <div class="flex gap-2 text-xs mt-2 flex-wrap">
+                    ${ev.hashtag ? `<span class="bg-zinc-800 px-3 py-1 rounded-2xl">${ev.hashtag}</span>` : ''}
+                    ${ev.place   ? `<span class="bg-zinc-800 px-3 py-1 rounded-2xl">📍 ${ev.place}</span>` : ''}
+                    ${ev.duration ? `<span class="bg-zinc-800 px-3 py-1 rounded-2xl">⏱ ${ev.duration} min</span>` : ''}
                 </div>
             </div>
             <div class="flex flex-col items-end justify-between">
@@ -211,13 +265,20 @@ function showAddEventModal() {
     document.getElementById('event-desc').value       = '';
     document.getElementById('event-hashtag').value    = '';
     document.getElementById('event-place').value      = '';
+    document.getElementById('event-duration').value   = '';
     document.getElementById('event-recurrence').value = 'none';
+
+    // Reset all chip selections
+    document.querySelectorAll('#hashtag-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('#place-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('#duration-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
 
     document.getElementById('modal-event').classList.remove('hidden');
     document.getElementById('modal-event').classList.add('flex');
 
     renderHashtagSuggestions();
-    selectHashtag('');
+    renderPlaceSuggestions();
+    renderDurationSuggestions();
 }
 
 async function saveEvent() {
@@ -229,6 +290,7 @@ async function saveEvent() {
         desc:       document.getElementById('event-desc').value.trim() || '(no description)',
         hashtag:    document.getElementById('event-hashtag').value.trim(),
         place:      document.getElementById('event-place').value.trim(),
+        duration:   document.getElementById('event-duration').value.trim(),
         recurrence: document.getElementById('event-recurrence').value
     };
 
@@ -252,9 +314,10 @@ async function editEvent(id) {
     if (!ev) return;
 
     document.getElementById('event-dt').value         = ev.dt.replace(' ', 'T');
-    document.getElementById('event-desc').value       = ev.desc    || '';
-    document.getElementById('event-hashtag').value    = ev.hashtag || '';
-    document.getElementById('event-place').value      = ev.place   || '';
+    document.getElementById('event-desc').value       = ev.desc     || '';
+    document.getElementById('event-hashtag').value    = ev.hashtag  || '';
+    document.getElementById('event-place').value      = ev.place    || '';
+    document.getElementById('event-duration').value   = ev.duration || '';
     document.getElementById('event-recurrence').value = ev.recurrence || 'none';
 
     const saveBtn = document.querySelector('#modal-event button[onclick^="saveEvent"]');
@@ -264,7 +327,13 @@ async function editEvent(id) {
     document.getElementById('modal-event').classList.add('flex');
 
     renderHashtagSuggestions();
+    renderPlaceSuggestions();
+    renderDurationSuggestions();
+
+    // Restore chip active states
     if (ev.hashtag) selectHashtag(ev.hashtag);
+    if (ev.place)   selectPlace(ev.place);
+    if (ev.duration) selectDuration(ev.duration);
 }
 
 async function updateEvent(id) {
@@ -277,6 +346,7 @@ async function updateEvent(id) {
         desc:       document.getElementById('event-desc').value.trim(),
         hashtag:    document.getElementById('event-hashtag').value.trim(),
         place:      document.getElementById('event-place').value.trim(),
+        duration:   document.getElementById('event-duration').value.trim(),
         recurrence: document.getElementById('event-recurrence').value
     };
 
@@ -483,13 +553,12 @@ async function loadDashboard() {
     document.getElementById('dash-inc-total').textContent = `+${incTotal.toLocaleString('ru-RU')}`;
 
     const evs    = await api('get_events') || [];
-    const nowStr = nowAsDatetimeString(); // e.g. "2026-03-16 14:30"
+    const nowStr = nowAsDatetimeString();
 
-    // Plain string comparison works perfectly for "YYYY-MM-DD HH:MM:SS" format
     const upcoming = evs
         .filter(e => (e.dt || '') > nowStr)
         .sort((a, b) => (a.dt > b.dt ? 1 : -1))
-        .slice(0, 5); // show up to 5 upcoming events on dashboard
+        .slice(0, 5);
 
     document.getElementById('upcoming-list').innerHTML = upcoming.length
         ? upcoming.map(e => {
@@ -500,7 +569,11 @@ async function loadDashboard() {
                 <div class="bg-zinc-900 rounded-3xl p-4 text-sm flex justify-between items-center">
                     <div>
                         <div class="font-medium">${e.desc}</div>
-                        ${e.place ? `<div class="text-xs text-zinc-500 mt-0.5">${e.place}</div>` : ''}
+                        <div class="text-xs text-zinc-500 mt-0.5">
+                            ${e.hashtag ? `<span>${e.hashtag}</span>` : ''}
+                            ${e.place   ? `<span class="ml-1">📍 ${e.place}</span>` : ''}
+                            ${e.duration ? `<span class="ml-1">⏱ ${e.duration} min</span>` : ''}
+                        </div>
                     </div>
                     <div class="text-emerald-400 text-right shrink-0 ml-3">
                         <div>${dateStr}</div>
@@ -513,12 +586,10 @@ async function loadDashboard() {
 }
 
 // ================== PUSH NOTIFICATIONS (FCM) =================================
-
 async function registerFcmToken(token) {
     const storageKey = 'fcm_registered_token';
     const savedToken = localStorage.getItem(storageKey);
 
-    // Token unchanged — skip server call entirely
     if (savedToken === token) {
         console.log('FCM token unchanged, skipping re-registration.');
         return;
@@ -580,7 +651,6 @@ async function enableNotifications() {
 function initForegroundMessaging() {
     if (!messaging) return;
     messaging.onMessage(payload => {
-        console.log('Foreground FCM message:', payload);
         const { title, body } = payload.notification || {};
         if (title) {
             const toast = document.createElement('div');
@@ -629,7 +699,7 @@ function showMonthPicker(type) {
     alert("Month stats coming soon...");
 }
 
-// ================== SERVICE WORKER (cache) ===================================
+// ================== SERVICE WORKER ===========================================
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
         .then(() => console.log('Cache SW registered'))
@@ -650,7 +720,6 @@ window.onload = async () => {
     if (Notification.permission === 'default') {
         await enableNotifications();
     } else if (Notification.permission === 'granted' && messaging) {
-        // Silently refresh token if it rotated — no alert
         try {
             const registration = await navigator.serviceWorker.register('firebase-messaging-sw.js');
             const token = await messaging.getToken({

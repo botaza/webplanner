@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Planner</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="manifest" href="manifest.json">
@@ -19,11 +19,11 @@
         input, select, textarea { font-size: 16px; } /* prevent zoom on iOS */
     </style>
 
-    <!-- Firebase SDK – load once, early -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"></script>
 
-    <!-- Your Firebase config -->
+    <!-- Firebase config -->
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyAMJaYSMXKgxpkaYfkyLXfR-u6ZuXpKef4",
@@ -34,8 +34,6 @@
             appId: "1:531159501999:web:2fcf2be70a3fb13f09185a",
             measurementId: "G-21YWJ81ZRG"
         };
-
-        // Initialize Firebase as early as possible
         firebase.initializeApp(firebaseConfig);
     </script>
 </head>
@@ -56,6 +54,7 @@
     </header>
 
     <main class="pt-16 px-4 max-w-xl mx-auto">
+
         <!-- DASHBOARD -->
         <div id="screen-dashboard" class="screen">
             <div class="grid grid-cols-2 gap-4 mb-8">
@@ -145,6 +144,7 @@
                 </div>
             </div>
         </div>
+
     </main>
 
     <!-- BOTTOM NAV -->
@@ -178,38 +178,69 @@
         </div>
     </nav>
 
-    <!-- MODALS (unchanged from your version) -->
-    <!-- ADD EVENT MODAL -->
-    <div id="modal-event" class="hidden fixed inset-0 bg-black/80 flex items-end z-[100]">
-        <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto p-6">
-            <div class="flex justify-between items-center mb-6">
-                <div class="text-xl font-semibold">New Event</div>
-                <button onclick="hideModal('modal-event')" class="text-3xl leading-none">×</button>
-            </div>
-            <div class="space-y-5">
-                <div>
-                    <label class="text-xs text-zinc-400 block mb-1">Date & Time</label>
-                    <input id="event-dt" type="datetime-local" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ADD EVENT MODAL                                                     -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="modal-event" class="hidden fixed inset-0 bg-black/80 items-end z-[100]">
+        <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto flex flex-col"
+             style="max-height: 90vh;">
+
+            <!-- Fixed header — never scrolls away -->
+            <div class="px-6 pt-5 pb-4 border-b border-zinc-800 shrink-0">
+                <div class="flex justify-between items-center">
+                    <div class="text-xl font-semibold">New Event</div>
+                    <button onclick="hideModal('modal-event')"
+                            class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
                 </div>
+            </div>
+
+            <!-- Scrollable fields -->
+            <div class="overflow-y-auto flex-1 px-6 py-4 space-y-4"
+                 style="-webkit-overflow-scrolling: touch; overscroll-behavior: contain;">
+
+                <!-- Date & Time -->
+                <div>
+                    <label class="text-xs text-zinc-400 block mb-1">Date &amp; Time</label>
+                    <input id="event-dt" type="datetime-local"
+                           class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+                </div>
+
+                <!-- Description -->
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Description</label>
                     <input id="event-desc" type="text" placeholder="Meeting with client"
-                           class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+                           class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
                 </div>
+
+                <!-- Hashtag -->
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Hashtag</label>
-                    <input id="event-hashtag" type="text" placeholder="#meeting"
-                           class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
-                    <div class="hashtag-row mt-3" id="hashtag-suggestions"></div>
+                    <input id="event-hashtag" type="text" placeholder="#pers"
+                           class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+                    <div class="hashtag-row mt-2" id="hashtag-suggestions"></div>
                 </div>
+
+                <!-- Place -->
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Place</label>
                     <input id="event-place" type="text" placeholder="Office"
-                           class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+                           class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+                    <div class="hashtag-row mt-2" id="place-suggestions"></div>
                 </div>
+
+                <!-- Duration -->
+                <div>
+                    <label class="text-xs text-zinc-400 block mb-1">Duration (min)</label>
+                    <input id="event-duration" type="text" inputmode="numeric" placeholder="60"
+                           class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+                    <div class="hashtag-row mt-2" id="duration-suggestions"></div>
+                </div>
+
+                <!-- Recurrence -->
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Recurrence</label>
-                    <select id="event-recurrence" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+                    <select id="event-recurrence"
+                            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
                         <option value="none">None</option>
                         <option value="weekly">Weekly</option>
                         <option value="biweekly">Bi-weekly</option>
@@ -217,27 +248,36 @@
                         <option value="yearly">Yearly</option>
                     </select>
                 </div>
-            </div>
-            <div class="flex gap-3 mt-8">
+
+            </div><!-- end scrollable body -->
+
+            <!-- Fixed footer — never scrolls away -->
+            <div class="px-6 py-4 border-t border-zinc-800 flex gap-3 shrink-0">
                 <button onclick="hideModal('modal-event')"
-                        class="flex-1 py-5 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
+                        class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
                 <button onclick="saveEvent()"
-                        class="flex-1 py-5 bg-emerald-500 rounded-3xl text-lg font-medium">Save Event</button>
+                        class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Save Event</button>
             </div>
+
         </div>
     </div>
 
-    <!-- ADD EXPENSE MODAL -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ADD EXPENSE MODAL                                                   -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="modal-expense" class="hidden fixed inset-0 bg-black/80 flex items-end z-[100]">
-        <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto max-h-[85vh] overflow-hidden flex flex-col">
-            <div class="flex justify-between items-center px-6 pt-5 pb-3 border-b border-zinc-800">
+        <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="flex justify-between items-center px-6 pt-5 pb-3 border-b border-zinc-800 shrink-0">
                 <div class="text-xl font-semibold">New Expense</div>
-                <button onclick="hideModal('modal-expense')" class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
+                <button onclick="hideModal('modal-expense')"
+                        class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
             </div>
-            <div class="p-6 overflow-y-auto flex-1 space-y-4">
+            <div class="p-6 overflow-y-auto flex-1 space-y-4"
+                 style="-webkit-overflow-scrolling: touch; overscroll-behavior: contain;">
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Date</label>
-                    <input id="exp-date" type="date" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+                    <input id="exp-date" type="date"
+                           class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
                 </div>
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Amount</label>
@@ -262,7 +302,7 @@
                            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
                 </div>
             </div>
-            <div class="px-6 py-4 border-t border-zinc-800 flex gap-3">
+            <div class="px-6 py-4 border-t border-zinc-800 flex gap-3 shrink-0">
                 <button onclick="hideModal('modal-expense')"
                         class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
                 <button onclick="saveExpense()"
@@ -271,17 +311,23 @@
         </div>
     </div>
 
-    <!-- ADD INCOME MODAL -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ADD INCOME MODAL                                                    -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="modal-income" class="hidden fixed inset-0 bg-black/80 flex items-end z-[100]">
-        <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto p-6">
-            <div class="flex justify-between items-center mb-6">
+        <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto flex flex-col"
+             style="max-height: 90vh;">
+            <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-zinc-800 shrink-0">
                 <div class="text-xl font-semibold">New Income</div>
-                <button onclick="hideModal('modal-income')" class="text-3xl leading-none">×</button>
+                <button onclick="hideModal('modal-income')"
+                        class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
             </div>
-            <div class="space-y-5">
+            <div class="overflow-y-auto flex-1 px-6 py-4 space-y-4"
+                 style="-webkit-overflow-scrolling: touch; overscroll-behavior: contain;">
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Date</label>
-                    <input id="inc-date" type="date" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+                    <input id="inc-date" type="date"
+                           class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
                 </div>
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Amount</label>
@@ -294,16 +340,16 @@
                            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
                 </div>
             </div>
-            <div class="flex gap-3 mt-8">
+            <div class="px-6 py-4 border-t border-zinc-800 flex gap-3 shrink-0">
                 <button onclick="hideModal('modal-income')"
-                        class="flex-1 py-5 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
+                        class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
                 <button onclick="saveIncome()"
-                        class="flex-1 py-5 bg-emerald-500 rounded-3xl text-lg font-medium">Save Income</button>
+                        class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Save Income</button>
             </div>
         </div>
     </div>
 
-    <!-- Your main app logic – loaded last -->
+    <!-- App logic -->
     <script src="js/app.js"></script>
 </body>
 </html>
