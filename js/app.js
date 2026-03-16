@@ -342,102 +342,142 @@ function renderPlanner(list) {
         return;
     }
 
-    // Group by YYYY-MM
-    const groups = {};
+    const nowStr       = nowAsDatetimeString();
+    const currentMonth = nowStr.slice(0, 7);
+    const todayStr     = nowStr.slice(0, 10);
+    const openGroups   = getOpenGroups();
+    const monthNames   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    // Group by month → day
+    const months = {};
     list.forEach(ev => {
-        const key = (ev.dt || '').slice(0, 7); // "YYYY-MM"
-        if (!groups[key]) groups[key] = [];
-        groups[key].push(ev);
+        const mKey = (ev.dt || '').slice(0, 7); // YYYY-MM
+        const dKey = (ev.dt || '').slice(0, 10); // YYYY-MM-DD
+        if (!months[mKey]) months[mKey] = {};
+        if (!months[mKey][dKey]) months[mKey][dKey] = [];
+        months[mKey][dKey].push(ev);
     });
 
-    const nowStr      = nowAsDatetimeString();
-    const currentMonth = nowAsDatetimeString().slice(0, 7);
-    const openGroups  = getOpenGroups();
-    const sortedKeys  = Object.keys(groups).sort();
+    Object.keys(months).sort().forEach(monthKey => {
+        const days      = months[monthKey];
+        const isPastM   = monthKey < currentMonth;
+        const isCurrentM = monthKey === currentMonth;
+        const totalEvents = Object.values(days).flat().length;
 
-    sortedKeys.forEach(monthKey => {
-        const events   = groups[monthKey];
-        const isPast   = monthKey < currentMonth;
-        const isCurrent = monthKey === currentMonth;
+        // Month open/closed default
+        const mOpenKey = 'm:' + monthKey;
+        const mIsOpen  = mOpenKey in openGroups ? openGroups[mOpenKey] : !isPastM;
 
-        // Default: current month open, past months closed, future open
-        let isOpen;
-        if (monthKey in openGroups) {
-            isOpen = openGroups[monthKey];
-        } else {
-            isOpen = !isPast; // past closed, current+future open
-        }
-
-        // Month label
         const [year, month] = monthKey.split('-');
-        const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        const label = monthNames[parseInt(month) - 1] + ' ' + year;
-        const pastCount = isPast ? events.length : 0;
+        const mLabel = monthNames[parseInt(month) - 1] + ' ' + year;
 
-        // Header
-        const header = document.createElement('div');
-        header.className = 'flex items-center justify-between px-1 py-2 cursor-pointer select-none';
-        header.innerHTML = `
+        // ── Month header ──────────────────────────────────────────────────────
+        const mHeader = document.createElement('div');
+        mHeader.className = 'flex items-center justify-between px-1 py-2 cursor-pointer select-none mt-1';
+        mHeader.innerHTML = `
             <div class="flex items-center gap-2">
-                <span class="text-sm font-semibold ${isPast ? 'text-zinc-500' : isCurrent ? 'text-emerald-400' : 'text-zinc-200'}">${label}</span>
-                ${isPast ? `<span class="text-xs text-zinc-600">(${pastCount})</span>` : ''}
-                ${isCurrent ? '<span class="text-xs text-emerald-600 font-medium">current</span>' : ''}
+                <span class="text-sm font-bold ${isPastM ? 'text-zinc-500' : isCurrentM ? 'text-emerald-400' : 'text-zinc-100'}">${mLabel}</span>
+                <span class="text-xs ${isPastM ? 'text-zinc-600' : 'text-zinc-500'}">(${totalEvents})</span>
+                ${isCurrentM ? '<span class="text-xs text-emerald-700 font-medium">now</span>' : ''}
             </div>
-            <span class="text-zinc-500 text-sm transition-transform duration-200" id="chevron-${monthKey}">${isOpen ? '▼' : '▶'}</span>
+            <span class="text-zinc-500 text-xs" id="mchev-${monthKey}">${mIsOpen ? '▼' : '▶'}</span>
         `;
-        header.onclick = () => {
-            const body    = document.getElementById('group-' + monthKey);
-            const chevron = document.getElementById('chevron-' + monthKey);
-            const nowOpen = body.style.display !== 'none';
-            body.style.display  = nowOpen ? 'none' : 'block';
-            chevron.textContent = nowOpen ? '▶' : '▼';
-            setGroupOpen(monthKey, !nowOpen);
+        mHeader.onclick = () => {
+            const body   = document.getElementById('mgroup-' + monthKey);
+            const chev   = document.getElementById('mchev-' + monthKey);
+            const isNowOpen = body.style.display !== 'none';
+            body.style.display  = isNowOpen ? 'none' : 'block';
+            chev.textContent    = isNowOpen ? '▶' : '▼';
+            setGroupOpen(mOpenKey, !isNowOpen);
         };
-        container.appendChild(header);
+        container.appendChild(mHeader);
 
-        // Divider
-        const divider = document.createElement('div');
-        divider.className = 'border-t border-zinc-800 mb-2';
-        container.appendChild(divider);
+        const mDivider = document.createElement('div');
+        mDivider.className = 'border-t border-zinc-800';
+        container.appendChild(mDivider);
 
-        // Events body
-        const body = document.createElement('div');
-        body.id    = 'group-' + monthKey;
-        body.className = 'space-y-2 mb-4';
-        body.style.display = isOpen ? 'block' : 'none';
+        // ── Month body ────────────────────────────────────────────────────────
+        const mBody = document.createElement('div');
+        mBody.id    = 'mgroup-' + monthKey;
+        mBody.className = 'mb-3';
+        mBody.style.display = mIsOpen ? 'block' : 'none';
 
-        events.forEach(ev => {
-            const dt       = new Date(ev.dt.replace(' ', 'T'));
-            const timeStr  = dt.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
-            const dateStr  = dt.toLocaleDateString('ru-RU', {weekday:'short', day:'numeric'});
-            const isPastEv = (ev.dt || '') < nowStr;
+        // ── Day groups inside month ───────────────────────────────────────────
+        Object.keys(days).sort().forEach(dayKey => {
+            const dayEvents = days[dayKey];
+            const isPastD   = dayKey < todayStr;
+            const isToday   = dayKey === todayStr;
 
-            const card = document.createElement('div');
-            card.className = `bg-zinc-900 rounded-2xl px-4 py-3 card flex gap-3 ${isPastEv ? 'opacity-50' : ''}`;
-            card.innerHTML = `
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <span class="text-xs font-medium ${isPastEv ? 'text-zinc-500' : 'text-emerald-400'}">${dateStr} ${timeStr}</span>
-                        ${ev.hashtag ? `<span class="text-xs bg-zinc-800 px-2 py-0.5 rounded-xl">${ev.hashtag}</span>` : ''}
-                    </div>
-                    <div class="font-medium mt-0.5 text-sm ${isPastEv ? 'text-zinc-500' : ''}">${ev.desc}</div>
-                    <div class="flex gap-2 text-xs mt-1 text-zinc-500 flex-wrap">
-                        ${ev.place    ? `<span>📍 ${ev.place}</span>`          : ''}
-                        ${ev.duration ? `<span>⏱ ${ev.duration} min</span>`   : ''}
-                    </div>
+            const dOpenKey = 'd:' + dayKey;
+            const dIsOpen  = dOpenKey in openGroups ? openGroups[dOpenKey] : !isPastD;
+
+            const dayDate  = new Date(dayKey + 'T00:00:00');
+            const weekday  = dayDate.toLocaleDateString('ru-RU', {weekday: 'short'});
+            const dayNum   = dayDate.getDate();
+            const dLabel   = weekday + ' ' + dayNum;
+
+            // Day header
+            const dHeader = document.createElement('div');
+            dHeader.className = 'flex items-center justify-between px-2 py-1.5 cursor-pointer select-none';
+            dHeader.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold w-16 ${isPastD ? 'text-zinc-600' : isToday ? 'text-emerald-400' : 'text-zinc-300'}">${dLabel}</span>
+                    <span class="text-xs text-zinc-600">${dayEvents.length} event${dayEvents.length !== 1 ? 's' : ''}</span>
+                    ${isToday ? '<span class="text-xs text-emerald-700 font-medium">today</span>' : ''}
                 </div>
-                <div class="flex flex-col items-end justify-between shrink-0">
-                    <div onclick="editEvent('${ev.id}'); event.stopPropagation()"
-                         class="text-emerald-400 text-base cursor-pointer">✏️</div>
-                    <div onclick="deleteEvent('${ev.id}'); event.stopPropagation()"
-                         class="text-red-400 text-base cursor-pointer">🗑</div>
-                </div>
+                <span class="text-zinc-600 text-xs" id="dchev-${dayKey}">${dIsOpen ? '▾' : '▸'}</span>
             `;
-            card.onclick = () => markComplete(ev.id);
-            body.appendChild(card);
+            dHeader.onclick = (e) => {
+                e.stopPropagation();
+                const body  = document.getElementById('dgroup-' + dayKey);
+                const chev  = document.getElementById('dchev-' + dayKey);
+                const isNowOpen = body.style.display !== 'none';
+                body.style.display = isNowOpen ? 'none' : 'block';
+                chev.textContent   = isNowOpen ? '▸' : '▾';
+                setGroupOpen(dOpenKey, !isNowOpen);
+            };
+            mBody.appendChild(dHeader);
+
+            // Day events body
+            const dBody = document.createElement('div');
+            dBody.id    = 'dgroup-' + dayKey;
+            dBody.className = 'space-y-1.5 pl-2 pb-1';
+            dBody.style.display = dIsOpen ? 'block' : 'none';
+
+            dayEvents.forEach(ev => {
+                const dt      = new Date(ev.dt.replace(' ', 'T'));
+                const timeStr = dt.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
+                const isPastEv = (ev.dt || '') < nowStr;
+
+                const card = document.createElement('div');
+                card.className = `bg-zinc-900 rounded-2xl px-3 py-2.5 card flex gap-3 ${isPastEv ? 'opacity-40' : ''}`;
+                card.innerHTML = `
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-xs font-semibold ${isPastEv ? 'text-zinc-500' : 'text-emerald-400'}">${timeStr}</span>
+                            ${ev.hashtag ? `<span class="text-xs bg-zinc-800 px-2 py-0.5 rounded-xl">${ev.hashtag}</span>` : ''}
+                        </div>
+                        <div class="font-medium text-sm mt-0.5 ${isPastEv ? 'text-zinc-500' : 'text-zinc-100'}">${ev.desc}</div>
+                        <div class="flex gap-3 text-xs mt-0.5 text-zinc-500 flex-wrap">
+                            ${ev.place    ? `<span>📍 ${ev.place}</span>`        : ''}
+                            ${ev.duration ? `<span>⏱ ${ev.duration} min</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end justify-between shrink-0 gap-2">
+                        <div onclick="editEvent('${ev.id}'); event.stopPropagation()"
+                             class="text-emerald-400 text-sm cursor-pointer">✏️</div>
+                        <div onclick="deleteEvent('${ev.id}'); event.stopPropagation()"
+                             class="text-red-400 text-sm cursor-pointer">🗑</div>
+                    </div>
+                `;
+                card.onclick = () => markComplete(ev.id);
+                dBody.appendChild(card);
+            });
+
+            mBody.appendChild(dBody);
         });
 
-        container.appendChild(body);
+        container.appendChild(mBody);
     });
 }
 
