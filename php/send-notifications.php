@@ -15,7 +15,7 @@
 
 date_default_timezone_set('Australia/Brisbane'); // UTC+10, no DST
 
-define('SERVICE_ACCOUNT_FILE', '/home/youruser/secrets/planner-service-account.json');
+define('SERVICE_ACCOUNT_FILE', 'plannernotifications-bd4b1-firebase-adminsdk-fbsvc-b19bcf0f55.json');
 define('PROJECT_ID',           'plannernotifications-bd4b1');
 define('TOKENS_FILE',          __DIR__ . '/../data/fcm-tokens.json');
 define('EVENTS_FILE',          __DIR__ . '/../data/events.json');
