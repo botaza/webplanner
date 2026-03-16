@@ -293,6 +293,9 @@ foreach ($due as $ev) {
         if (!$result) $allOk = false;
     }
 
+    $status = $allOk ? 'sent' : 'partial';
+    logNotification($ev, $title, $body, count($tokens), $status);
+
     if ($allOk) {
         $notified[$ev['id']] = $now;
     }
