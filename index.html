@@ -202,6 +202,7 @@
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Date &amp; Time</label>
                     <input id="event-dt" type="datetime-local"
+                           onchange="updateOccurrencePreview()"
                            class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
                 </div>
 
@@ -240,6 +241,7 @@
                 <div>
                     <label class="text-xs text-zinc-400 block mb-1">Recurrence</label>
                     <select id="event-recurrence"
+                            onchange="onRecurrenceChange()"
                             class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
                         <option value="none">None</option>
                         <option value="weekly">Weekly</option>
@@ -247,6 +249,15 @@
                         <option value="monthly">Monthly</option>
                         <option value="yearly">Yearly</option>
                     </select>
+                </div>
+
+                <!-- Occurrences — shown only when recurrence is selected -->
+                <div id="recurrence-occurrences-section" class="hidden">
+                    <label class="text-xs text-zinc-400 block mb-1">Number of occurrences <span class="text-zinc-500">(including first)</span></label>
+                    <input id="event-occurrences" type="number" min="2" max="100" placeholder="10"
+                           oninput="updateOccurrencePreview()"
+                           class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+                    <div id="occurrence-preview" class="mt-3 space-y-1"></div>
                 </div>
 
             </div><!-- end scrollable body -->

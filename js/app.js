@@ -317,6 +317,58 @@ function filterPlanner() {
     renderPlanner(filtered);
 }
 
+// Default occurrence counts per recurrence type
+const RECURRENCE_DEFAULTS = { weekly: 10, biweekly: 6, monthly: 6, yearly: 3 };
+
+function onRecurrenceChange() {
+    const rec = document.getElementById('event-recurrence').value;
+    const section = document.getElementById('recurrence-occurrences-section');
+    if (rec === 'none') {
+        section.classList.add('hidden');
+        document.getElementById('occurrence-preview').innerHTML = '';
+    } else {
+        section.classList.remove('hidden');
+        document.getElementById('event-occurrences').value = RECURRENCE_DEFAULTS[rec] || 6;
+        updateOccurrencePreview();
+    }
+}
+
+function getRecurrenceDates(startDt, recurrence, count) {
+    const dates = [];
+    const base = new Date(startDt.replace(' ', 'T'));
+    for (let i = 0; i < count; i++) {
+        const d = new Date(base);
+        if (recurrence === 'weekly')   d.setDate(base.getDate() + i * 7);
+        if (recurrence === 'biweekly') d.setDate(base.getDate() + i * 14);
+        if (recurrence === 'monthly')  d.setMonth(base.getMonth() + i);
+        if (recurrence === 'yearly')   d.setFullYear(base.getFullYear() + i);
+        const pad = n => String(n).padStart(2, '0');
+        const formatted = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate())
+            + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':00';
+        dates.push(formatted);
+    }
+    return dates;
+}
+
+function updateOccurrencePreview() {
+    const rec     = document.getElementById('event-recurrence').value;
+    const count   = parseInt(document.getElementById('event-occurrences').value) || 0;
+    const dt      = document.getElementById('event-dt').value;
+    const preview = document.getElementById('occurrence-preview');
+    if (!preview) return;
+    if (!dt || rec === 'none' || count < 1) { preview.innerHTML = ''; return; }
+
+    const dates = getRecurrenceDates(dt.replace('T', ' ') + ':00', rec, count);
+    preview.innerHTML = dates.map((d, i) => {
+        const dateObj = new Date(d.replace(' ', 'T'));
+        const label   = dateObj.toLocaleDateString('ru-RU', {weekday:'short', day:'numeric', month:'short', year:'numeric'});
+        return `<div class="text-xs text-zinc-400 flex items-center gap-2">
+            <span class="text-emerald-500 shrink-0">${i+1}.</span>
+            <span>${label}</span>
+        </div>`;
+    }).join('');
+}
+
 function showAddEventModal() {
     document.getElementById('event-dt').value         = nowDatetimeLocal();
     document.getElementById('event-desc').value       = '';
@@ -324,6 +376,8 @@ function showAddEventModal() {
     document.getElementById('event-place').value      = '';
     document.getElementById('event-duration').value   = '';
     document.getElementById('event-recurrence').value = 'none';
+    document.getElementById('recurrence-occurrences-section').classList.add('hidden');
+    document.getElementById('occurrence-preview').innerHTML = '';
 
     // Reset all chip selections
     document.querySelectorAll('#hashtag-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
@@ -342,24 +396,37 @@ async function saveEvent() {
     const dt = document.getElementById('event-dt').value;
     if (!dt) { alert("Please select date and time"); return; }
 
-    const payload = {
-        dt:         dt.replace('T', ' '),
+    const recurrence = document.getElementById('event-recurrence').value;
+    const base = {
         desc:       document.getElementById('event-desc').value.trim() || '(no description)',
         hashtag:    document.getElementById('event-hashtag').value.trim(),
         place:      document.getElementById('event-place').value.trim(),
         duration:   document.getElementById('event-duration').value.trim(),
-        recurrence: document.getElementById('event-recurrence').value
+        recurrence
     };
 
+    // Build list of datetimes to save
+    let datetimes = [dt.replace('T', ' ') + ':00'];
+    if (recurrence !== 'none') {
+        const count = parseInt(document.getElementById('event-occurrences').value) || 1;
+        datetimes = getRecurrenceDates(dt.replace('T', ' ') + ':00', recurrence, count);
+    }
+
+    // Generate a shared group ID for recurring events
+    const groupId = recurrence !== 'none' ? ('grp_' + Date.now()) : '';
+
     try {
-        const res = await api('add_event', payload);
-        if (res.success) {
-            hideModal('modal-event');
-            loadPlanner();
-            loadDashboard();
-        } else {
-            alert("Save failed: " + (res.error || "unknown response"));
+        for (const dtStr of datetimes) {
+            const payload = { ...base, dt: dtStr, recurrence_group: groupId };
+            const res = await api('add_event', payload);
+            if (!res.success) {
+                alert("Save failed at " + dtStr + ": " + (res.error || "unknown"));
+                return;
+            }
         }
+        hideModal('modal-event');
+        loadPlanner();
+        loadDashboard();
     } catch (err) {
         console.error(err);
         alert("Error saving event: " + err.message);
@@ -388,9 +455,13 @@ async function editEvent(id) {
     renderDurationSuggestions();
 
     // Restore chip active states
-    if (ev.hashtag) selectHashtag(ev.hashtag);
-    if (ev.place)   selectPlace(ev.place);
+    if (ev.hashtag)  selectHashtag(ev.hashtag);
+    if (ev.place)    selectPlace(ev.place);
     if (ev.duration) selectDuration(ev.duration);
+
+    // Restore recurrence occurrences section (hide it — editing a single instance)
+    document.getElementById('recurrence-occurrences-section').classList.add('hidden');
+    document.getElementById('occurrence-preview').innerHTML = '';
 }
 
 async function updateEvent(id) {

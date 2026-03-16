@@ -46,13 +46,14 @@ if ($action === 'get_events') {
 if ($action === 'add_event') {
     $data   = read($files['events']);
     $data[] = [
-        'id'         => time() . rand(10000, 99999),
-        'dt'         => $_POST['dt']         ?? '',
-        'desc'       => $_POST['desc']       ?? '',
-        'hashtag'    => $_POST['hashtag']    ?? '',
-        'place'      => $_POST['place']      ?? '',
-        'duration'   => $_POST['duration']   ?? '',
-        'recurrence' => $_POST['recurrence'] ?? 'none'
+        'id'               => time() . rand(10000, 99999),
+        'dt'               => $_POST['dt']               ?? '',
+        'desc'             => $_POST['desc']             ?? '',
+        'hashtag'          => $_POST['hashtag']          ?? '',
+        'place'            => $_POST['place']            ?? '',
+        'duration'         => $_POST['duration']         ?? '',
+        'recurrence'       => $_POST['recurrence']       ?? 'none',
+        'recurrence_group' => $_POST['recurrence_group'] ?? ''
     ];
     write($files['events'], $data);
     echo json_encode(['success' => true]);
@@ -67,7 +68,8 @@ if ($action === 'update_event') {
             $e['desc']       = $_POST['desc']       ?? $e['desc'];
             $e['hashtag']    = $_POST['hashtag']    ?? $e['hashtag'];
             $e['place']      = $_POST['place']      ?? $e['place'];
-            $e['duration']   = $_POST['duration']   ?? ($e['duration'] ?? '');
+            $e['duration']         = $_POST['duration']         ?? ($e['duration'] ?? '');
+            $e['recurrence_group'] = $_POST['recurrence_group'] ?? ($e['recurrence_group'] ?? '');
             $e['recurrence'] = $_POST['recurrence'] ?? $e['recurrence'];
             break;
         }
