@@ -2,7 +2,7 @@
 // php/send-notifications.php
 // Crontab: */15 * * * * php /var/www/html/php/send-notifications.php >> /var/log/planner-notif.log 2>&1
 
-date_default_timezone_set('Asia/Vladivostok'); // UTC+10, no DST
+date_default_timezone_set('Asia/Vladivostok');
 
 define('SERVICE_ACCOUNT_FILE', '/var/www/html/testingdomainru.ru/eluvpmf0091/plannernotifications-bd4b1-firebase-adminsdk-fbsvc-b19bcf0f55.json');
 define('PROJECT_ID',           'plannernotifications-bd4b1');
@@ -11,11 +11,74 @@ define('EVENTS_FILE',          __DIR__ . '/../data/events.json');
 define('NOTIFIED_FILE',        __DIR__ . '/../data/notified.json');
 define('REMIND_MINUTES',       60);
 
-// ─── FUNCTIONS FIRST — defined before any logic calls them ───────────────────
+// ─── FUNCTIONS ────────────────────────────────────────────────────────────────
 
 function base64UrlEncode(string $data): string
 {
     return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+}
+
+/**
+ * Builds and signs a JWT using the service account private key.
+ * Uses openssl_pkcs7_sign as a fallback path to avoid any openssl_sign issues.
+ */
+function buildJwt(array $sa): ?string
+{
+    $now = time();
+
+    $headerJson  = json_encode(['alg' => 'RS256', 'typ' => 'JWT'], JSON_UNESCAPED_SLASHES);
+    $payloadJson = json_encode([
+        'iss'   => $sa['client_email'],
+        'sub'   => $sa['client_email'],
+        'aud'   => 'https://oauth2.googleapis.com/token',
+        'iat'   => $now,
+        'exp'   => $now + 3600,
+        'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+    ], JSON_UNESCAPED_SLASHES);
+
+    $header  = base64UrlEncode($headerJson);
+    $payload = base64UrlEncode($payloadJson);
+    $input   = "$header.$payload";
+
+    // Write private key to a temp file for signing
+    $tmpKey = tempnam(sys_get_temp_dir(), 'pkey_');
+    file_put_contents($tmpKey, $sa['private_key']);
+
+    // Write data to sign to a temp file
+    $tmpData = tempnam(sys_get_temp_dir(), 'jdata_');
+    file_put_contents($tmpData, $input);
+
+    // Output file for signature
+    $tmpSig = tempnam(sys_get_temp_dir(), 'jsig_');
+
+    // Use openssl CLI directly — completely bypasses PHP openssl extension quirks
+    $cmd    = "openssl dgst -sha256 -sign " . escapeshellarg($tmpKey)
+            . " -out " . escapeshellarg($tmpSig)
+            . " " . escapeshellarg($tmpData)
+            . " 2>&1";
+    $output = shell_exec($cmd);
+    $sigRaw = file_get_contents($tmpSig);
+
+    // Clean up temp files
+    @unlink($tmpKey);
+    @unlink($tmpData);
+    @unlink($tmpSig);
+
+    if (!$sigRaw || strlen($sigRaw) < 64) {
+        echo date('Y-m-d H:i:s') . " openssl CLI signing failed: $output\n";
+        // Fall back to PHP openssl extension
+        $sigRaw = null;
+        $pkey   = openssl_pkey_get_private($sa['private_key']);
+        if ($pkey && openssl_sign($input, $sig, $pkey, OPENSSL_ALGO_SHA256)) {
+            $sigRaw = $sig;
+            echo date('Y-m-d H:i:s') . " Used PHP openssl fallback.\n";
+        } else {
+            echo date('Y-m-d H:i:s') . " Both signing methods failed.\n";
+            return null;
+        }
+    }
+
+    return $input . '.' . base64UrlEncode($sigRaw);
 }
 
 function getOAuthAccessToken(string $serviceAccountFile): ?string
@@ -31,33 +94,13 @@ function getOAuthAccessToken(string $serviceAccountFile): ?string
         return null;
     }
 
-    $now     = time();
-    $header  = base64UrlEncode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
-    $payload = base64UrlEncode(json_encode([
-        'iss'   => $sa['client_email'],
-        'sub'   => $sa['client_email'],
-        'aud'   => 'https://oauth2.googleapis.com/token',
-        'iat'   => $now,
-        'exp'   => $now + 3600,
-        'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
-    ]));
-
-    $signingInput = "$header.$payload";
-
-    $privateKey = openssl_pkey_get_private($sa['private_key']);
-    if (!$privateKey) {
-        echo date('Y-m-d H:i:s') . " Failed to load private key.\n";
+    $jwt = buildJwt($sa);
+    if (!$jwt) {
+        echo date('Y-m-d H:i:s') . " Failed to build JWT.\n";
         return null;
     }
 
-    if (!openssl_sign($signingInput, $signature, $privateKey, 'SHA256')) {
-        echo date('Y-m-d H:i:s') . " Failed to sign JWT.\n";
-        return null;
-    }
-
-    $jwt = $signingInput . '.' . base64UrlEncode($signature);
-
-    echo date('Y-m-d H:i:s') . " Requesting OAuth token...\n";
+    echo date('Y-m-d H:i:s') . " JWT built. Requesting OAuth token...\n";
 
     $ch = curl_init('https://oauth2.googleapis.com/token');
     curl_setopt_array($ch, [
@@ -67,12 +110,12 @@ function getOAuthAccessToken(string $serviceAccountFile): ?string
             'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
             'assertion'  => $jwt,
         ]),
-        CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
-        CURLOPT_TIMEOUT    => 15,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/x-www-form-urlencoded'],
+        CURLOPT_TIMEOUT        => 15,
         CURLOPT_SSL_VERIFYPEER => true,
     ]);
 
-    $response = curl_exec($ch);
+    $response  = curl_exec($ch);
     $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curlError = curl_error($ch);
     curl_close($ch);
@@ -83,7 +126,7 @@ function getOAuthAccessToken(string $serviceAccountFile): ?string
     }
 
     if ($httpCode !== 200) {
-        echo date('Y-m-d H:i:s') . " OAuth token exchange failed (HTTP $httpCode): $response\n";
+        echo date('Y-m-d H:i:s') . " OAuth failed (HTTP $httpCode): $response\n";
         return null;
     }
 
@@ -143,7 +186,7 @@ function sendFcmV1(string $accessToken, string $deviceToken, string $title, stri
     return true;
 }
 
-// ─── MAIN LOGIC ───────────────────────────────────────────────────────────────
+// ─── MAIN ─────────────────────────────────────────────────────────────────────
 
 echo date('Y-m-d H:i:s') . " send-notifications.php started.\n";
 
@@ -159,11 +202,11 @@ if (empty($tokens)) {
 }
 echo date('Y-m-d H:i:s') . " Tokens loaded: " . count($tokens) . "\n";
 
-// 2. Load notified cache and clean entries older than 24h
+// 2. Load notified cache
 $notified = file_exists(NOTIFIED_FILE)
     ? (json_decode(file_get_contents(NOTIFIED_FILE), true) ?: [])
     : [];
-$cutoff  = time() - (24 * 60 * 60);
+$cutoff   = time() - (24 * 60 * 60);
 $notified = array_filter($notified, fn($ts) => $ts > $cutoff);
 
 // 3. Load events
@@ -198,7 +241,7 @@ if (!$accessToken) {
     exit;
 }
 
-// 5. Send
+// 5. Send notifications
 foreach ($due as $ev) {
     $diffMins  = (int) round((strtotime($ev['dt']) - $now) / 60);
     $eventTime = date('H:i', strtotime($ev['dt']));
