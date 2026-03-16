@@ -6,9 +6,10 @@ date_default_timezone_set('Asia/Vladivostok');
 
 define('SERVICE_ACCOUNT_FILE', '/var/www/html/plannernotifications-bd4b1-d88ec518f480.json');
 define('PROJECT_ID',           'plannernotifications-bd4b1');
-define('TOKENS_FILE',          __DIR__ . '/../data/fcm-tokens.json');
-define('EVENTS_FILE',          __DIR__ . '/../data/events.json');
-define('NOTIFIED_FILE',        __DIR__ . '/../data/notified.json');
+define('DATA_DIR',             '/var/www/html/testingdomainru.ru/eluvpmf0091/data');
+define('TOKENS_FILE',          DATA_DIR . '/fcm-tokens.json');
+define('EVENTS_FILE',          DATA_DIR . '/events.json');
+define('NOTIFIED_FILE',        DATA_DIR . '/notified.json');
 define('REMIND_MINUTES',       60);
 
 // ─── FUNCTIONS ────────────────────────────────────────────────────────────────
@@ -17,7 +18,7 @@ function logNotification(array $ev, string $title, string $body, int $tokensCoun
 {
     $apiUrl = 'http://localhost/php/api.php'; // adjust to your actual local path
     // Use file-based log directly to avoid HTTP round-trip
-    $logFile = __DIR__ . '/../data/notification-log.json';
+    $logFile = DATA_DIR . '/notification-log.json';
     $entry   = [
         'id'           => time() . rand(1000, 9999),
         'dt'           => date('Y-m-d H:i:s'),
@@ -31,7 +32,16 @@ function logNotification(array $ev, string $title, string $body, int $tokensCoun
     $all   = file_exists($logFile) ? (json_decode(file_get_contents($logFile), true) ?: []) : [];
     $all[] = $entry;
     if (count($all) > 2000) $all = array_slice($all, -2000);
-    file_put_contents($logFile, json_encode($all, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    $result = file_put_contents($logFile, json_encode($all, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    if ($result === false) {
+        echo date('Y-m-d H:i:s') . " ERROR: Could not write to log file: $logFile
+";
+        echo date('Y-m-d H:i:s') . " Check permissions on: " . dirname($logFile) . "
+";
+    } else {
+        echo date('Y-m-d H:i:s') . " Notification logged to: $logFile
+";
+    }
 }
 
 function base64UrlEncode(string $data): string
