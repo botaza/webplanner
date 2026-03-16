@@ -249,7 +249,7 @@ function switchScreen(screenId) {
     document.getElementById(screenId).classList.add('active');
 
     document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-    const idx = ['dashboard','planner','expenses','income','more']
+    const idx = ['dashboard','planner','expenses','income','notifications','more']
         .indexOf(screenId.split('-')[1]);
     if (idx >= 0) document.querySelectorAll('.nav-item')[idx].classList.add('active');
 
@@ -258,7 +258,8 @@ function switchScreen(screenId) {
     if (screenId === 'screen-expenses')  loadExpenses();
     if (screenId === 'screen-income')    loadIncome();
     if (screenId === 'screen-dashboard') loadDashboard();
-    if (screenId === 'screen-more')      updateNotifStatus();
+    if (screenId === 'screen-more')          updateNotifStatus();
+    if (screenId === 'screen-notifications') loadNotifications(1);
 }
 
 async function api(action, body = {}) {
@@ -885,6 +886,58 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
         .then(() => console.log('Cache SW registered'))
         .catch(err => console.error('Cache SW failed:', err));
+}
+
+// ================== NOTIFICATION HISTORY ====================================
+
+let notifPage = 1;
+
+async function loadNotifications(page = 1) {
+    notifPage = page;
+    const data = await api('get_notifications', { page });
+    const items = data.items || [];
+    const container = document.getElementById('notifications-list');
+    const pagination = document.getElementById('notifications-pagination');
+    if (!container) return;
+
+    if (!items.length) {
+        container.innerHTML = '<div class="text-zinc-500 text-sm text-center py-8">No notifications sent yet</div>';
+        if (pagination) pagination.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = items.map(n => {
+        const statusColor = n.status === 'sent' ? 'text-emerald-400' : 'text-yellow-400';
+        const statusIcon  = n.status === 'sent' ? '✅' : '⚠️';
+        return `
+            <div class="bg-zinc-900 rounded-2xl px-4 py-3">
+                <div class="flex justify-between items-start gap-2">
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium truncate">${n.body}</div>
+                        <div class="text-xs text-zinc-500 mt-0.5">${n.dt} · ${n.tokens_count} device${n.tokens_count !== 1 ? 's' : ''}</div>
+                    </div>
+                    <span class="text-xs ${statusColor} shrink-0">${statusIcon}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Pagination
+    if (pagination) {
+        const pages = data.pages || 1;
+        if (pages <= 1) { pagination.innerHTML = ''; return; }
+        let btns = '';
+        if (page > 1) btns += `<button onclick="loadNotifications(${page-1})" class="px-4 py-2 bg-zinc-800 rounded-2xl text-sm">← Prev</button>`;
+        btns += `<span class="text-xs text-zinc-500 self-center">${page} / ${pages}</span>`;
+        if (page < pages) btns += `<button onclick="loadNotifications(${page+1})" class="px-4 py-2 bg-zinc-800 rounded-2xl text-sm">Next →</button>`;
+        pagination.innerHTML = btns;
+    }
+}
+
+async function clearNotifications() {
+    if (!confirm('Clear all notification history?')) return;
+    await api('clear_notifications');
+    loadNotifications(1);
 }
 
 // ================== NOTIFICATION STATUS =====================================

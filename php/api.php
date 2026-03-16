@@ -174,4 +174,48 @@ if ($action === 'clear_all') {
     exit;
 }
 
+// ── Notification log ─────────────────────────────────────────────────────────
+// Each entry: { id, dt, title, body, event_id, event_desc, tokens_count, status }
+
+$notifLog = $dataDir . '/notification-log.json';
+
+if ($action === 'get_notifications') {
+    if (!file_exists($notifLog)) { echo json_encode([]); exit; }
+    $all    = json_decode(file_get_contents($notifLog), true) ?: [];
+    // newest first
+    $all    = array_reverse($all);
+    $page   = max(1, (int)($_POST['page'] ?? 1));
+    $limit  = 50;
+    $offset = ($page - 1) * $limit;
+    $slice  = array_slice($all, $offset, $limit);
+    echo json_encode(['items' => $slice, 'total' => count($all), 'page' => $page, 'pages' => ceil(count($all) / $limit)]);
+    exit;
+}
+
+if ($action === 'log_notification') {
+    $entry = [
+        'id'           => time() . rand(1000, 9999),
+        'dt'           => date('Y-m-d H:i:s'),
+        'title'        => $_POST['title']        ?? '',
+        'body'         => $_POST['body']         ?? '',
+        'event_id'     => $_POST['event_id']     ?? '',
+        'event_desc'   => $_POST['event_desc']   ?? '',
+        'tokens_count' => (int)($_POST['tokens_count'] ?? 0),
+        'status'       => $_POST['status']       ?? 'sent',
+    ];
+    $all   = file_exists($notifLog) ? (json_decode(file_get_contents($notifLog), true) ?: []) : [];
+    $all[] = $entry;
+    // Keep max 2000 entries to avoid the file growing forever
+    if (count($all) > 2000) $all = array_slice($all, -2000);
+    file_put_contents($notifLog, json_encode($all, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+if ($action === 'clear_notifications') {
+    if (file_exists($notifLog)) unlink($notifLog);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 echo json_encode(['error' => 'unknown action']);

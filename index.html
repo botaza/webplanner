@@ -158,11 +158,22 @@
             </div>
         </div>
 
+        <!-- NOTIFICATIONS -->
+        <div id="screen-notifications" class="screen hidden">
+            <div class="flex justify-between items-center mb-4">
+                <div class="font-medium text-lg">Notification History</div>
+                <button onclick="clearNotifications()"
+                        class="text-xs text-red-400 font-medium">Clear all</button>
+            </div>
+            <div id="notifications-list" class="space-y-2"></div>
+            <div id="notifications-pagination" class="flex justify-center gap-3 mt-4"></div>
+        </div>
+
     </main>
 
     <!-- BOTTOM NAV -->
     <nav class="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 z-50">
-        <div class="max-w-xl mx-auto grid grid-cols-5 text-[10px] font-medium">
+        <div class="max-w-xl mx-auto grid grid-cols-6 text-[10px] font-medium">
             <button onclick="switchScreen('screen-dashboard')"
                     class="nav-item flex flex-col items-center py-3">
                 <span class="text-2xl mb-0.5">🏠</span>
@@ -182,6 +193,11 @@
                     class="nav-item flex flex-col items-center py-3">
                 <span class="text-2xl mb-0.5">💰</span>
                 <span>Income</span>
+            </button>
+            <button onclick="switchScreen('screen-notifications')"
+                    class="nav-item flex flex-col items-center py-3">
+                <span class="text-2xl mb-0.5">🔔</span>
+                <span>Notifs</span>
             </button>
             <button onclick="switchScreen('screen-more')"
                     class="nav-item flex flex-col items-center py-3">

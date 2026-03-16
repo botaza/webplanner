@@ -13,6 +13,27 @@ define('REMIND_MINUTES',       60);
 
 // ─── FUNCTIONS ────────────────────────────────────────────────────────────────
 
+function logNotification(array $ev, string $title, string $body, int $tokensCount, string $status): void
+{
+    $apiUrl = 'http://localhost/php/api.php'; // adjust to your actual local path
+    // Use file-based log directly to avoid HTTP round-trip
+    $logFile = __DIR__ . '/../data/notification-log.json';
+    $entry   = [
+        'id'           => time() . rand(1000, 9999),
+        'dt'           => date('Y-m-d H:i:s'),
+        'title'        => $title,
+        'body'         => $body,
+        'event_id'     => $ev['id']   ?? '',
+        'event_desc'   => $ev['desc'] ?? '',
+        'tokens_count' => $tokensCount,
+        'status'       => $status,
+    ];
+    $all   = file_exists($logFile) ? (json_decode(file_get_contents($logFile), true) ?: []) : [];
+    $all[] = $entry;
+    if (count($all) > 2000) $all = array_slice($all, -2000);
+    file_put_contents($logFile, json_encode($all, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+}
+
 function base64UrlEncode(string $data): string
 {
     return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
