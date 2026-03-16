@@ -4,7 +4,7 @@
 
 date_default_timezone_set('Asia/Vladivostok');
 
-define('SERVICE_ACCOUNT_FILE', '/var/www/html/testingdomainru.ru/eluvpmf0091/plannernotifications-bd4b1-firebase-adminsdk-fbsvc-b19bcf0f55.json');
+define('SERVICE_ACCOUNT_FILE', '/var/www/html/plannernotifications-bd4b1-d88ec518f480.json');
 define('PROJECT_ID',           'plannernotifications-bd4b1');
 define('TOKENS_FILE',          __DIR__ . '/../data/fcm-tokens.json');
 define('EVENTS_FILE',          __DIR__ . '/../data/events.json');
