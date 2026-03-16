@@ -537,24 +537,45 @@ function updateOccurrencePreview() {
     }).join('');
 }
 
-function showAddEventModal() {
-    document.getElementById('event-dt').value         = nowDatetimeLocal();
-    document.getElementById('event-desc').value       = '';
-    document.getElementById('event-hashtag').value    = '';
-    document.getElementById('event-place').value      = '';
-    document.getElementById('event-duration').value   = '';
+// Resets the event modal back to "New Event" / create mode
+function resetEventModalToCreateMode() {
+    // 1. Reset the Save button handler and text
+    const saveBtn = document.querySelector('#modal-event .flex.gap-3 button:last-child');
+    if (saveBtn) {
+        saveBtn.onclick = saveEvent;           // directly assign the function (no arrow needed here)
+        saveBtn.textContent = "Save Event";    // make button text clearly say "create" mode
+    }
+
+    // 2. Reset fields that should always start fresh in create mode
+    document.getElementById('event-dt').value = nowDatetimeLocal();
+    document.getElementById('event-desc').value = '';
+    document.getElementById('event-hashtag').value = '';
+    document.getElementById('event-place').value = '';
+    document.getElementById('event-duration').value = '';
     document.getElementById('event-recurrence').value = 'none';
+
+    // 3. Hide recurrence preview/occurrences section (important!)
     document.getElementById('recurrence-occurrences-section').classList.add('hidden');
     document.getElementById('occurrence-preview').innerHTML = '';
 
-    // Reset all chip selections
+    // 4. Clear any active chip styles (visual feedback)
     document.querySelectorAll('#hashtag-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('#place-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('#duration-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
 
+    // Optional: reset title of the modal header
+    const modalTitle = document.querySelector('#modal-event .text-xl.font-semibold');
+    if (modalTitle) modalTitle.textContent = 'New Event';
+}
+
+function showAddEventModal() {
+    resetEventModalToCreateMode();   // ← this one line replaces most of the field clearing
+
+    // Now open the modal
     document.getElementById('modal-event').classList.remove('hidden');
     document.getElementById('modal-event').classList.add('flex');
 
+    // Render quick suggestion chips (these stay the same)
     renderHashtagSuggestions();
     renderPlaceSuggestions();
     renderDurationSuggestions();
@@ -605,16 +626,26 @@ async function editEvent(id) {
     const ev = eventsData.find(e => e.id == id);
     if (!ev) return;
 
-    document.getElementById('event-dt').value         = ev.dt.replace(' ', 'T');
-    document.getElementById('event-desc').value       = ev.desc     || '';
-    document.getElementById('event-hashtag').value    = ev.hashtag  || '';
-    document.getElementById('event-place').value      = ev.place    || '';
-    document.getElementById('event-duration').value   = ev.duration || '';
+    // Set fields
+    document.getElementById('event-dt').value = ev.dt.replace(' ', 'T');
+    document.getElementById('event-desc').value = ev.desc || '';
+    document.getElementById('event-hashtag').value = ev.hashtag || '';
+    document.getElementById('event-place').value = ev.place || '';
+    document.getElementById('event-duration').value = ev.duration || '';
     document.getElementById('event-recurrence').value = ev.recurrence || 'none';
 
-    const saveBtn = document.querySelector('#modal-event button[onclick^="saveEvent"]');
-    if (saveBtn) saveBtn.onclick = () => updateEvent(id);
+    // Switch button to update mode
+    const saveBtn = document.querySelector('#modal-event .flex.gap-3 button:last-child');
+    if (saveBtn) {
+        saveBtn.onclick = () => updateEvent(id);
+        saveBtn.textContent = "Update Event";
+    }
 
+    // Change modal title
+    const modalTitle = document.querySelector('#modal-event .text-xl.font-semibold');
+    if (modalTitle) modalTitle.textContent = 'Edit Event';
+
+    // Open modal
     document.getElementById('modal-event').classList.remove('hidden');
     document.getElementById('modal-event').classList.add('flex');
 
@@ -623,11 +654,11 @@ async function editEvent(id) {
     renderDurationSuggestions();
 
     // Restore chip active states
-    if (ev.hashtag)  selectHashtag(ev.hashtag);
-    if (ev.place)    selectPlace(ev.place);
+    if (ev.hashtag) selectHashtag(ev.hashtag);
+    if (ev.place) selectPlace(ev.place);
     if (ev.duration) selectDuration(ev.duration);
 
-    // Restore recurrence occurrences section (hide it — editing a single instance)
+    // For edit we usually don't show recurrence section (single instance edit)
     document.getElementById('recurrence-occurrences-section').classList.add('hidden');
     document.getElementById('occurrence-preview').innerHTML = '';
 }
@@ -981,6 +1012,11 @@ function hideModal(id) {
     const modal = document.getElementById(id);
     modal.classList.add('hidden');
     modal.classList.remove('flex');
+
+    // Extra: if hiding event modal → reset it to create mode for next open
+    if (id === 'modal-event') {
+        resetEventModalToCreateMode();
+    }
 }
 
 async function clearAllData() {
