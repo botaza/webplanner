@@ -7,7 +7,7 @@ import { renderPlanner } from './planner-render.js';
 import { loadDashboard } from './dashboard.js';
 import { nowDatetimeLocal } from './date-utils.js';
 import { renderHashtagSuggestions, renderPlaceSuggestions, renderDurationSuggestions } from './suggestions.js';
-import { renderPlannerHashtagFilter, applyPlannerFilter } from './planner-filter.js';
+
 const RECURRENCE_DEFAULTS = { weekly: 10, biweekly: 6, monthly: 6, yearly: 3 };
 
 function onRecurrenceChange() {
@@ -192,6 +192,14 @@ async function markComplete(id) {
     loadDashboard();
 }
 
+// PATCH: New function to mark event as incomplete
+async function markIncomplete(id) {
+    if (!confirm('Mark as not done?')) return;
+    await api('incomplete_event', {id});
+    loadPlanner();
+    loadDashboard();
+}
+
 async function loadPlanner() {
     const data = await api('get_events');
     state.eventsData = data || [];
@@ -208,17 +216,8 @@ Object.assign(window, {
     updateEvent,
     deleteEvent,
     markComplete,
+    markIncomplete, // <-- export the new function
     loadPlanner
 });
 
-export {
-    loadPlanner,
-    saveEvent,
-    editEvent,
-    updateEvent,
-    deleteEvent,
-    markComplete,
-    showAddEventModal,
-    onRecurrenceChange,
-    updateOccurrencePreview
-};
+export { loadPlanner };
