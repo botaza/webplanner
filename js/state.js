@@ -1,4 +1,5 @@
 // js/state.js
+
 export const state = {
     currentScreen: 'screen-dashboard',
     eventsData: [],

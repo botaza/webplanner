@@ -6,8 +6,6 @@ import { hideModal } from './utils.js';
 import { loadDashboard } from './dashboard.js';
 import { todayString } from './date-utils.js';
 
-// ================== INCOME ===================================================
-
 function renderIncome(list) {
     const container = document.getElementById('income-list');
     if (!container) return;
@@ -82,8 +80,6 @@ async function deleteIncome(id) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Global exposure for onclick handlers in HTML
 Object.assign(window, {
     showAddIncomeModal,
     saveIncome,
@@ -91,7 +87,4 @@ Object.assign(window, {
     loadIncome
 });
 
-// Export for use in other modules (e.g. app.js, utils.js, dashboard.js)
-export {
-    loadIncome
-};
+export { loadIncome };

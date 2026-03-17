@@ -6,8 +6,6 @@ import { hideModal } from './utils.js';
 import { loadDashboard } from './dashboard.js';
 import { todayString } from './date-utils.js';
 
-// ================== EXPENSE TOOLS & CATEGORIES =================================
-
 const EXPENSE_TOOLS = [
     {code: "gp", name: "GP"},
     {code: "hal", name: "Hal"},
@@ -61,13 +59,11 @@ function selectExpenseTool(code) {
         b.classList.toggle('active', b.dataset.code === code);
     });
     const other = document.getElementById('exp-tool-other-group');
-    if (other) {
-        if (code === 'other') {
-            other.classList.remove('hidden');
-        } else {
-            other.classList.add('hidden');
-            document.getElementById('exp-tool-other').value = '';
-        }
+    if (code === 'other') {
+        other.classList.remove('hidden');
+    } else {
+        other.classList.add('hidden');
+        document.getElementById('exp-tool-other').value = '';
     }
 }
 
@@ -90,12 +86,8 @@ function selectExpenseCategory(name) {
     });
 }
 
-// ================== EXPENSES RENDER & CRUD =====================================
-
 function renderExpenses(list) {
     const container = document.getElementById('expenses-list');
-    if (!container) return;
-
     container.innerHTML = list.map(exp => `
         <div class="bg-zinc-900 rounded-3xl p-5 flex justify-between items-center card">
             <div>
@@ -129,7 +121,7 @@ function showAddExpenseModal() {
     document.getElementById('modal-expense').classList.add('flex');
     renderExpenseTools();
     renderExpenseCategories();
-    document.getElementById('exp-tool-other-group')?.classList.add('hidden');
+    document.getElementById('exp-tool-other-group').classList.add('hidden');
 }
 
 async function saveExpense() {
@@ -138,7 +130,7 @@ async function saveExpense() {
 
     let toolValue = selectedExpenseTool;
     if (selectedExpenseTool === 'other') {
-        const custom = document.getElementById('exp-tool-other')?.value.trim();
+        const custom = document.getElementById('exp-tool-other').value.trim();
         if (!custom) { alert("Please specify the other tool"); return; }
         toolValue = custom;
     }
@@ -162,30 +154,24 @@ async function saveExpense() {
         const res = await api('add_expense', payload);
         if (res?.success) {
             hideModal('modal-expense');
-            await loadExpenses();
-            await loadDashboard();
+            loadExpenses();
+            loadDashboard();
         } else {
             alert("Could not save expense" + (res?.error ? `: ${res.error}` : ""));
         }
     } catch (err) {
-        console.error('Error saving expense:', err);
+        console.error(err);
         alert("Network/server error while saving expense");
     }
 }
 
 async function deleteExpense(id) {
     if (!confirm('Delete expense?')) return;
-    try {
-        await api('delete_expense', {id});
-        await loadExpenses();
-        await loadDashboard();
-    } catch (err) {
-        console.error('Error deleting expense:', err);
-    }
+    await api('delete_expense', {id});
+    loadExpenses();
+    loadDashboard();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Global exposure for HTML onclick / modal buttons
 Object.assign(window, {
     selectExpenseTool,
     selectExpenseCategory,
