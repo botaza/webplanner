@@ -3,10 +3,11 @@
 import { state } from './state.js';
 import { api } from './api.js';
 import { hideModal } from './utils.js';
-import { renderPlanner, renderPlannerHashtagFilter, applyPlannerFilter } from './planner-render.js';
+import { renderPlanner, renderPlannerHashtagFilter } from './planner-render.js';
 import { loadDashboard } from './dashboard.js';
 import { nowDatetimeLocal } from './date-utils.js';
-import { renderHashtagSuggestions, renderPlaceSuggestions, renderDurationSuggestions, selectHashtag, selectPlace, selectDuration } from './suggestions.js';
+import { renderHashtagSuggestions, renderPlaceSuggestions, renderDurationSuggestions } from './suggestions.js';
+import { applyPlannerFilter } from './planner-filter.js'; // <--- patched import
 
 const RECURRENCE_DEFAULTS = { weekly: 10, biweekly: 6, monthly: 6, yearly: 3 };
 
@@ -98,7 +99,7 @@ async function saveEvent() {
         place: document.getElementById('event-place').value.trim(),
         duration: document.getElementById('event-duration').value.trim(),
         recurrence,
-        completed: false
+        completed: false // <--- newly added field for completion tracking
     };
     let datetimes = [dt.replace('T', ' ') + ':00'];
     if (recurrence !== 'none') {
@@ -179,25 +180,6 @@ async function updateEvent(id) {
     }
 }
 
-async function markComplete(id) {
-    const ev = state.eventsData.find(e => e.id == id);
-    if (!ev) return;
-    const completed = !ev.completed; // toggle
-    await api('update_event', {id, completed});
-    ev.completed = completed;
-    loadPlanner();
-    loadDashboard();
-}
-
-async function markIncomplete(id) {
-    const ev = state.eventsData.find(e => e.id == id);
-    if (!ev) return;
-    await api('update_event', {id, completed: false});
-    ev.completed = false;
-    loadPlanner();
-    loadDashboard();
-}
-
 async function deleteEvent(id) {
     if (!confirm('Delete this event?')) return;
     await api('delete_event', {id});
@@ -205,11 +187,24 @@ async function deleteEvent(id) {
     loadDashboard();
 }
 
+// <--- patched completion behavior
+async function markComplete(id, completed = true) {
+    const ev = state.eventsData.find(e => e.id == id);
+    if (!ev) return;
+    await api('update_event', {id, completed}); // flag stays in DB, event not removed
+    ev.completed = completed; // update local state
+    loadPlanner();
+}
+
+async function markIncomplete(id) {
+    await markComplete(id, false);
+}
+
 async function loadPlanner() {
     const data = await api('get_events');
     state.eventsData = data || [];
     renderPlannerHashtagFilter();
-    applyPlannerFilter();
+    applyPlannerFilter(); // <--- call patched import
 }
 
 Object.assign(window, {
@@ -225,4 +220,4 @@ Object.assign(window, {
     loadPlanner
 });
 
-export { loadPlanner, saveEvent };
+export { loadPlanner, saveEvent, markComplete, markIncomplete };

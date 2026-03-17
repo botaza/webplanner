@@ -1,7 +1,7 @@
-// js/planner-filter.js - FIXED
+// js/planner-filter.js
 
 import { state } from './state.js';
-import { renderPlanner } from './planner-render.js'; // ✅ FIX
+import { renderPlanner } from './planner-render.js';
 
 const COMMON_HASHTAGS = ['#pers', '#cons', '#job', '#event', '#control', '#class'];
 const GROUPS_KEY = 'planner_open_groups';
@@ -41,10 +41,10 @@ function applyPlannerFilter() {
     const term = (document.getElementById('planner-filter')?.value || '').toLowerCase();
     let filtered = state.eventsData;
 
+    // include all events, but visually handle completed
     if (state.activePlannerHashtag) {
         filtered = filtered.filter(e => e.hashtag === state.activePlannerHashtag);
     }
-
     if (term) {
         filtered = filtered.filter(e =>
             (e.desc?.toLowerCase().includes(term)) ||
@@ -52,7 +52,7 @@ function applyPlannerFilter() {
         );
     }
 
-    renderPlanner(filtered); // ✅ now valid
+    renderPlanner(filtered);
 }
 
 function filterPlanner() {
