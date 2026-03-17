@@ -144,11 +144,6 @@ async function editEvent(id) {
     renderHashtagSuggestions();
     renderPlaceSuggestions();
     renderDurationSuggestions();
-    if (ev.hashtag) selectHashtag(ev.hashtag);
-    if (ev.place) selectPlace(ev.place);
-    if (ev.duration) selectDuration(ev.duration);
-    document.getElementById('recurrence-occurrences-section').classList.add('hidden');
-    document.getElementById('occurrence-preview').innerHTML = '';
 }
 
 async function updateEvent(id) {
@@ -192,9 +187,8 @@ async function markComplete(id) {
     loadDashboard();
 }
 
-// PATCH: New function to mark event as incomplete
 async function markIncomplete(id) {
-    if (!confirm('Mark as not done?')) return;
+    if (!confirm('Mark as incomplete?')) return;
     await api('incomplete_event', {id});
     loadPlanner();
     loadDashboard();
@@ -216,8 +210,19 @@ Object.assign(window, {
     updateEvent,
     deleteEvent,
     markComplete,
-    markIncomplete, // <-- export the new function
+    markIncomplete,
     loadPlanner
 });
 
-export { loadPlanner };
+export {
+    onRecurrenceChange,
+    updateOccurrencePreview,
+    showAddEventModal,
+    saveEvent,
+    editEvent,
+    updateEvent,
+    deleteEvent,
+    markComplete,
+    markIncomplete,
+    loadPlanner
+};
