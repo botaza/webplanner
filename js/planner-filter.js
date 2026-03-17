@@ -1,7 +1,7 @@
-// js/planner-filter.js - CLEAN VERSION 2025-03-18
+// js/planner-filter.js - FIXED
 
 import { state } from './state.js';
-//import { renderPlannerHashtagFilter, applyPlannerFilter } from './planner-render.js';
+import { renderPlanner } from './planner-render.js'; // ✅ FIX
 
 const COMMON_HASHTAGS = ['#pers', '#cons', '#job', '#event', '#control', '#class'];
 const GROUPS_KEY = 'planner_open_groups';
@@ -40,16 +40,19 @@ function setPlannerHashtagFilter(tag) {
 function applyPlannerFilter() {
     const term = (document.getElementById('planner-filter')?.value || '').toLowerCase();
     let filtered = state.eventsData;
+
     if (state.activePlannerHashtag) {
         filtered = filtered.filter(e => e.hashtag === state.activePlannerHashtag);
     }
+
     if (term) {
         filtered = filtered.filter(e =>
             (e.desc?.toLowerCase().includes(term)) ||
             (e.hashtag?.toLowerCase().includes(term))
         );
     }
-    renderPlanner(filtered);
+
+    renderPlanner(filtered); // ✅ now valid
 }
 
 function filterPlanner() {

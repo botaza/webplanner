@@ -8,6 +8,7 @@ import { loadIncome } from './income.js';
 import { loadDashboard } from './dashboard.js';
 import { updateNotifStatus } from './fcm-client.js';
 import { loadNotifications } from './notification-history.js';
+import { saveEvent } from './planner-crud.js';
 
 export function switchScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));

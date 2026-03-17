@@ -83,6 +83,7 @@ function selectDuration(val) {
     });
 }
 
+// ✅ KEEP global access (for inline onclick)
 Object.assign(window, {
     selectHashtag,
     selectPlace,
@@ -91,3 +92,13 @@ Object.assign(window, {
     renderPlaceSuggestions,
     renderDurationSuggestions
 });
+
+// ✅ ADD THIS (CRITICAL FIX)
+export {
+    renderHashtagSuggestions,
+    renderPlaceSuggestions,
+    renderDurationSuggestions,
+    selectHashtag,
+    selectPlace,
+    selectDuration
+};
