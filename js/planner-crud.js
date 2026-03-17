@@ -3,11 +3,10 @@
 import { state } from './state.js';
 import { api } from './api.js';
 import { hideModal } from './utils.js';
-import { renderPlanner } from './planner-render.js';
+import { renderPlanner, renderPlannerHashtagFilter, applyPlannerFilter } from './planner-render.js';
 import { loadDashboard } from './dashboard.js';
 import { nowDatetimeLocal } from './date-utils.js';
-import { renderHashtagSuggestions, renderPlaceSuggestions, renderDurationSuggestions } from './suggestions.js';
-import { renderPlannerHashtagFilter, applyPlannerFilter } from './planner-filter.js';
+import { renderHashtagSuggestions, renderPlaceSuggestions, renderDurationSuggestions, selectHashtag, selectPlace, selectDuration } from './suggestions.js';
 
 const RECURRENCE_DEFAULTS = { weekly: 10, biweekly: 6, monthly: 6, yearly: 3 };
 
@@ -98,7 +97,8 @@ async function saveEvent() {
         hashtag: document.getElementById('event-hashtag').value.trim(),
         place: document.getElementById('event-place').value.trim(),
         duration: document.getElementById('event-duration').value.trim(),
-        recurrence
+        recurrence,
+        completed: false
     };
     let datetimes = [dt.replace('T', ' ') + ':00'];
     if (recurrence !== 'none') {
@@ -145,6 +145,11 @@ async function editEvent(id) {
     renderHashtagSuggestions();
     renderPlaceSuggestions();
     renderDurationSuggestions();
+    if (ev.hashtag) selectHashtag(ev.hashtag);
+    if (ev.place) selectPlace(ev.place);
+    if (ev.duration) selectDuration(ev.duration);
+    document.getElementById('recurrence-occurrences-section').classList.add('hidden');
+    document.getElementById('occurrence-preview').innerHTML = '';
 }
 
 async function updateEvent(id) {
@@ -174,20 +179,28 @@ async function updateEvent(id) {
     }
 }
 
-async function deleteEvent(id) {
-    if (!confirm('Delete this event?')) return;
-    await api('delete_event', {id});
+async function markComplete(id) {
+    const ev = state.eventsData.find(e => e.id == id);
+    if (!ev) return;
+    const completed = !ev.completed; // toggle
+    await api('update_event', {id, completed});
+    ev.completed = completed;
     loadPlanner();
     loadDashboard();
 }
 
-// ---------- NEW: markComplete / markIncomplete ----------
-async function markComplete(id) {
+async function markIncomplete(id) {
     const ev = state.eventsData.find(e => e.id == id);
     if (!ev) return;
-    const confirmAction = ev.completed ? 'Mark as incomplete?' : 'Mark as done?';
-    if (!confirm(confirmAction)) return;
-    await api('complete_event', {id, completed: !ev.completed});
+    await api('update_event', {id, completed: false});
+    ev.completed = false;
+    loadPlanner();
+    loadDashboard();
+}
+
+async function deleteEvent(id) {
+    if (!confirm('Delete this event?')) return;
+    await api('delete_event', {id});
     loadPlanner();
     loadDashboard();
 }
@@ -208,7 +221,8 @@ Object.assign(window, {
     updateEvent,
     deleteEvent,
     markComplete,
+    markIncomplete,
     loadPlanner
 });
 
-export { loadPlanner, saveEvent }; // <- keep saveEvent exported
+export { loadPlanner, saveEvent };
