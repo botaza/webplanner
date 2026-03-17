@@ -7,7 +7,11 @@ const COMMON_HASHTAGS = ['#pers', '#cons', '#job', '#event', '#control', '#class
 const GROUPS_KEY = 'planner_open_groups';
 
 function getOpenGroups() {
-    try { return JSON.parse(localStorage.getItem(GROUPS_KEY) || '{}'); } catch { return {}; }
+    try {
+        return JSON.parse(localStorage.getItem(GROUPS_KEY) || '{}');
+    } catch {
+        return {};
+    }
 }
 
 function setGroupOpen(key, open) {
@@ -19,15 +23,18 @@ function setGroupOpen(key, open) {
 function renderPlannerHashtagFilter() {
     const container = document.getElementById('planner-hashtag-filter');
     if (!container) return;
+
     const chips = ['all', ...COMMON_HASHTAGS];
     container.innerHTML = chips.map(tag => {
         const isAll = tag === 'all';
         const isActive = isAll ? !state.activePlannerHashtag : state.activePlannerHashtag === tag;
-        return `<div class="hashtag-chip ${isActive ? 'active' : ''}"
-                     data-tag="${tag}"
-                     onclick="setPlannerHashtagFilter('${tag}')">
-                    ${isAll ? 'All' : tag}
-                </div>`;
+        return `
+            <div class="hashtag-chip ${isActive ? 'active' : ''}"
+                 data-tag="${tag}"
+                 onclick="setPlannerHashtagFilter('${tag}')">
+                ${isAll ? 'All' : tag}
+            </div>
+        `;
     }).join('');
 }
 
@@ -40,15 +47,18 @@ function setPlannerHashtagFilter(tag) {
 function applyPlannerFilter() {
     const term = (document.getElementById('planner-filter')?.value || '').toLowerCase();
     let filtered = state.eventsData;
+
     if (state.activePlannerHashtag) {
         filtered = filtered.filter(e => e.hashtag === state.activePlannerHashtag);
     }
+
     if (term) {
         filtered = filtered.filter(e =>
             (e.desc?.toLowerCase().includes(term)) ||
             (e.hashtag?.toLowerCase().includes(term))
         );
     }
+
     renderPlanner(filtered);
 }
 
