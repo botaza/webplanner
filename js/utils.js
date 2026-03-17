@@ -26,7 +26,7 @@ export function switchScreen(screenId) {
     if (screenId === 'screen-notifications') loadNotifications(1);
 }
 
-function hideModal(id) {
+export function hideModal(id) {
     const modal = document.getElementById(id);
     modal.classList.add('hidden');
     modal.classList.remove('flex');
