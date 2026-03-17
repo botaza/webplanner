@@ -211,4 +211,14 @@ Object.assign(window, {
     loadPlanner
 });
 
-export { loadPlanner };
+export {
+    loadPlanner,
+    saveEvent,
+    editEvent,
+    updateEvent,
+    deleteEvent,
+    markComplete,
+    showAddEventModal,
+    onRecurrenceChange,
+    updateOccurrencePreview
+};
