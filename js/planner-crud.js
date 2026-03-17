@@ -7,7 +7,6 @@ import { renderPlanner } from './planner-render.js';
 import { loadDashboard } from './dashboard.js';
 import { nowDatetimeLocal } from './date-utils.js';
 import { renderHashtagSuggestions, renderPlaceSuggestions, renderDurationSuggestions } from './suggestions.js';
-import { renderPlannerHashtagFilter, applyPlannerFilter } from './planner-filter.js'; // <--- fixed import
 
 const RECURRENCE_DEFAULTS = { weekly: 10, biweekly: 6, monthly: 6, yearly: 3 };
 
@@ -145,11 +144,6 @@ async function editEvent(id) {
     renderHashtagSuggestions();
     renderPlaceSuggestions();
     renderDurationSuggestions();
-    if (ev.hashtag) selectHashtag(ev.hashtag);
-    if (ev.place) selectPlace(ev.place);
-    if (ev.duration) selectDuration(ev.duration);
-    document.getElementById('recurrence-occurrences-section').classList.add('hidden');
-    document.getElementById('occurrence-preview').innerHTML = '';
 }
 
 async function updateEvent(id) {
@@ -186,21 +180,16 @@ async function deleteEvent(id) {
     loadDashboard();
 }
 
+// ---------- NEW: markComplete / markIncomplete ----------
 async function markComplete(id) {
-    if (!confirm('Mark as done?')) return;
-    await api('complete_event', {id});
+    const ev = state.eventsData.find(e => e.id == id);
+    if (!ev) return;
+    const confirmAction = ev.completed ? 'Mark as incomplete?' : 'Mark as done?';
+    if (!confirm(confirmAction)) return;
+    await api('complete_event', {id, completed: !ev.completed});
     loadPlanner();
     loadDashboard();
 }
-
-// --- PATCH: Allow overriding completion flag ---
-async function markIncomplete(id) {
-    if (!confirm('Mark as not done?')) return;
-    await api('complete_event', {id, completed: 0});
-    loadPlanner();
-    loadDashboard();
-}
-// --- end patch ---
 
 async function loadPlanner() {
     const data = await api('get_events');
@@ -218,8 +207,7 @@ Object.assign(window, {
     updateEvent,
     deleteEvent,
     markComplete,
-    markIncomplete, // <--- export new function
     loadPlanner
 });
 
-export { loadPlanner, saveEvent, markIncomplete };
+export { loadPlanner, saveEvent }; // <- keep saveEvent exported

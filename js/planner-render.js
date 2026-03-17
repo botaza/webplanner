@@ -1,7 +1,7 @@
 // js/planner-render.js
 
 import { state } from './state.js';
-import { nowAsDatetimeString, currentMonthKey } from './date-utils.js';
+import { nowAsDatetimeString } from './date-utils.js';
 import { getOpenGroups, setGroupOpen } from './planner-filter.js';
 
 function renderPlanner(list) {
@@ -108,15 +108,16 @@ function renderPlanner(list) {
                 const dt = new Date(ev.dt.replace(' ', 'T'));
                 const timeStr = dt.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
                 const isPastEv = (ev.dt || '') < nowStr;
+                const isCompleted = ev.completed; // new flag
                 const card = document.createElement('div');
-                card.className = `bg-zinc-900 rounded-2xl px-3 py-2.5 card flex gap-3 ${isPastEv ? 'opacity-40' : ''}`;
+                card.className = `bg-zinc-900 rounded-2xl px-3 py-2.5 card flex gap-3 ${isPastEv || isCompleted ? 'opacity-40' : ''}`;
                 card.innerHTML = `
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 flex-wrap">
-                            <span class="text-xs font-semibold ${isPastEv ? 'text-zinc-500' : 'text-emerald-400'}">${timeStr}</span>
+                            <span class="text-xs font-semibold ${isPastEv || isCompleted ? 'text-zinc-500' : 'text-emerald-400'}">${timeStr}</span>
                             ${ev.hashtag ? `<span class="text-xs bg-zinc-800 px-2 py-0.5 rounded-xl">${ev.hashtag}</span>` : ''}
                         </div>
-                        <div class="font-medium text-sm mt-0.5 ${isPastEv ? 'text-zinc-500' : 'text-zinc-100'}">${ev.desc}</div>
+                        <div class="font-medium text-sm mt-0.5 ${isPastEv || isCompleted ? 'text-zinc-500' : 'text-zinc-100'}">${ev.desc}</div>
                         <div class="flex gap-3 text-xs mt-0.5 text-zinc-500 flex-wrap">
                             ${ev.place ? `<span>📍 ${ev.place}</span>` : ''}
                             ${ev.duration ? `<span>⏱ ${ev.duration} min</span>` : ''}
