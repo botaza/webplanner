@@ -12,7 +12,7 @@ function showLockScreen() {
              style="position:fixed;inset:0;background:#09090b;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:32px;">
             <div style="width:56px;height:56px;background:#22c55e;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#fff;">P</div>
             <div style="font-size:22px;font-weight:600;color:#f4f4f5;">Planner</div>
-            <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:12px;">
+            <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap-12px;">
                 <input id="lock-input"
                        type="password"
                        placeholder="Enter password"
@@ -51,8 +51,16 @@ function attemptUnlock() {
     }
 }
 
+// Keep global access for inline usage if needed
 Object.assign(window, {
     isUnlocked,
     showLockScreen,
     attemptUnlock
 });
+
+// ✅ ES module exports (required for import)
+export {
+    isUnlocked,
+    showLockScreen,
+    attemptUnlock
+};
