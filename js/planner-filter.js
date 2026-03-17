@@ -1,7 +1,7 @@
 // js/planner-filter.js - CLEAN VERSION 2025-03-18
 
 import { state } from './state.js';
-import { renderPlannerHashtagFilter, applyPlannerFilter } from './planner-render.js';
+//import { renderPlannerHashtagFilter, applyPlannerFilter } from './planner-render.js';
 
 const COMMON_HASHTAGS = ['#pers', '#cons', '#job', '#event', '#control', '#class'];
 const GROUPS_KEY = 'planner_open_groups';
