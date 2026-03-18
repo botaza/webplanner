@@ -40,8 +40,6 @@ function setPlannerHashtagFilter(tag) {
 function applyPlannerFilter() {
     const term = (document.getElementById('planner-filter')?.value || '').toLowerCase();
     let filtered = state.eventsData;
-
-    // include all events, but visually handle completed
     if (state.activePlannerHashtag) {
         filtered = filtered.filter(e => e.hashtag === state.activePlannerHashtag);
     }
@@ -51,7 +49,6 @@ function applyPlannerFilter() {
             (e.hashtag?.toLowerCase().includes(term))
         );
     }
-
     renderPlanner(filtered);
 }
 

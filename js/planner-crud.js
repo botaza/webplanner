@@ -3,11 +3,13 @@
 import { state } from './state.js';
 import { api } from './api.js';
 import { hideModal } from './utils.js';
-import { renderPlanner, renderPlannerHashtagFilter } from './planner-render.js';
+import { renderPlanner } from './planner-render.js';
 import { loadDashboard } from './dashboard.js';
 import { nowDatetimeLocal } from './date-utils.js';
 import { renderHashtagSuggestions, renderPlaceSuggestions, renderDurationSuggestions } from './suggestions.js';
-import { applyPlannerFilter } from './planner-filter.js'; // <--- patched import
+
+// <<‑ FIXED IMPORTS HERE >> 
+import { renderPlannerHashtagFilter, applyPlannerFilter } from './planner-filter.js';
 
 const RECURRENCE_DEFAULTS = { weekly: 10, biweekly: 6, monthly: 6, yearly: 3 };
 
@@ -52,32 +54,19 @@ function updateOccurrencePreview() {
     preview.innerHTML = dates.map((d, i) => {
         const dateObj = new Date(d.replace(' ', 'T'));
         const label = dateObj.toLocaleDateString('ru-RU', {weekday:'short', day:'numeric', month:'short', year:'numeric'});
-        return `<div class="text-xs text-zinc-400 flex items-center gap-2">
-            <span class="text-emerald-500 shrink-0">${i+1}.</span>
-            <span>${label}</span>
-        </div>`;
+        return `<div class="text-xs text-zinc-400">${i+1}. ${label}</div>`;
     }).join('');
 }
 
 function resetEventModalToCreateMode() {
     const saveBtn = document.querySelector('#modal-event .flex.gap-3 button:last-child');
-    if (saveBtn) {
-        saveBtn.onclick = saveEvent;
-        saveBtn.textContent = "Save Event";
-    }
+    if (saveBtn) saveBtn.onclick = saveEvent;
     document.getElementById('event-dt').value = nowDatetimeLocal();
     document.getElementById('event-desc').value = '';
     document.getElementById('event-hashtag').value = '';
     document.getElementById('event-place').value = '';
     document.getElementById('event-duration').value = '';
     document.getElementById('event-recurrence').value = 'none';
-    document.getElementById('recurrence-occurrences-section').classList.add('hidden');
-    document.getElementById('occurrence-preview').innerHTML = '';
-    document.querySelectorAll('#hashtag-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
-    document.querySelectorAll('#place-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
-    document.querySelectorAll('#duration-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
-    const modalTitle = document.querySelector('#modal-event .text-xl.font-semibold');
-    if (modalTitle) modalTitle.textContent = 'New Event';
 }
 
 function showAddEventModal() {
@@ -91,133 +80,48 @@ function showAddEventModal() {
 
 async function saveEvent() {
     const dt = document.getElementById('event-dt').value;
-    if (!dt) { alert("Please select date and time"); return; }
-    const recurrence = document.getElementById('event-recurrence').value;
+    if (!dt) return alert("Please select date and time");
     const base = {
         desc: document.getElementById('event-desc').value.trim() || '(no description)',
         hashtag: document.getElementById('event-hashtag').value.trim(),
         place: document.getElementById('event-place').value.trim(),
         duration: document.getElementById('event-duration').value.trim(),
-        recurrence,
-        completed: false // <--- newly added field for completion tracking
-    };
-    let datetimes = [dt.replace('T', ' ') + ':00'];
-    if (recurrence !== 'none') {
-        const count = parseInt(document.getElementById('event-occurrences').value) || 1;
-        datetimes = getRecurrenceDates(dt.replace('T', ' ') + ':00', recurrence, count);
-    }
-    const groupId = recurrence !== 'none' ? ('grp_' + Date.now()) : '';
-    try {
-        for (const dtStr of datetimes) {
-            const payload = { ...base, dt: dtStr, recurrence_group: groupId };
-            const res = await api('add_event', payload);
-            if (!res.success) {
-                alert("Save failed at " + dtStr + ": " + (res.error || "unknown"));
-                return;
-            }
-        }
-        hideModal('modal-event');
-        loadPlanner();
-        loadDashboard();
-    } catch (err) {
-        console.error(err);
-        alert("Error saving event: " + err.message);
-    }
-}
-
-async function editEvent(id) {
-    const ev = state.eventsData.find(e => e.id == id);
-    if (!ev) return;
-    document.getElementById('event-dt').value = ev.dt.replace(' ', 'T');
-    document.getElementById('event-desc').value = ev.desc || '';
-    document.getElementById('event-hashtag').value = ev.hashtag || '';
-    document.getElementById('event-place').value = ev.place || '';
-    document.getElementById('event-duration').value = ev.duration || '';
-    document.getElementById('event-recurrence').value = ev.recurrence || 'none';
-    const saveBtn = document.querySelector('#modal-event .flex.gap-3 button:last-child');
-    if (saveBtn) {
-        saveBtn.onclick = () => updateEvent(id);
-        saveBtn.textContent = "Update Event";
-    }
-    const modalTitle = document.querySelector('#modal-event .text-xl.font-semibold');
-    if (modalTitle) modalTitle.textContent = 'Edit Event';
-    document.getElementById('modal-event').classList.remove('hidden');
-    document.getElementById('modal-event').classList.add('flex');
-    renderHashtagSuggestions();
-    renderPlaceSuggestions();
-    renderDurationSuggestions();
-    if (ev.hashtag) selectHashtag(ev.hashtag);
-    if (ev.place) selectPlace(ev.place);
-    if (ev.duration) selectDuration(ev.duration);
-    document.getElementById('recurrence-occurrences-section').classList.add('hidden');
-    document.getElementById('occurrence-preview').innerHTML = '';
-}
-
-async function updateEvent(id) {
-    const dt = document.getElementById('event-dt').value;
-    if (!dt) return alert("Date & time required");
-    const payload = {
-        id,
-        dt: dt.replace('T', ' '),
-        desc: document.getElementById('event-desc').value.trim(),
-        hashtag: document.getElementById('event-hashtag').value.trim(),
-        place: document.getElementById('event-place').value.trim(),
-        duration: document.getElementById('event-duration').value.trim(),
         recurrence: document.getElementById('event-recurrence').value
     };
-    try {
-        const res = await api('update_event', payload);
-        if (res.success) {
-            hideModal('modal-event');
-            loadPlanner();
-            loadDashboard();
-        } else {
-            alert("Update failed");
-        }
-    } catch (err) {
-        console.error(err);
-        alert("Error updating event");
-    }
+    const payload = { ...base, dt: dt.replace('T', ' ') + ':00' };
+    const res = await api('add_event', payload);
+    if (!res.success) alert("Save failed");
+    hideModal('modal-event');
+    loadPlanner();
 }
 
 async function deleteEvent(id) {
     if (!confirm('Delete this event?')) return;
-    await api('delete_event', {id});
+    await api('delete_event', { id });
     loadPlanner();
-    loadDashboard();
 }
 
-// <--- patched completion behavior
-async function markComplete(id, completed = true) {
-    const ev = state.eventsData.find(e => e.id == id);
+async function markComplete(id) {
+    const ev = state.eventsData.find(e => e.id === id);
     if (!ev) return;
-    await api('update_event', {id, completed}); // flag stays in DB, event not removed
-    ev.completed = completed; // update local state
+    const completed = !ev.completed;
+    await api('update_event', {id, completed});
     loadPlanner();
-}
-
-async function markIncomplete(id) {
-    await markComplete(id, false);
 }
 
 async function loadPlanner() {
-    const data = await api('get_events');
-    state.eventsData = data || [];
+    const result = await api('get_events');
+    state.eventsData = result || [];
     renderPlannerHashtagFilter();
-    applyPlannerFilter(); // <--- call patched import
+    applyPlannerFilter();
 }
 
 Object.assign(window, {
-    onRecurrenceChange,
-    updateOccurrencePreview,
     showAddEventModal,
     saveEvent,
-    editEvent,
-    updateEvent,
     deleteEvent,
     markComplete,
-    markIncomplete,
     loadPlanner
 });
 
-export { loadPlanner, saveEvent, markComplete, markIncomplete };
+export { loadPlanner, saveEvent, markComplete };
