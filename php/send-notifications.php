@@ -4,7 +4,7 @@
 // 1. Service account path is now a DIRECTORY (auto-discovers .json file)
 // 2. Fixed trailing spaces in API URLs
 // 3. Filter out completed events from notification logic
-
+date_default_timezone_set('UTC+10'); // or 'Australia/Brisbane', 'Australia/Sydney', etc.
 // ✅ CHANGE: Define DIRECTORY only, not the full file path
 define('SERVICE_ACCOUNT_DIR', '/var/www/html/'); 
 define('TOKENS_FILE', __DIR__ . '/../data/fcm-tokens.json');
