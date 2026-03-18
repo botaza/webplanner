@@ -1,24 +1,20 @@
+// js/planner-filter.js
 import { state } from './state.js';
 import { renderPlanner } from './planner-render.js';
 
-let currentHashtagFilter = '';
+let currentHashtagFilter = null;
 
-function setHashtagFilter(hashtag) {
-    currentHashtagFilter = hashtag;
-    applyPlannerFilter();
+export function setHashtagFilter(tag) {
+    currentHashtagFilter = tag;
+    applyHashtagFilter();
 }
 
-function clearHashtagFilter() {
-    currentHashtagFilter = '';
-    applyPlannerFilter();
-}
-
-function applyPlannerFilter() {
-    let filtered = [...state.eventsData];
+function applyHashtagFilter() {
+    let filtered = state.eventsData;
     if (currentHashtagFilter) {
-        filtered = filtered.filter(ev => ev.hashtag && ev.hashtag.includes(currentHashtagFilter));
+        filtered = state.eventsData.filter(e => e.hashtag === currentHashtagFilter);
     }
     renderPlanner(filtered);
 }
 
-export { setHashtagFilter, clearHashtagFilter, applyPlannerFilter };
+export { applyHashtagFilter as applyPlannerFilter };
