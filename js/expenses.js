@@ -35,6 +35,9 @@ import {
 
 import { 
     initExpenseStats,
+    setStatsView,
+    setStatsMonth,
+    showStatsMonthPicker,
     renderStatsContainer
 } from './expenses-stats.js';
 
@@ -62,11 +65,9 @@ export function initExpenses() {
     initExpenseStats();
     
     // 3. Init Advanced Filter (Limit input)
-    // Only if container exists (will be added in HTML update)
     initAdvancedFilter('expenses-filter-controls');
     
     // 4. Init Housekeeping (Data management card)
-    // Only if screen-more exists
     initHousekeepingUI();
     
     console.log('[expenses.js] Initialization complete');
@@ -76,7 +77,6 @@ export function initExpenses() {
 
 /**
  * Load expenses from backend and render list
- * Called by app.js/utils.js when switching to expenses screen
  */
 export async function loadExpenses() {
     try {
@@ -94,25 +94,16 @@ export async function loadExpenses() {
 
 /**
  * Handle Save Expense Flow
- * 1. Get Data from UI
- * 2. Save to Backend
- * 3. Refresh List & Dashboard
- * 4. Close Modal
  */
 async function handleSaveExpense() {
-    // 1. Gather Data
     const formData = getExpenseFormData();
-    if (!formData) return; // Validation failed inside UI module
+    if (!formData) return;
 
-    // 2. Save to Backend
     try {
         const res = await saveExpenseData(formData);
         if (res?.success) {
-            // 3. Refresh Views
             await loadExpenses();
             await loadDashboard();
-            
-            // 4. Close Modal & Reset
             closeExpenseModal();
             resetExpenseForm();
         } else {
@@ -126,9 +117,6 @@ async function handleSaveExpense() {
 
 /**
  * Handle Delete Expense Flow
- * 1. Confirm
- * 2. Delete from Backend
- * 3. Refresh List & Dashboard
  */
 async function handleDeleteExpense(id) {
     if (!confirm('Delete this expense?')) return;
@@ -145,12 +133,7 @@ async function handleDeleteExpense(id) {
 
 // ── UI WRAPPERS (For Window Exposure) ──
 
-/**
- * Show Add Expense Modal
- * Resets form and opens modal
- */
 function showAddExpenseModal() {
-    // Reset Form Fields
     const dateEl = document.getElementById('exp-date');
     const amountEl = document.getElementById('exp-amount');
     const descEl = document.getElementById('exp-desc');
@@ -161,42 +144,25 @@ function showAddExpenseModal() {
     if (descEl) descEl.value = '';
     if (otherEl) otherEl.value = '';
 
-    // Reset State
     state.selectedExpenseTool = null;
     state.selectedExpenseCategory = null;
     
-    // Show Modal
     showExpenseModal();
-    
-    // Render Buttons
     renderExpenseTools(EXPENSE_TOOLS);
     renderExpenseCategories(EXPENSE_CATEGORIES);
     
-    // Hide Other Input by default
     const otherGroup = document.getElementById('exp-tool-other-group');
     if (otherGroup) otherGroup.classList.add('hidden');
 }
 
-/**
- * Wrapper for Tool Selection
- * Updates state and UI via expenses-ui.js
- */
 function selectExpenseTool(code) {
     handleToolSelect(code);
 }
 
-/**
- * Wrapper for Category Selection
- * Updates state and UI via expenses-ui.js
- */
 function selectExpenseCategory(name) {
     handleCategorySelect(name);
 }
 
-/**
- * Refresh Stats View
- * Called when month/filter changes
- */
 function refreshExpenseStats() {
     renderStatsContainer();
 }
@@ -213,16 +179,13 @@ Object.assign(window, {
     selectExpenseTool,
     selectExpenseCategory,
     
-    // Stats & Filters (Delegated to modules but exposed here for consistency)
+    // Stats Functions ← THESE WERE MISSING!
+    setStatsView,
+    setStatsMonth,
+    showStatsMonthPicker,
     refreshExpenseStats,
     
-    // Rendering Helpers (Used by init flows)
+    // Rendering Helpers
     renderExpenseTools: (tools) => renderExpenseTools(tools || EXPENSE_TOOLS),
     renderExpenseCategories: (cats) => renderExpenseCategories(cats || EXPENSE_CATEGORIES)
 });
-
-// Note: 
-// - toggleExpenseMonth is exposed by expenses-list-view.js
-// - applyExpenseFilter, setExpenseLimit are exposed by expenses-advanced-filter.js
-// - showHousekeepingModal, etc. are exposed by expenses-housekeeping.js
-// - This keeps window assignments distributed but coordinated.
