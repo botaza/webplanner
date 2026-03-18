@@ -7,7 +7,7 @@ export async function api(action, body = {}, options = {}) {
         let res;
 
         if (isJson) {
-            // 🔥 JSON mode (for bulk operations like save_expenses)
+            // JSON mode (for bulk operations)
             res = await fetch('php/api.php', {
                 method: 'POST',
                 headers: {
@@ -19,7 +19,7 @@ export async function api(action, body = {}, options = {}) {
                 })
             });
         } else {
-            // ✅ Default FormData mode (existing behavior)
+            // Default FormData mode
             const form = new FormData();
             form.append('action', action);
 
@@ -40,4 +40,23 @@ export async function api(action, body = {}, options = {}) {
         console.error('API fetch error:', err);
         throw err;
     }
+}
+
+/* =========================================================
+   PATCH: helper wrappers (this fixes your error)
+   ========================================================= */
+
+// Simple POST (FormData)
+export function apiPost(action, body = {}) {
+    return api(action, body);
+}
+
+// Simple GET-style (still POST under the hood, for consistency)
+export function apiGet(action) {
+    return api(action, {});
+}
+
+// JSON POST (for bulk operations like save_expenses)
+export function apiPostJSON(action, body = {}) {
+    return api(action, body, { json: true });
 }
