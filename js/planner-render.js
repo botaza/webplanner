@@ -78,7 +78,7 @@ function renderPlanner(list) {
  const dHeader = document.createElement('div');
  dHeader.className = 'flex items-center justify-between px-2 py-1.5 cursor-pointer select-none';
  dHeader.innerHTML = `
-  <span class="font-medium text-zinc-200">${dLabel}<span class="text-zinc-500">${dayEvents.length} event${dayEvents.length !== 1 ? 's' : ''}</span></span>
+  <span class="font-medium text-zinc-200">${dLabel}<span class="text-zinc-500"> ${dayEvents.length} event${dayEvents.length !== 1 ? 's' : ''}</span></span>
   <span class="text-sm text-zinc-400">${isToday ? 'today' : ''}</span>
   <span id="dchev-${dayKey}" class="text-zinc-400">${dIsOpen ? '▾' : '▸'}</span>
  `;
@@ -105,8 +105,7 @@ function renderPlanner(list) {
  const card = document.createElement('div');
  card.className = `bg-zinc-900 rounded-2xl px-3 py-2.5 card flex gap-3 items-start ${isPastEv ? 'opacity-40' : ''}`;
  
- // Build event content
- let contentHtml = `
+ card.innerHTML = `
   <span class="text-zinc-400 text-sm whitespace-nowrap pt-0.5">${timeStr}</span>
   ${ev.hashtag ? `<span class="hashtag-chip text-xs px-2 py-0.5">${ev.hashtag}</span>` : ''}
   <div class="flex-1 min-w-0">
@@ -116,60 +115,25 @@ function renderPlanner(list) {
     ${ev.duration ? `<span>⏱ ${ev.duration} min</span>` : ''}
    </div>
   </div>
+  <span class="edit-btn" title="Edit event">✏️</span>
+  <span class="delete-btn" title="Delete event">🗑</span>
  `;
  
- // Build action buttons with proper event handling
- const actionsHtml = `
-  <div class="event-actions flex-shrink-0">
-   <button class="event-btn done" title="Mark as done" data-action="done" data-id="${ev.id}">✓</button>
-   <button class="event-btn reload" title="Reload/Refresh" data-action="reload" data-id="${ev.id}">⟳</button>
-   <button class="event-btn edit" title="Edit event" data-action="edit" data-id="${ev.id}">✏️</button>
-   <button class="event-btn delete" title="Delete event" data-action="delete" data-id="${ev.id}">🗑</button>
-  </div>
- `;
- 
- card.innerHTML = contentHtml + actionsHtml;
- 
- // Card click = mark complete (but not if clicking action buttons)
  card.onclick = (e) => {
-  // Only trigger if clicking the card itself, not buttons
-  if (!e.target.closest('.event-btn')) {
-   markComplete(ev.id);
+  if (e.target.classList.contains('edit-btn') || e.target.classList.contains('delete-btn')) {
+   return;
   }
+  markComplete(ev.id);
  };
  
- // Attach button event listeners with stopPropagation
- card.querySelectorAll('.event-btn').forEach(btn => {
-  btn.onclick = (e) => {
-   e.stopPropagation(); // Prevent card click from firing
-   const action = btn.dataset.action;
-   const id = btn.dataset.id;
-   
-   switch(action) {
-    case 'done':
-     markComplete(id);
-     break;
-    case 'reload':
-     // Reload: refresh the planner view
-     loadPlanner();
-     break;
-    case 'edit':
-     editEvent(id);
-     break;
-    case 'delete':
-     deleteEvent(id);
-     break;
-   }
-  };
-  
-  // Add touch feedback for mobile
-  btn.addEventListener('touchstart', function() {
-   this.style.transform = 'scale(0.95)';
-  }, {passive: true});
-  btn.addEventListener('touchend', function() {
-   this.style.transform = '';
-  }, {passive: true});
- });
+ card.querySelector('.edit-btn').onclick = (e) => {
+  e.stopPropagation();
+  editEvent(ev.id);
+ };
+ card.querySelector('.delete-btn').onclick = (e) => {
+  e.stopPropagation();
+  deleteEvent(ev.id);
+ };
  
  dBody.appendChild(card);
  });
