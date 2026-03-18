@@ -1,127 +1,98 @@
 // js/app.js
+import { state, setState, pushToState } from './state.js';
+import { addExpense, loadExpenses } from './expenses.js';
+import { switchScreen, hideModal } from './utils.js';
 
-import { state } from './state.js';
-import { isUnlocked, showLockScreen } from './lockscreen.js';
-import { api } from './api.js';
-import { switchScreen } from './utils.js';
-import { loadPlanner, saveEvent } from './planner-crud.js';
-import { loadExpenses, addExpense } from './expenses.js';
-import { loadIncome } from './income.js';
-import { loadDashboard } from './dashboard.js';
-import { enableNotifications, updateNotifStatus } from './fcm-client.js';
-import { loadNotifications } from './notification-history.js';
-import { renderExpensesList } from './expenses-render.js';
-
+// Boot / initialization
 async function bootApp() {
-    await api('init');
-    switchScreen('screen-planner');
+    await loadExpenses();
+    renderExpensesList();
 
-    if (typeof firebase !== 'undefined') {
-        state.messaging = firebase.messaging();
-        await enableNotifications();
-        updateNotifStatus();
-    }
-
-    // Optional initial loads
-    loadDashboard();
-    loadExpenses().then(expenses => {
-        const container = document.getElementById('expenses-container');
-        if (container) renderExpensesList(container, expenses);
-    });
+    switchScreen('screen-dashboard');
 }
 
 window.bootApp = bootApp;
+window.onload = bootApp;
 
-window.onload = async () => {
-    if (!isUnlocked()) {
-        showLockScreen();
+// =========================
+// EXPENSE MODAL LOGIC
+// =========================
+
+const expenseModal = document.getElementById('modal-expense');
+const btnAddExpense = document.getElementById('btn-add-expense');
+const expListContainer = document.getElementById('expenses-list');
+
+function renderExpensesList() {
+    if (!expListContainer) return;
+    expListContainer.innerHTML = '';
+
+    const expenses = state.expenses || [];
+    if (!expenses.length) {
+        expListContainer.innerHTML = '<p class="text-zinc-400">No expenses yet</p>';
         return;
     }
-    await bootApp();
-};
 
-// ── Hook Add Expense Button ───────────────────────────────────────────────
-const addBtn = document.getElementById('btn-add-expense');
-if (addBtn) {
-    addBtn.addEventListener('click', async () => {
-        const newExpense = {
-            date: document.getElementById('expense-date')?.value || '',
-            amount: parseFloat(document.getElementById('expense-amount')?.value || 0),
-            category: document.getElementById('expense-category')?.value || '',
-            tool: document.getElementById('expense-tool')?.value || '',
-            desc: document.getElementById('expense-desc')?.value || ''
+    expenses.forEach(exp => {
+        const item = document.createElement('div');
+        item.className = 'expense-item bg-zinc-900 p-3 rounded-2xl flex justify-between items-center';
+        item.innerHTML = `
+            <div>
+                <strong>${exp.amount}</strong> — ${exp.category || 'No category'}<br>
+                <small class="text-zinc-500">${exp.date}</small>
+            </div>
+            <button class="delete-btn bg-red-600 hover:bg-red-500 px-3 py-1 rounded-2xl text-xs">Delete</button>
+        `;
+
+        item.querySelector('.delete-btn').onclick = async () => {
+            const confirmed = confirm('Delete this expense?');
+            if (!confirmed) return;
+
+            const updated = state.expenses.filter(e => e.id !== exp.id);
+            setState({ expenses: updated });
+            renderExpensesList();
         };
 
-        const expense = await addExpense(newExpense);
-
-        // Re-render expenses list
-        const container = document.getElementById('expenses-container');
-        if (container) {
-            const expenses = await loadExpenses();
-            renderExpensesList(container, expenses);
-        }
-
-        // Clear modal / inputs if desired
-        ['expense-date','expense-amount','expense-category','expense-tool','expense-desc'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.value = '';
-        });
+        expListContainer.appendChild(item);
     });
-};
+}
 
-// ── Utilities ───────────────────────────────────────────────────────────
-export function hideModal(id) {
-    const modal = document.getElementById(id);
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-    if (id === 'modal-event') {
-        // Reset to create mode when hiding
-        const saveBtn = document.querySelector('#modal-event .flex.gap-3 button:last-child');
-        if (saveBtn) {
-            saveBtn.onclick = saveEvent;
-            saveBtn.textContent = "Save Event";
-        }
-        const modalTitle = document.querySelector('#modal-event .text-xl.font-semibold');
-        if (modalTitle) modalTitle.textContent = 'New Event';
+// Show modal
+function showAddExpenseModal() {
+    if (!expenseModal) return;
+    expenseModal.classList.remove('hidden');
+    expenseModal.classList.add('flex');
+}
+
+// Save expense
+async function saveExpense() {
+    const date = document.getElementById('exp-date').value;
+    const amount = parseFloat(document.getElementById('exp-amount').value);
+    const category = document.getElementById('exp-category-buttons').value || '';
+    const desc = document.getElementById('exp-desc').value || '';
+
+    if (!date || !amount) {
+        alert('Date and amount are required');
+        return;
     }
+
+    const newExpense = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+        date, amount, category, desc
+    };
+
+    await addExpense(newExpense);
+    pushToState('expenses', newExpense);
+    renderExpensesList();
+    hideModal('modal-expense');
+
+    // Reset modal inputs
+    document.getElementById('exp-date').value = '';
+    document.getElementById('exp-amount').value = '';
+    document.getElementById('exp-desc').value = '';
 }
 
-async function takeSnapshot() {
-    const res = await api('snapshot');
-    if (res.success) alert('Snapshot created!');
-}
+// Hook button
+if (btnAddExpense) btnAddExpense.addEventListener('click', showAddExpenseModal);
 
-async function clearAllData() {
-    if (!confirm('Clear ALL data permanently?')) return;
-    await api('clear_all');
-    location.reload();
-}
-
-async function exportData() {
-    const exps = await api('get_expenses');
-    const incs = await api('get_income');
-    const evs = await api('get_events');
-    const blob = new Blob(
-        [JSON.stringify({events: evs, expenses: exps, income: incs}, null, 2)],
-        {type: 'application/json'}
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'planner-backup.json';
-    a.click();
-    URL.revokeObjectURL(url);
-}
-
-function showMonthPicker(type) {
-    alert("Month stats coming soon...");
-}
-
-Object.assign(window, {
-    switchScreen,
-    hideModal,
-    takeSnapshot,
-    clearAllData,
-    exportData,
-    showMonthPicker
-});
+// Make saveExpense globally accessible for modal button
+window.saveExpense = saveExpense;
