@@ -1,32 +1,39 @@
 // js/expenses.js
 
-import { loadExpenses, addExpense } from "./expenses-crud.js";
-import { renderExpensesList } from "./expenses-render.js";
-import { getState } from "./state.js";
+import { state, setState, pushToState, removeFromState } from './state.js';
+import { apiPost, apiPostJSON, apiGet } from './api.js';
 
-const container = document.getElementById("expenses-list");
-const addBtn = document.getElementById("add-expense-btn");
-
-export async function initExpenses() {
-  await loadExpenses();
-  render();
+// ── Load all expenses from backend into state ─────────────────────────────
+export async function loadExpenses() {
+    const data = await apiGet('get_expenses');
+    setState({ expenses: data || [] });
+    return state.expenses;
 }
 
-function render() {
-  const state = getState();
-  renderExpensesList(container, state.expenses);
+// ── Add a single expense ───────────────────────────────────────────────────
+export async function addExpense(expense) {
+    await apiPost('add_expense', expense);
+    pushToState('expenses', expense);
+    return expense;
 }
 
-// Add button handler
-if (addBtn) {
-  addBtn.onclick = async () => {
-    const amount = parseFloat(prompt("Amount:"));
-    const category = prompt("Category:");
-    const date = prompt("Date (YYYY-MM-DD):", new Date().toISOString().slice(0, 10));
+// ── Delete an expense by id ───────────────────────────────────────────────
+export async function deleteExpense(id) {
+    await apiPost('delete_expense', { id });
+    removeFromState('expenses', id);
+}
 
-    if (!amount || !date) return;
+// ── Optional: Save bulk expenses (JSON mode) ──────────────────────────────
+export async function saveExpensesBulk(expensesArray) {
+    await apiPostJSON('save_expenses', { expenses: expensesArray });
+    setState({ expenses: expensesArray });
+}
 
-    await addExpense({ amount, category, date });
-    render();
-  };
+// ── Utility: filter expenses by month or category ─────────────────────────
+export function filterExpenses({ month, category, minAmount } = {}) {
+    let items = state.expenses;
+    if (month) items = items.filter(e => new Date(e.date).getMonth() === month - 1);
+    if (category) items = items.filter(e => e.category === category);
+    if (minAmount) items = items.filter(e => e.amount >= minAmount);
+    return items;
 }
