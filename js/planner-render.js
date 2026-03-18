@@ -103,13 +103,13 @@ function renderPlanner(list) {
  const timeStr = dt.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
  const isPastEv = (ev.dt || '') < nowStr;
  const card = document.createElement('div');
- card.className = `bg-zinc-900 rounded-2xl px-3 py-2.5 card flex gap-3 items-start ${isPastEv ? 'opacity-40' : ''}`;
+ card.className = `bg-zinc-900 rounded-2xl px-3 py-2.5 card flex gap-3 items-center ${isPastEv ? 'opacity-40' : ''}`;
  
  card.innerHTML = `
-  <span class="text-zinc-400 text-sm whitespace-nowrap pt-0.5">${timeStr}</span>
+  <span class="text-zinc-400 text-sm whitespace-nowrap">${timeStr}</span>
   ${ev.hashtag ? `<span class="hashtag-chip text-xs px-2 py-0.5">${ev.hashtag}</span>` : ''}
-  <div class="flex-1 min-w-0">
-   <div class="text-zinc-200 break-words">${ev.desc || '(no description)'}</div>
+  <div class="flex-1 overflow-hidden">
+   <div class="text-zinc-200">${ev.desc || '(no description)'}</div>
    <div class="flex flex-wrap gap-2 mt-1 text-xs text-zinc-500">
     ${ev.place ? `<span>📍 ${ev.place}</span>` : ''}
     ${ev.duration ? `<span>⏱ ${ev.duration} min</span>` : ''}
