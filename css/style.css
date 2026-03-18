@@ -69,6 +69,7 @@ textarea {
 
 /* ── Modal base: sits at bottom, slides up ───────────────────────────────── */
 .modal-sheet {
+    /* full-screen overlay */
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.8);
@@ -81,12 +82,17 @@ textarea {
 /* ── Modal inner panel ───────────────────────────────────────────────────── */
 .modal-sheet > div {
     width: 100%;
-    max-width: 40rem;
-    background: #18181b;
+    max-width: 40rem;          /* max-w-xl */
+    background: #18181b;       /* zinc-900 */
     border-radius: 1.5rem 1.5rem 0 0;
+
+    /* Key fix: limit height so it never covers the full screen,
+       and always leave room to scroll to the top fields */
     max-height: 90vh;
     display: flex;
     flex-direction: column;
+
+    /* Smooth scroll momentum on iOS */
     -webkit-overflow-scrolling: touch;
 }
 
@@ -94,19 +100,21 @@ textarea {
 .modal-sheet .modal-body {
     overflow-y: auto;
     flex: 1;
+    /* Extra bottom padding so last field clears the keyboard */
     padding-bottom: env(safe-area-inset-bottom, 16px);
 }
 
-/* ── Expense modal specifically ─────────────────────────────────────────── */
+/* ── Expense modal specifically (already has overflow-y-auto in HTML) ────── */
 #modal-expense > div {
     max-height: 90vh;
 }
 #modal-expense .overflow-y-auto {
     -webkit-overflow-scrolling: touch;
+    /* Ensure you can always scroll up to Date field */
     overscroll-behavior: contain;
 }
 
-/* ── Event modal ────────────────────────────────────────────────────────── */
+/* ── Event modal — make the content block scrollable too ─────────────────── */
 #modal-event > div {
     max-height: 90vh;
     overflow-y: auto;
@@ -114,7 +122,7 @@ textarea {
     overscroll-behavior: contain;
 }
 
-/* ── Sticky action buttons ──────────────────────────────────────────────── */
+/* ── Keep the sticky action buttons always visible at the bottom ─────────── */
 #modal-event   .flex.gap-3.mt-8,
 #modal-income  .flex.gap-3.mt-8 {
     position: sticky;
@@ -122,10 +130,11 @@ textarea {
     background: #18181b;
     padding-top: 12px;
     margin-top: 12px;
+    /* Respect home-bar on newer iPhones */
     padding-bottom: env(safe-area-inset-bottom, 12px);
 }
 
-/* ── Income modal ───────────────────────────────────────────────────────── */
+/* ── Income modal ─────────────────────────────────────────────────────────── */
 #modal-income > div {
     max-height: 90vh;
     overflow-y: auto;
@@ -133,75 +142,7 @@ textarea {
     overscroll-behavior: contain;
 }
 
-/* ── Safe-area padding for bottom nav ───────────────────────────────────── */
+/* ── Safe-area padding for the bottom nav ────────────────────────────────── */
 nav.fixed.bottom-0 {
     padding-bottom: env(safe-area-inset-bottom, 0px);
 }
-
-/* =========================================================
-   EXPENSES (PATCH START)
-   Clean list UI matching your dark theme
-   ========================================================= */
-
-.expense-item {
-    padding: 12px;
-    border-bottom: 1px solid #27272a;
-    background: #18181b;
-}
-
-.expense-item:hover {
-    background: #1f1f23;
-}
-
-.expense-main {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-}
-
-.expense-main strong {
-    font-size: 15px;
-    color: #fafafa;
-}
-
-.expense-meta {
-    font-size: 12px;
-    color: #a1a1aa;
-}
-
-.expense-date {
-    font-size: 12px;
-    color: #71717a;
-}
-
-.expense-actions {
-    margin-top: 6px;
-    display: flex;
-    justify-content: flex-end;
-}
-
-.delete-btn {
-    background: #ef4444;
-    color: #fff;
-    border: none;
-    padding: 5px 10px;
-    font-size: 12px;
-    border-radius: 6px;
-    transition: background 0.15s;
-}
-
-.delete-btn:hover {
-    background: #dc2626;
-}
-
-.expense-empty {
-    padding: 20px;
-    text-align: center;
-    color: #71717a;
-    font-size: 14px;
-}
-
-/* =========================================================
-   EXPENSES (PATCH END)
-   ========================================================= */

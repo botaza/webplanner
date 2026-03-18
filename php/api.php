@@ -1,7 +1,7 @@
 <?php
 // php/api.php
 // PATCHED: Use 'completed' flag instead of moving events to done.json
-// + EXPENSES PATCH: bulk save + file locking for safety
+// This ensures events always stay visible and notification logic works correctly
 
 header('Content-Type: application/json');
 
@@ -12,7 +12,7 @@ if (!is_dir($snapDir)) mkdir($snapDir, 0777, true);
 
 $files = [
  'events' => $dataDir . '/events.json',
- // 'done' => $dataDir . '/done.json',
+ // 'done' => $dataDir . '/done.json', // REMOVED: No longer separate storage for completed
  'expenses' => $dataDir . '/expenses.json',
  'income' => $dataDir . '/income.json'
 ];
@@ -23,24 +23,11 @@ function read($f) {
  return json_decode($c, true) ?: [];
 }
 
-// 🔥 PATCH: safe write with file locking
 function write($f, $data) {
- $fp = fopen($f, 'c+');
-
- if ($fp && flock($fp, LOCK_EX)) {
-  ftruncate($fp, 0);
-  fwrite($fp, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-  fflush($fp);
-  flock($fp, LOCK_UN);
- }
-
- if ($fp) fclose($fp);
+ file_put_contents($f, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
 
-$inputRaw = json_decode(file_get_contents('php://input'), true);
-
-$action = $_POST['action'] 
-    ?? ($inputRaw['action'] ?? '');
+$action = $_POST['action'] ?? '';
 
 if ($action === 'init') {
  foreach ($files as $f) if (!file_exists($f)) write($f, []);
@@ -48,8 +35,7 @@ if ($action === 'init') {
  exit;
 }
 
-// ── EVENTS ─────────────────────────────────────────────────────────
-
+// PATCH: get_events now returns ALL events (including completed)
 if ($action === 'get_events') {
  $data = read($files['events']);
  usort($data, fn($a,$b) => strcmp($a['dt'] ?? '', $b['dt'] ?? ''));
@@ -68,25 +54,26 @@ if ($action === 'add_event') {
   'duration' => $_POST['duration'] ?? '',
   'recurrence' => $_POST['recurrence'] ?? 'none',
   'recurrence_group' => $_POST['recurrence_group'] ?? '',
-  'completed' => false
+  'completed' => false // NEW: Default to not completed
  ];
  write($files['events'], $data);
  echo json_encode(['success' => true]);
  exit;
 }
 
+// PATCH: update_event now handles completed field and date changes
 if ($action === 'update_event') {
  $data = read($files['events']);
  foreach ($data as &$e) {
   if ($e['id'] == $_POST['id']) {
-   $e['dt'] = $_POST['dt'] ?? $e['dt'];
+   $e['dt'] = $_POST['dt'] ?? $e['dt']; // Date change - notification logic will pick this up
    $e['desc'] = $_POST['desc'] ?? $e['desc'];
    $e['hashtag'] = $_POST['hashtag'] ?? $e['hashtag'];
    $e['place'] = $_POST['place'] ?? $e['place'];
    $e['duration'] = $_POST['duration'] ?? ($e['duration'] ?? '');
    $e['recurrence_group'] = $_POST['recurrence_group'] ?? ($e['recurrence_group'] ?? '');
    $e['recurrence'] = $_POST['recurrence'] ?? $e['recurrence'];
-
+   // PATCH: Preserve or update completed status if sent
    if (isset($_POST['completed'])) {
     $e['completed'] = $_POST['completed'] === '1' || $_POST['completed'] === true;
    }
@@ -106,6 +93,7 @@ if ($action === 'delete_event') {
  exit;
 }
 
+// PATCH: complete_event now toggles the 'completed' flag instead of moving files
 if ($action === 'complete_event') {
  $data = read($files['events']);
  $id = $_POST['id'] ?? '';
@@ -113,7 +101,9 @@ if ($action === 'complete_event') {
  
  foreach ($data as &$e) {
   if ($e['id'] == $id) {
-   $e['completed'] = $newCompleted;
+   $e['completed'] = $newCompleted; // Toggle completed status
+   // PATCH: When resetting to incomplete, update 'dt' if a new date was provided
+   // This ensures notification logic re-evaluates based on the new date
    if (!$newCompleted && !empty($_POST['dt'])) {
     $e['dt'] = $_POST['dt'];
    }
@@ -124,8 +114,6 @@ if ($action === 'complete_event') {
  echo json_encode(['success' => true]);
  exit;
 }
-
-// ── EXPENSES ─────────────────────────────────────────────────────────
 
 if ($action === 'get_expenses') {
  echo json_encode(read($files['expenses']));
@@ -147,15 +135,6 @@ if ($action === 'add_expense') {
  exit;
 }
 
-// 🔥 PATCH: bulk save (needed for frontend state sync)
-if ($action === 'save_expenses') {
- $input = json_decode(file_get_contents('php://input'), true);
- $expenses = $input['expenses'] ?? [];
- write($files['expenses'], $expenses);
- echo json_encode(['success' => true]);
- exit;
-}
-
 if ($action === 'delete_expense') {
  $data = read($files['expenses']);
  $data = array_filter($data, fn($e) => $e['id'] != $_POST['id']);
@@ -163,8 +142,6 @@ if ($action === 'delete_expense') {
  echo json_encode(['success' => true]);
  exit;
 }
-
-// ── INCOME ─────────────────────────────────────────────────────────
 
 if ($action === 'get_income') {
  echo json_encode(read($files['income']));
@@ -192,8 +169,6 @@ if ($action === 'delete_income') {
  exit;
 }
 
-// ── SNAPSHOTS ─────────────────────────────────────────────────────────
-
 if ($action === 'snapshot') {
  $ts = date('Ymd_His');
  $target = $snapDir . '/' . $ts;
@@ -211,8 +186,7 @@ if ($action === 'clear_all') {
  exit;
 }
 
-// ── NOTIFICATIONS ─────────────────────────────────────────────────────────
-
+// ── Notification log ─────────────────────────────────────────────────────────
 $notifLog = $dataDir . '/notification-log.json';
 
 if ($action === 'get_notifications') {

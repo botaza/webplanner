@@ -91,6 +91,7 @@
                        class="bg-zinc-900 border border-zinc-700 focus:border-emerald-500 rounded-3xl px-5 py-3 w-full text-base">
             </div>
             <div class="hashtag-row mb-6" id="planner-hashtag-filter"></div>
+<!-- ↑ changed mb-4 → mb-6 -->
             <div id="planner-list" class="space-y-3"></div>
             <button onclick="showAddEventModal()"
                     class="fixed bottom-24 right-4 w-14 h-14 bg-emerald-500 hover:bg-emerald-600 rounded-3xl shadow-2xl flex items-center justify-center text-3xl leading-none z-40">
@@ -101,8 +102,8 @@
         <!-- EXPENSES -->
         <div id="screen-expenses" class="screen hidden">
             <div class="flex gap-3 mb-4">
-                <button id="btn-add-expense"
-        class="flex-1 bg-emerald-500 hover:bg-emerald-600 py-4 rounded-3xl text-lg font-medium">+ Expense</button>
+                <button onclick="showAddExpenseModal()"
+                        class="flex-1 bg-emerald-500 hover:bg-emerald-600 py-4 rounded-3xl text-lg font-medium">+ Expense</button>
                 <button onclick="showMonthPicker('exp')"
                         class="flex-1 bg-zinc-800 hover:bg-zinc-700 py-4 rounded-3xl text-lg font-medium">Stats</button>
             </div>
@@ -123,6 +124,8 @@
         <!-- MORE -->
         <div id="screen-more" class="screen hidden">
             <div class="space-y-4">
+
+                <!-- Notification status card -->
                 <div class="bg-zinc-900 rounded-3xl p-5">
                     <div class="font-medium mb-3">Notifications</div>
                     <div id="notif-status" class="text-sm text-zinc-400">Checking...</div>
@@ -132,6 +135,7 @@
                         Retry
                     </button>
                 </div>
+
                 <div onclick="takeSnapshot()" class="bg-zinc-900 rounded-3xl p-5 flex gap-4 items-center cursor-pointer">
                     <div class="text-3xl">📸</div>
                     <div>
@@ -204,7 +208,104 @@
         </div>
     </nav>
 
-    <!-- ADD EXPENSE MODAL PATCHED -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ADD EVENT MODAL                                                     -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="modal-event" class="hidden fixed inset-0 bg-black/80 items-end z-[100]">
+        <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto flex flex-col"
+             style="max-height: 90vh;">
+
+            <!-- Fixed header — never scrolls away -->
+            <div class="px-6 pt-5 pb-4 border-b border-zinc-800 shrink-0">
+                <div class="flex justify-between items-center">
+                    <div class="text-xl font-semibold">New Event</div>
+                    <button onclick="hideModal('modal-event')"
+                            class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
+                </div>
+            </div>
+
+            <!-- Scrollable fields -->
+            <div class="overflow-y-auto flex-1 px-6 py-4 space-y-4"
+                 style="-webkit-overflow-scrolling: touch; overscroll-behavior: contain;">
+
+                <!-- Date & Time -->
+                <div>
+                    <label class="text-xs text-zinc-400 block mb-1">Date &amp; Time</label>
+                    <input id="event-dt" type="datetime-local"
+                           onchange="updateOccurrencePreview()"
+                           class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label class="text-xs text-zinc-400 block mb-1">Description</label>
+                    <input id="event-desc" type="text" placeholder="Meeting with client"
+                           class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+                </div>
+
+                <!-- Hashtag -->
+                <div>
+                    <label class="text-xs text-zinc-400 block mb-1">Hashtag</label>
+                    <input id="event-hashtag" type="text" placeholder="#pers"
+                           class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+                    <div class="hashtag-row mt-2" id="hashtag-suggestions"></div>
+                </div>
+
+                <!-- Place -->
+                <div>
+                    <label class="text-xs text-zinc-400 block mb-1">Place</label>
+                    <input id="event-place" type="text" placeholder="Office"
+                           class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+                    <div class="hashtag-row mt-2" id="place-suggestions"></div>
+                </div>
+
+                <!-- Duration -->
+                <div>
+                    <label class="text-xs text-zinc-400 block mb-1">Duration (min)</label>
+                    <input id="event-duration" type="text" inputmode="numeric" placeholder="60"
+                           class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+                    <div class="hashtag-row mt-2" id="duration-suggestions"></div>
+                </div>
+
+                <!-- Recurrence -->
+                <div>
+                    <label class="text-xs text-zinc-400 block mb-1">Recurrence</label>
+                    <select id="event-recurrence"
+                            onchange="onRecurrenceChange()"
+                            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+                        <option value="none">None</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="biweekly">Bi-weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                    </select>
+                </div>
+
+                <!-- Occurrences — shown only when recurrence is selected -->
+                <div id="recurrence-occurrences-section" class="hidden">
+                    <label class="text-xs text-zinc-400 block mb-1">Number of occurrences <span class="text-zinc-500">(including first)</span></label>
+                    <input id="event-occurrences" type="number" min="2" max="100" placeholder="10"
+                           oninput="updateOccurrencePreview()"
+                           class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+                    <div id="occurrence-preview" class="mt-3 space-y-1"></div>
+                </div>
+
+            </div><!-- end scrollable body -->
+
+            <!-- Fixed footer — never scrolls away -->
+            <div class="px-6 py-4 border-t border-zinc-800 flex gap-3 shrink-0">
+                <button onclick="hideModal('modal-event')"
+                        class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
+                <button onclick="saveEvent()"
+                        class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Save Event</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ADD EXPENSE MODAL                                                   -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="modal-expense" class="hidden fixed inset-0 bg-black/80 flex items-end z-[100]">
         <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto max-h-[90vh] overflow-hidden flex flex-col">
             <div class="flex justify-between items-center px-6 pt-5 pb-3 border-b border-zinc-800 shrink-0">
@@ -251,7 +352,45 @@
         </div>
     </div>
 
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ADD INCOME MODAL                                                    -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="modal-income" class="hidden fixed inset-0 bg-black/80 flex items-end z-[100]">
+        <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto flex flex-col"
+             style="max-height: 90vh;">
+            <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-zinc-800 shrink-0">
+                <div class="text-xl font-semibold">New Income</div>
+                <button onclick="hideModal('modal-income')"
+                        class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
+            </div>
+            <div class="overflow-y-auto flex-1 px-6 py-4 space-y-4"
+                 style="-webkit-overflow-scrolling: touch; overscroll-behavior: contain;">
+                <div>
+                    <label class="text-xs text-zinc-400 block mb-1">Date</label>
+                    <input id="inc-date" type="date"
+                           class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+                </div>
+                <div>
+                    <label class="text-xs text-zinc-400 block mb-1">Amount</label>
+                    <input id="inc-amount" type="number" step="0.01" placeholder="0"
+                           class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+                </div>
+                <div>
+                    <label class="text-xs text-zinc-400 block mb-1">Description</label>
+                    <input id="inc-desc" type="text" placeholder="Salary / Freelance"
+                           class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-zinc-800 flex gap-3 shrink-0">
+                <button onclick="hideModal('modal-income')"
+                        class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
+                <button onclick="saveIncome()"
+                        class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Save Income</button>
+            </div>
+        </div>
+    </div>
+
     <!-- App logic -->
     <script type="module" src="js/app.js"></script>
 </body>
-</html>s
+</html>
