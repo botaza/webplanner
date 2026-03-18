@@ -1,5 +1,4 @@
 // js/state.js
-
 export const state = {
     currentScreen: 'screen-dashboard',
     eventsData: [],
@@ -9,5 +8,8 @@ export const state = {
     selectedExpenseTool: null,
     selectedExpenseCategory: null,
     activePlannerHashtag: null,
-    notifPage: 1
+    notifPage: 1,
+    // NEW: Track expanded state for expenses list (Month → Day hierarchy)
+    expandedExpenseMonths: new Set(),
+    expandedExpenseDays: new Set()
 };

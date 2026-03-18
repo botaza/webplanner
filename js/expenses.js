@@ -30,7 +30,9 @@ import {
 } from './expenses-crud.js';
 
 import { 
-    renderExpensesList 
+    renderExpensesList,
+    toggleExpenseMonth,
+    toggleExpenseDay
 } from './expenses-render.js';
 
 import { 
@@ -179,11 +181,15 @@ Object.assign(window, {
     selectExpenseTool,
     selectExpenseCategory,
     
-    // Stats Functions ← THESE WERE MISSING!
+    // Stats Functions
     setStatsView,
     setStatsMonth,
     showStatsMonthPicker,
     refreshExpenseStats,
+    
+    // Expandable List Toggle Functions ← NEW FOR PATCH
+    toggleExpenseMonth,
+    toggleExpenseDay,
     
     // Rendering Helpers
     renderExpenseTools: (tools) => renderExpenseTools(tools || EXPENSE_TOOLS),
