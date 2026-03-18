@@ -16,6 +16,8 @@ import { renderStatsList, renderStatsTotal } from './expenses-render.js';
 // ── LOCAL STATE ──
 let currentStatsView = 'pie-categories'; // pie-categories, pie-tools, list-monthly, filtered-limit
 let currentStatsMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+let currentStatsStartDate = ''; // YYYY-MM-DD (for date range)
+let currentStatsEndDate = ''; // YYYY-MM-DD (for date range)
 let currentLimit = 1000; // Default limit for filtered view
 
 // ── INITIALIZATION ──
@@ -32,7 +34,21 @@ export function initExpenseStats() {
         return;
     }
 
-    // Render controls if not already present
+    // Set default date range (current month)
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+    
+    currentStatsStartDate = firstDay;
+    currentStatsEndDate = lastDay;
+    
+    // Update date inputs in HTML
+    const startInput = document.getElementById('stats-date-start');
+    const endInput = document.getElementById('stats-date-end');
+    if (startInput) startInput.value = currentStatsStartDate;
+    if (endInput) endInput.value = currentStatsEndDate;
+
+    // Render controls
     renderStatsControls();
     
     // Load initial data
@@ -54,11 +70,78 @@ export function setStatsView(view) {
 }
 
 /**
- * Set selected month for stats
+ * Set selected month for stats (legacy support)
  * @param {string} month - YYYY-MM
  */
 export function setStatsMonth(month) {
     currentStatsMonth = month;
+    
+    // Also update date range to match the month
+    const [year, m] = month.split('-');
+    const firstDay = new Date(parseInt(year), parseInt(m) - 1, 1).toISOString().slice(0, 10);
+    const lastDay = new Date(parseInt(year), parseInt(m), 0).toISOString().slice(0, 10);
+    
+    currentStatsStartDate = firstDay;
+    currentStatsEndDate = lastDay;
+    
+    // Update date inputs
+    const startInput = document.getElementById('stats-date-start');
+    const endInput = document.getElementById('stats-date-end');
+    if (startInput) startInput.value = currentStatsStartDate;
+    if (endInput) endInput.value = currentStatsEndDate;
+    
+    renderStatsControls();
+    renderStatsContainer();
+}
+
+/**
+ * Set date range for stats (new feature)
+ * Called from HTML onchange handlers
+ */
+export function setStatsDateRange() {
+    const startInput = document.getElementById('stats-date-start');
+    const endInput = document.getElementById('stats-date-end');
+    
+    if (startInput && startInput.value) {
+        currentStatsStartDate = startInput.value;
+    }
+    if (endInput && endInput.value) {
+        currentStatsEndDate = endInput.value;
+    }
+    
+    // Update month display to show range
+    const monthDisplay = document.getElementById('stats-month-display');
+    if (monthDisplay) {
+        monthDisplay.textContent = `${currentStatsStartDate} → ${currentStatsEndDate}`;
+    }
+    
+    renderStatsContainer();
+}
+
+/**
+ * Reset date range to current month
+ */
+export function resetStatsDateRange() {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+    
+    currentStatsStartDate = firstDay;
+    currentStatsEndDate = lastDay;
+    currentStatsMonth = today.toISOString().slice(0, 7);
+    
+    // Update date inputs
+    const startInput = document.getElementById('stats-date-start');
+    const endInput = document.getElementById('stats-date-end');
+    if (startInput) startInput.value = currentStatsStartDate;
+    if (endInput) endInput.value = currentStatsEndDate;
+    
+    // Update month display
+    const monthDisplay = document.getElementById('stats-month-display');
+    if (monthDisplay) {
+        monthDisplay.textContent = currentStatsMonth;
+    }
+    
     renderStatsControls();
     renderStatsContainer();
 }
@@ -83,18 +166,30 @@ function renderStatsControls() {
     const controls = document.getElementById('expenses-stats-controls');
     if (!controls) return;
 
-    // Update active states
+    // Update view button active states
     document.querySelectorAll('.stats-view-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.view === currentStatsView);
     });
 
-    // Update month display
+    // Update month/date range display
     const monthDisplay = document.getElementById('stats-month-display');
-    if (monthDisplay) monthDisplay.textContent = currentStatsMonth;
+    if (monthDisplay) {
+        if (currentStatsView === 'filtered-limit' || currentStatsView === 'list-monthly') {
+            monthDisplay.textContent = currentStatsMonth;
+        } else {
+            monthDisplay.textContent = `${currentStatsStartDate} → ${currentStatsEndDate}`;
+        }
+    }
 
-    // Update limit input if visible
-    const limitInput = document.getElementById('stats-limit-input');
-    if (limitInput) limitInput.value = currentLimit;
+    // Show/hide filter controls based on view
+    const filterControls = document.getElementById('expenses-filter-controls');
+    if (filterControls) {
+        if (currentStatsView === 'filtered-limit') {
+            filterControls.classList.remove('hidden');
+        } else {
+            filterControls.classList.add('hidden');
+        }
+    }
 }
 
 /**
@@ -112,18 +207,18 @@ export async function renderStatsContainer() {
         </div>`;
 
     try {
-        const startDate = currentStatsMonth + '-01';
-        const endDate = currentStatsMonth + '-31';
-
         if (currentStatsView === 'pie-categories') {
-            const data = await getExpensesByCategory(startDate, endDate);
+            // Use date range for pie charts
+            const data = await getExpensesByCategory(currentStatsStartDate, currentStatsEndDate);
             renderPieChart(container, data, 'category');
             renderStatsTotal(data.total, 'expenses-stats-total');
         } else if (currentStatsView === 'pie-tools') {
-            const data = await getExpensesByTool(startDate, endDate);
+            // Use date range for pie charts
+            const data = await getExpensesByTool(currentStatsStartDate, currentStatsEndDate);
             renderPieChart(container, data, 'tool');
             renderStatsTotal(data.total, 'expenses-stats-total');
         } else if (currentStatsView === 'list-monthly') {
+            // Use month for list view
             const data = getExpensesForMonth(currentStatsMonth);
             container.innerHTML = `
                 <div id="expenses-stats-total"></div>
@@ -135,7 +230,8 @@ export async function renderStatsContainer() {
             renderStatsTotal(total, 'expenses-stats-total');
             renderStatsList(data, 'expenses-stats-list');
         } else if (currentStatsView === 'filtered-limit') {
-            const data = await getExpensesByLimit(startDate, endDate, currentLimit);
+            // Use date range + limit for filtered view
+            const data = await getExpensesByLimit(currentStatsStartDate, currentStatsEndDate, currentLimit);
             container.innerHTML = `
                 <div id="expenses-stats-total"></div>
                 <div class="bg-zinc-900 rounded-3xl p-5">
@@ -164,7 +260,6 @@ export async function renderStatsContainer() {
 export function showStatsMonthPicker() {
     const months = getExpenseMonths();
     if (months.length === 0) {
-        // Default to current if no data
         const selected = prompt("Select month (YYYY-MM):", currentStatsMonth);
         if (selected && /^\d{4}-\d{2}$/.test(selected)) {
             setStatsMonth(selected);
@@ -172,9 +267,15 @@ export function showStatsMonthPicker() {
         return;
     }
     
-    // Simple selection for now
     const selected = prompt("Select month (YYYY-MM):\nAvailable: " + months.join(', '), currentStatsMonth);
     if (selected && /^\d{4}-\d{2}$/.test(selected)) {
         setStatsMonth(selected);
     }
 }
+
+// ── GLOBAL EXPOSURE ──
+// Expose date range functions for HTML onclick/onchange handlers
+Object.assign(window, {
+    setStatsDateRange,
+    resetStatsDateRange
+});

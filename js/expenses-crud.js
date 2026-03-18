@@ -92,7 +92,7 @@ export async function getExpensesByTool(startDate, endDate) {
 }
 
 /**
- * Get expenses filtered by amount limit
+ * Get expenses filtered by amount limit AND date range
  * @param {string} startDate - Start date (YYYY-MM-DD)
  * @param {string} endDate - End date (YYYY-MM-DD)
  * @param {number} minAmount - Minimum amount threshold
