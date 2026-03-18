@@ -4,7 +4,7 @@
 // 1. Service account path is now a DIRECTORY (auto-discovers .json file)
 // 2. Fixed trailing spaces in API URLs
 // 3. Filter out completed events from notification logic
-date_default_timezone_set('UTC+10'); // or 'Australia/Brisbane', 'Australia/Sydney', etc.
+date_default_timezone_set('Asia/Vladivostok'); 
 // ✅ CHANGE: Define DIRECTORY only, not the full file path
 define('SERVICE_ACCOUNT_DIR', '/var/www/html/'); 
 define('TOKENS_FILE', __DIR__ . '/../data/fcm-tokens.json');
@@ -49,7 +49,7 @@ function getOAuthAccessToken(string $saFile): ?string {
   'iss' => $sa['client_email'], 'sub' => $sa['client_email'],
   'aud' => 'https://oauth2.googleapis.com/token',
   'iat' => $now, 'exp' => $now + 3600,
-  'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+  'scope' => 'https://www.googleapis.com/auth/firebase.messaging'
  ]));
  $input = "$header.$payload";
 
