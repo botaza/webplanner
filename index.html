@@ -149,13 +149,13 @@ onchange="window.setStatsDateRange()">
 class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm"
 onchange="window.setStatsDateRange()">
 </div>
-<div class="flex items-end">
+</div>
+<!-- Reset Button - Full Width Below Date Inputs -->
 <button onclick="window.resetStatsDateRange()"
-class="bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded-xl text-xs text-zinc-400">
-Reset
+class="w-full bg-zinc-800 hover:bg-zinc-700 py-2 rounded-xl text-xs text-zinc-400 flex items-center justify-center gap-2">
+<span>🔄</span>
+<span>Reset to Current Month</span>
 </button>
-</div>
-</div>
 </div>
 <!-- Filter Controls (For Limit View - Injected by JS) -->
 <div id="expenses-filter-controls"></div>
