@@ -63,7 +63,7 @@ if ($action === 'update_event') {
     foreach ($data as &$e) {
         if ($e['id'] == $_POST['id']) {
             $e['dt'] = $_POST['dt'] ?? $e['dt'];
-            $e['desc'] => $_POST['desc'] ?? $e['desc'];
+            $e['desc'] = $_POST['desc'] ?? $e['desc'];   //
             $e['hashtag'] = $_POST['hashtag'] ?? $e['hashtag'];
             $e['place'] = $_POST['place'] ?? $e['place'];
             $e['duration'] = $_POST['duration'] ?? ($e['duration'] ?? '');
