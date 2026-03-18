@@ -32,4 +32,4 @@ function renderPlannerHashtagFilter() {
     container.innerHTML = hashtags.map(tag => `<button onclick="setHashtagFilter('${tag}')">#${tag}</button>`).join(' ');
 }
 
-export { renderPlanner, renderPlannerHashtagFilter, applyPlannerFilter: renderPlanner };
+export { renderPlanner, renderPlannerHashtagFilter, renderPlanner as applyPlannerFilter };
