@@ -1,60 +1,142 @@
 body {
-    -webkit-tap-highlight-color: transparent;
+ -webkit-tap-highlight-color: transparent;
 }
 
 .screen {
-    display: none;
+ display: none;
 }
 .screen.active {
-    display: block;
+ display: block;
 }
 
 input[type="datetime-local"],
 input[type="date"] {
-    color-scheme: dark;
+ color-scheme: dark;
 }
 
 /* ── Chips / buttons ─────────────────────────────────────────────────────── */
 .hashtag-chip,
 .tool-btn,
 .category-btn {
-    background: #27272a;
-    border: 1px solid #3f3f46;
-    color: #d4d4d4;
-    padding: 10px 12px;
-    border-radius: 9999px;
-    font-size: 14px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.15s;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
+ background: #27272a;
+ border: 1px solid #3f3f46;
+ color: #d4d4d4;
+ padding: 10px 12px;
+ border-radius: 9999px;
+ font-size: 14px;
+ text-align: center;
+ cursor: pointer;
+ transition: all 0.15s;
+ user-select: none;
+ -webkit-tap-highlight-color: transparent;
 }
 .hashtag-chip:hover,
 .tool-btn:hover,
 .category-btn:hover {
-    background: #3a3a40;
+ background: #3a3a40;
 }
 .hashtag-chip.active,
 .tool-btn.active,
 .category-btn.active {
-    background: #22c55e22;
-    border-color: #22c55e;
-    color: #22c55e;
+ background: #22c55e22;
+ border-color: #22c55e;
+ color: #22c55e;
 }
 
 .hashtag-row,
 #exp-tool-buttons,
 #exp-category-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+ display: flex;
+ flex-wrap: wrap;
+ gap: 10px;
 }
 
 #exp-category-buttons .category-btn {
-    font-size: 24px;
-    padding: 12px;
-    aspect-ratio: 1 / 1;
+ font-size: 24px;
+ padding: 12px;
+ aspect-ratio: 1 / 1;
+}
+
+/* ── Event Card Action Buttons ───────────────────────────────────────────── */
+.event-actions {
+ display: flex;
+ gap: 8px;
+ align-items: center;
+}
+
+.event-btn {
+ background: #27272a;
+ border: 1px solid #3f3f46;
+ color: #d4d4d4;
+ border-radius: 12px;
+ padding: 8px 12px;
+ font-size: 16px;
+ cursor: pointer;
+ transition: all 0.15s ease;
+ user-select: none;
+ -webkit-tap-highlight-color: transparent;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ min-width: 36px;
+ min-height: 36px;
+}
+
+.event-btn:hover {
+ background: #3a3a40;
+ border-color: #52525b;
+ transform: scale(1.05);
+}
+
+.event-btn:active {
+ background: #18181b;
+ transform: scale(0.98);
+}
+
+.event-btn.done {
+ background: #22c55e22;
+ border-color: #22c55e;
+ color: #22c55e;
+}
+.event-btn.done:hover {
+ background: #22c55e33;
+}
+
+.event-btn.reload {
+ background: #3b82f622;
+ border-color: #3b82f6;
+ color: #60a5fa;
+}
+.event-btn.reload:hover {
+ background: #3b82f633;
+}
+
+.event-btn.edit {
+ background: #f59e0b22;
+ border-color: #f59e0b;
+ color: #fbbf24;
+}
+.event-btn.edit:hover {
+ background: #f59e0b33;
+}
+
+.event-btn.delete {
+ background: #ef444422;
+ border-color: #ef4444;
+ color: #f87171;
+}
+.event-btn.delete:hover {
+ background: #ef444433;
+}
+
+/* Touch-friendly sizing for mobile */
+@media (max-width: 768px) {
+ .event-btn {
+  padding: 10px 14px;
+  min-width: 40px;
+  min-height: 40px;
+  font-size: 18px;
+ }
 }
 
 /* ── Prevent input zoom on iOS ───────────────────────────────────────────── */
@@ -64,85 +146,85 @@ input[type="number"],
 input[type="text"],
 select,
 textarea {
-    font-size: 16px !important;
+ font-size: 16px !important;
 }
 
 /* ── Modal base: sits at bottom, slides up ───────────────────────────────── */
 .modal-sheet {
-    /* full-screen overlay */
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.8);
-    z-index: 100;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
+ /* full-screen overlay */
+ position: fixed;
+ inset: 0;
+ background: rgba(0, 0, 0, 0.8);
+ z-index: 100;
+ display: flex;
+ align-items: flex-end;
+ justify-content: center;
 }
 
 /* ── Modal inner panel ───────────────────────────────────────────────────── */
 .modal-sheet > div {
-    width: 100%;
-    max-width: 40rem;          /* max-w-xl */
-    background: #18181b;       /* zinc-900 */
-    border-radius: 1.5rem 1.5rem 0 0;
+ width: 100%;
+ max-width: 40rem; /* max-w-xl */
+ background: #18181b; /* zinc-900 */
+ border-radius: 1.5rem 1.5rem 0 0;
 
-    /* Key fix: limit height so it never covers the full screen,
-       and always leave room to scroll to the top fields */
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
+ /* Key fix: limit height so it never covers the full screen,
+ and always leave room to scroll to the top fields */
+ max-height: 90vh;
+ display: flex;
+ flex-direction: column;
 
-    /* Smooth scroll momentum on iOS */
-    -webkit-overflow-scrolling: touch;
+ /* Smooth scroll momentum on iOS */
+ -webkit-overflow-scrolling: touch;
 }
 
 /* ── Scrollable body inside the panel ───────────────────────────────────── */
 .modal-sheet .modal-body {
-    overflow-y: auto;
-    flex: 1;
-    /* Extra bottom padding so last field clears the keyboard */
-    padding-bottom: env(safe-area-inset-bottom, 16px);
+ overflow-y: auto;
+ flex: 1;
+ /* Extra bottom padding so last field clears the keyboard */
+ padding-bottom: env(safe-area-inset-bottom, 16px);
 }
 
 /* ── Expense modal specifically (already has overflow-y-auto in HTML) ────── */
 #modal-expense > div {
-    max-height: 90vh;
+ max-height: 90vh;
 }
 #modal-expense .overflow-y-auto {
-    -webkit-overflow-scrolling: touch;
-    /* Ensure you can always scroll up to Date field */
-    overscroll-behavior: contain;
+ -webkit-overflow-scrolling: touch;
+ /* Ensure you can always scroll up to Date field */
+ overscroll-behavior: contain;
 }
 
 /* ── Event modal — make the content block scrollable too ─────────────────── */
 #modal-event > div {
-    max-height: 90vh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+ max-height: 90vh;
+ overflow-y: auto;
+ -webkit-overflow-scrolling: touch;
+ overscroll-behavior: contain;
 }
 
 /* ── Keep the sticky action buttons always visible at the bottom ─────────── */
-#modal-event   .flex.gap-3.mt-8,
-#modal-income  .flex.gap-3.mt-8 {
-    position: sticky;
-    bottom: 0;
-    background: #18181b;
-    padding-top: 12px;
-    margin-top: 12px;
-    /* Respect home-bar on newer iPhones */
-    padding-bottom: env(safe-area-inset-bottom, 12px);
+#modal-event .flex.gap-3.mt-8,
+#modal-income .flex.gap-3.mt-8 {
+ position: sticky;
+ bottom: 0;
+ background: #18181b;
+ padding-top: 12px;
+ margin-top: 12px;
+ /* Respect home-bar on newer iPhones */
+ padding-bottom: env(safe-area-inset-bottom, 12px);
 }
 
 /* ── Income modal ─────────────────────────────────────────────────────────── */
 #modal-income > div {
-    max-height: 90vh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+ max-height: 90vh;
+ overflow-y: auto;
+ -webkit-overflow-scrolling: touch;
+ overscroll-behavior: contain;
 }
 
 /* ── Safe-area padding for the bottom nav ────────────────────────────────── */
 nav.fixed.bottom-0 {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+ padding-bottom: env(safe-area-inset-bottom, 0px);
 }
