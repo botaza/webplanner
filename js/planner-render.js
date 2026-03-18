@@ -5,6 +5,7 @@ import { setHashtagFilter } from './planner-filter.js';
 function renderPlanner(events = state.eventsData) {
     const container = document.getElementById('planner-list');
     if (!container) return;
+
     container.innerHTML = events.map(ev => {
         const completedClass = ev.completed ? 'line-through text-zinc-400' : '';
         return `
@@ -21,16 +22,18 @@ function renderPlanner(events = state.eventsData) {
                     ${ev.completed ? 'Mark Incomplete' : 'Complete'}
                 </button>
             </div>
-        </div>
-        `;
+        </div>`;
     }).join('');
 }
 
 function renderPlannerHashtagFilter() {
     const container = document.getElementById('planner-hashtag-filter');
     if (!container) return;
+
     const hashtags = [...new Set(state.eventsData.map(e => e.hashtag).filter(Boolean))];
-    container.innerHTML = hashtags.map(tag => `<button onclick="setHashtagFilter('${tag}')">#${tag}</button>`).join(' ');
+    container.innerHTML = hashtags
+        .map(tag => `<button onclick="setHashtagFilter('${tag}')">#${tag}</button>`)
+        .join(' ');
 }
 
 export { renderPlanner, renderPlannerHashtagFilter, renderPlanner as applyPlannerFilter };
