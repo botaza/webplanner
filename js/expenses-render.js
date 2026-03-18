@@ -1,12 +1,13 @@
 // js/expenses-render.js
 // RENDERING LOGIC FOR EXPENSES LIST
 // Handles drawing the expense cards in the main view and stats views
-// UPDATED: Added expandable month/day grouping for main expenses list
+// UPDATED: Current month pinned at top, rest sort descending + Fixed template strings
 
 import { state } from './state.js';
 
 /**
  * Render the main expenses list with expandable month/day groups
+ * Current month pinned at top, rest sort from most recent to older
  * @param {Array} list - Array of expense objects
  */
 export function renderExpensesList(list) {
@@ -33,8 +34,20 @@ export function renderExpensesList(list) {
         groupedByMonth[month].push(exp);
     });
 
-    // Sort months descending
-    const months = Object.keys(groupedByMonth).sort().reverse();
+    // Get all months and separate current month
+    const allMonths = Object.keys(groupedByMonth).sort().reverse();
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    
+    // Pin current month at top, rest sort descending
+    const months = [];
+    if (groupedByMonth[currentMonth]) {
+        months.push(currentMonth);
+    }
+    allMonths.forEach(m => {
+        if (m !== currentMonth) {
+            months.push(m);
+        }
+    });
 
     // Calculate totals for each month
     const monthTotals = {};
@@ -43,14 +56,11 @@ export function renderExpensesList(list) {
     });
 
     // Initialize expanded state for current month/day
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    const currentDay = new Date().toISOString().slice(0, 10);
-    
     if (state.expandedExpenseMonths.size === 0) {
         state.expandedExpenseMonths.add(currentMonth);
     }
     if (state.expandedExpenseDays.size === 0) {
-        state.expandedExpenseDays.add(currentDay);
+        state.expandedExpenseDays.add(new Date().toISOString().slice(0, 10));
     }
 
     // Render
@@ -59,6 +69,7 @@ export function renderExpensesList(list) {
         const monthTotal = monthTotals[month].toLocaleString('ru-RU');
         const count = groupedByMonth[month].length;
         const monthLabel = formatMonthLabel(month);
+        const isCurrentMonth = month === currentMonth;
 
         // Group by Day within month
         const groupedByDay = {};
@@ -87,7 +98,9 @@ export function renderExpensesList(list) {
                             ${isMonthExpanded ? '📂' : '📁'}
                         </div>
                         <div>
-                            <div class="font-semibold text-zinc-200">${monthLabel}</div>
+                            <div class="font-semibold text-zinc-200">
+                                ${monthLabel}${isCurrentMonth ? ' <span class="text-xs text-emerald-500">(Current)</span>' : ''}
+                            </div>
                             <div class="text-xs text-zinc-500">${count} expense${count !== 1 ? 's' : ''}</div>
                         </div>
                     </div>
