@@ -1,4 +1,5 @@
 // js/planner-crud.js
+// PATCHED: Added support for toggling completion status and date updates
 
 import { state } from './state.js';
 import { api } from './api.js';
@@ -15,12 +16,12 @@ function onRecurrenceChange() {
  const rec = document.getElementById('event-recurrence').value;
  const section = document.getElementById('recurrence-occurrences-section');
  if (rec === 'none') {
- section.classList.add('hidden');
- document.getElementById('occurrence-preview').innerHTML = '';
+  section.classList.add('hidden');
+  document.getElementById('occurrence-preview').innerHTML = '';
  } else {
- section.classList.remove('hidden');
- document.getElementById('event-occurrences').value = RECURRENCE_DEFAULTS[rec] || 6;
- updateOccurrencePreview();
+  section.classList.remove('hidden');
+  document.getElementById('event-occurrences').value = RECURRENCE_DEFAULTS[rec] || 6;
+  updateOccurrencePreview();
  }
 }
 
@@ -28,15 +29,15 @@ function getRecurrenceDates(startDt, recurrence, count) {
  const dates = [];
  const base = new Date(startDt.replace(' ', 'T'));
  for (let i = 0; i < count; i++) {
- const d = new Date(base);
- if (recurrence === 'weekly') d.setDate(base.getDate() + i * 7);
- if (recurrence === 'biweekly') d.setDate(base.getDate() + i * 14);
- if (recurrence === 'monthly') d.setMonth(base.getMonth() + i);
- if (recurrence === 'yearly') d.setFullYear(base.getFullYear() + i);
- const pad = n => String(n).padStart(2, '0');
- const formatted = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate())
- + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':00';
- dates.push(formatted);
+  const d = new Date(base);
+  if (recurrence === 'weekly') d.setDate(base.getDate() + i * 7);
+  if (recurrence === 'biweekly') d.setDate(base.getDate() + i * 14);
+  if (recurrence === 'monthly') d.setMonth(base.getMonth() + i);
+  if (recurrence === 'yearly') d.setFullYear(base.getFullYear() + i);
+  const pad = n => String(n).padStart(2, '0');
+  const formatted = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate())
+   + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':00';
+  dates.push(formatted);
  }
  return dates;
 }
@@ -50,17 +51,17 @@ function updateOccurrencePreview() {
  if (!dt || rec === 'none' || count < 1) { preview.innerHTML = ''; return; }
  const dates = getRecurrenceDates(dt.replace('T', ' ') + ':00', rec, count);
  preview.innerHTML = dates.map((d, i) => {
- const dateObj = new Date(d.replace(' ', 'T'));
- const label = dateObj.toLocaleDateString('ru-RU', {weekday:'short', day:'numeric', month:'short', year:'numeric'});
- return `<div class="text-xs text-zinc-400 py-0.5">${i+1}. ${label}</div>`;
+  const dateObj = new Date(d.replace(' ', 'T'));
+  const label = dateObj.toLocaleDateString('ru-RU', {weekday:'short', day:'numeric', month:'short', year:'numeric'});
+  return `<div class="text-xs text-zinc-400">${i+1}.${label}</div>`;
  }).join('');
 }
 
 function resetEventModalToCreateMode() {
  const saveBtn = document.querySelector('#modal-event .flex.gap-3 button:last-child');
  if (saveBtn) {
- saveBtn.onclick = saveEvent;
- saveBtn.textContent = "Save Event";
+  saveBtn.onclick = saveEvent;
+  saveBtn.textContent = "Save Event";
  }
  document.getElementById('event-dt').value = nowDatetimeLocal();
  document.getElementById('event-desc').value = '';
@@ -91,33 +92,33 @@ async function saveEvent() {
  if (!dt) { alert("Please select date and time"); return; }
  const recurrence = document.getElementById('event-recurrence').value;
  const base = {
- desc: document.getElementById('event-desc').value.trim() || '(no description)',
- hashtag: document.getElementById('event-hashtag').value.trim(),
- place: document.getElementById('event-place').value.trim(),
- duration: document.getElementById('event-duration').value.trim(),
- recurrence
+  desc: document.getElementById('event-desc').value.trim() || '(no description)',
+  hashtag: document.getElementById('event-hashtag').value.trim(),
+  place: document.getElementById('event-place').value.trim(),
+  duration: document.getElementById('event-duration').value.trim(),
+  recurrence
  };
  let datetimes = [dt.replace('T', ' ') + ':00'];
  if (recurrence !== 'none') {
- const count = parseInt(document.getElementById('event-occurrences').value) || 1;
- datetimes = getRecurrenceDates(dt.replace('T', ' ') + ':00', recurrence, count);
+  const count = parseInt(document.getElementById('event-occurrences').value) || 1;
+  datetimes = getRecurrenceDates(dt.replace('T', ' ') + ':00', recurrence, count);
  }
  const groupId = recurrence !== 'none' ? ('grp_' + Date.now()) : '';
  try {
- for (const dtStr of datetimes) {
- const payload = { ...base, dt: dtStr, recurrence_group: groupId };
- const res = await api('add_event', payload);
- if (!res.success) {
- alert("Save failed at " + dtStr + ": " + (res.error || "unknown"));
- return;
- }
- }
- hideModal('modal-event');
- loadPlanner();
- loadDashboard();
+  for (const dtStr of datetimes) {
+   const payload = { ...base, dt: dtStr, recurrence_group: groupId };
+   const res = await api('add_event', payload);
+   if (!res.success) {
+    alert("Save failed at " + dtStr + ": " + (res.error || "unknown"));
+    return;
+   }
+  }
+  hideModal('modal-event');
+  loadPlanner();
+  loadDashboard();
  } catch (err) {
- console.error(err);
- alert("Error saving event: " + err.message);
+  console.error(err);
+  alert("Error saving event: " + err.message);
  }
 }
 
@@ -132,8 +133,8 @@ async function editEvent(id) {
  document.getElementById('event-recurrence').value = ev.recurrence || 'none';
  const saveBtn = document.querySelector('#modal-event .flex.gap-3 button:last-child');
  if (saveBtn) {
- saveBtn.onclick = () => updateEvent(id);
- saveBtn.textContent = "Update Event";
+  saveBtn.onclick = () => updateEvent(id);
+  saveBtn.textContent = "Update Event";
  }
  const modalTitle = document.querySelector('#modal-event .text-xl.font-semibold');
  if (modalTitle) modalTitle.textContent = 'Edit Event';
@@ -153,26 +154,26 @@ async function updateEvent(id) {
  const dt = document.getElementById('event-dt').value;
  if (!dt) return alert("Date & time required");
  const payload = {
- id,
- dt: dt.replace('T', ' '),
- desc: document.getElementById('event-desc').value.trim(),
- hashtag: document.getElementById('event-hashtag').value.trim(),
- place: document.getElementById('event-place').value.trim(),
- duration: document.getElementById('event-duration').value.trim(),
- recurrence: document.getElementById('event-recurrence').value
+  id,
+  dt: dt.replace('T', ' '),
+  desc: document.getElementById('event-desc').value.trim(),
+  hashtag: document.getElementById('event-hashtag').value.trim(),
+  place: document.getElementById('event-place').value.trim(),
+  duration: document.getElementById('event-duration').value.trim(),
+  recurrence: document.getElementById('event-recurrence').value
  };
  try {
- const res = await api('update_event', payload);
- if (res.success) {
- hideModal('modal-event');
- loadPlanner();
- loadDashboard();
- } else {
- alert("Update failed");
- }
+  const res = await api('update_event', payload);
+  if (res.success) {
+   hideModal('modal-event');
+   loadPlanner();
+   loadDashboard();
+  } else {
+   alert("Update failed");
+  }
  } catch (err) {
- console.error(err);
- alert("Error updating event");
+  console.error(err);
+  alert("Error updating event");
  }
 }
 
@@ -183,21 +184,19 @@ async function deleteEvent(id) {
  loadDashboard();
 }
 
-async function markComplete(id) {
- if (!confirm('Mark as done?')) return;
- await api('complete_event', {id});
+// PATCH: markComplete now toggles the completed flag
+async function markComplete(id, completed = true) {
+ // PATCH: No confirmation for quick toggle, but you can add if needed
+ // if (!confirm(completed ? 'Mark as done?' : 'Mark as not done?')) return;
+ await api('complete_event', {id, completed: completed ? 1 : 0});
  loadPlanner();
  loadDashboard();
 }
 
-// --- PATCH: Allow overriding completion flag ---
+// PATCH: New function to reset completed event to incomplete
 async function markIncomplete(id) {
- if (!confirm('Mark as not done?')) return;
- await api('complete_event', {id, completed: 0});
- loadPlanner();
- loadDashboard();
+ await markComplete(id, false); // Reuse markComplete with completed=false
 }
-// --- end patch ---
 
 async function loadPlanner() {
  const data = await api('get_events');
@@ -214,8 +213,8 @@ Object.assign(window, {
  editEvent,
  updateEvent,
  deleteEvent,
- markComplete,
- markIncomplete,
+ markComplete,    // Now accepts optional 'completed' parameter
+ markIncomplete,  // New exported function
  loadPlanner
 });
 
