@@ -91,6 +91,7 @@
                        class="bg-zinc-900 border border-zinc-700 focus:border-emerald-500 rounded-3xl px-5 py-3 w-full text-base">
             </div>
             <div class="hashtag-row mb-6" id="planner-hashtag-filter"></div>
+<!-- ↑ changed mb-4 → mb-6 -->
             <div id="planner-list" class="space-y-3"></div>
             <button onclick="showAddEventModal()"
                     class="fixed bottom-24 right-4 w-14 h-14 bg-emerald-500 hover:bg-emerald-600 rounded-3xl shadow-2xl flex items-center justify-center text-3xl leading-none z-40">
@@ -208,7 +209,7 @@
     </nav>
 
     <!-- ═══════════════════════════════════════════════════════════════════ -->
-    <!-- ADD/EDIT EVENT MODAL                                                -->
+    <!-- ADD EVENT MODAL                                                     -->
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="modal-event" class="hidden fixed inset-0 bg-black/80 items-end z-[100]">
         <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto flex flex-col"
@@ -217,7 +218,7 @@
             <!-- Fixed header — never scrolls away -->
             <div class="px-6 pt-5 pb-4 border-b border-zinc-800 shrink-0">
                 <div class="flex justify-between items-center">
-                    <div id="event-modal-title" class="text-xl font-semibold">New Event</div>
+                    <div class="text-xl font-semibold">New Event</div>
                     <button onclick="hideModal('modal-event')"
                             class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
                 </div>
@@ -229,7 +230,7 @@
 
                 <!-- Date & Time -->
                 <div>
-                    <label class="text-xs text-zinc-400 block mb-1">Date & Time</label>
+                    <label class="text-xs text-zinc-400 block mb-1">Date &amp; Time</label>
                     <input id="event-dt" type="datetime-local"
                            onchange="updateOccurrencePreview()"
                            class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
@@ -388,152 +389,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Global function declarations for inline event handlers -->
-    <script>
-        // Make essential functions globally available
-        window.showAddEventModal = () => {
-            import('./js/planner-crud.js').then(module => {
-                module.showAddEventModal();
-            });
-        };
-        
-        window.saveEvent = () => {
-            import('./js/planner-crud.js').then(module => {
-                module.saveEvent();
-            });
-        };
-        
-        window.hideModal = (modalId) => {
-            import('./js/utils.js').then(module => {
-                module.hideModal(modalId);
-            });
-        };
-        
-        window.showModal = (modalId) => {
-            import('./js/utils.js').then(module => {
-                module.showModal(modalId);
-            });
-        };
-        
-        window.switchScreen = (screenId) => {
-            import('./js/utils.js').then(module => {
-                module.switchScreen(screenId);
-            });
-        };
-        
-        window.filterPlanner = () => {
-            import('./js/planner-filter.js').then(module => {
-                module.filterPlanner();
-            });
-        };
-        
-        window.onRecurrenceChange = () => {
-            import('./js/utils.js').then(module => {
-                module.onRecurrenceChange();
-            });
-        };
-        
-        window.updateOccurrencePreview = () => {
-            import('./js/utils.js').then(module => {
-                module.updateOccurrencePreview();
-            });
-        };
-        
-        window.retryNotifications = () => {
-            import('./js/fcm-client.js').then(module => {
-                module.retryNotifications();
-            });
-        };
-        
-        window.takeSnapshot = () => {
-            import('./js/utils.js').then(module => {
-                module.takeSnapshot();
-            });
-        };
-        
-        window.clearAllData = () => {
-            if (confirm('Are you sure? This will delete ALL data!')) {
-                import('./js/utils.js').then(module => {
-                    module.clearAllData();
-                });
-            }
-        };
-        
-        window.exportData = () => {
-            import('./js/utils.js').then(module => {
-                module.exportData();
-            });
-        };
-        
-        window.clearNotifications = () => {
-            import('./js/notification-history.js').then(module => {
-                module.clearNotifications();
-            });
-        };
-        
-        // Event action functions
-        window.resetEvent = (id) => {
-            import('./js/planner-crud.js').then(module => {
-                module.resetEvent(id);
-                import('./js/planner-render.js').then(r => r.renderPlanner());
-            });
-        };
-
-        window.editEvent = (id) => {
-            import('./js/planner-crud.js').then(module => {
-                module.showEditEventModal(id);
-            });
-        };
-
-        window.toggleEvent = (id) => {
-            import('./js/planner-crud.js').then(module => {
-                module.toggleEventCompletion(id);
-                import('./js/planner-render.js').then(r => r.renderPlanner());
-            });
-        };
-
-        window.deleteEvent = (id) => {
-            if (confirm('Delete this event?')) {
-                import('./js/planner-crud.js').then(module => {
-                    module.deleteEvent(id);
-                    import('./js/planner-render.js').then(r => r.renderPlanner());
-                });
-            }
-        };
-        
-        // Expense functions
-        window.showAddExpenseModal = () => {
-            import('./js/expenses.js').then(module => {
-                module.showAddExpenseModal();
-            });
-        };
-        
-        window.saveExpense = () => {
-            import('./js/expenses.js').then(module => {
-                module.saveExpense();
-            });
-        };
-        
-        window.showMonthPicker = (type) => {
-            import('./js/expenses.js').then(module => {
-                module.showMonthPicker(type);
-            });
-        };
-        
-        // Income functions
-        window.showAddIncomeModal = () => {
-            import('./js/income.js').then(module => {
-                module.showAddIncomeModal();
-            });
-        };
-        
-        window.saveIncome = () => {
-            import('./js/income.js').then(module => {
-                module.saveIncome();
-            });
-        };
-    </script>
 
     <!-- App logic -->
     <script type="module" src="js/app.js"></script>

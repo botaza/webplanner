@@ -2,102 +2,129 @@
 
 import { state } from './state.js';
 
-export async function enableNotifications() {
+const VAPID_KEY = 'BMlwBTFnXAZuDBkyK8UENXQz-kUTTzZGy1HEoNXbV6l-MmUyTilUJmXbVNs-vetYYHUvjLfAfk24hTHU4lJMxYY';
+
+async function registerFcmToken(token) {
+    const storageKey = 'fcm_registered_token';
+    const savedKey = 'fcm_token_saved';
+
     try {
-        const permission = await Notification.requestPermission();
-        state.notificationPermission = permission === 'granted';
-        
-        if (state.notificationPermission && state.messaging) {
-            const token = await state.messaging.getToken({
-                vapidKey: 'YOUR_VAPID_KEY_HERE' // Add your VAPID key
-            });
-            state.fcmToken = token;
-            
-            // Save token to server
-            await fetch('php/save-subscription.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token })
-            });
+        const res = await fetch('php/save-subscription.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token })
+        });
+
+        if (res.ok) {
+            localStorage.setItem(storageKey, token);
+            localStorage.setItem(savedKey, '1');
+            console.log('FCM token saved to server.');
+            updateNotifStatus();
+        } else {
+            localStorage.removeItem(savedKey);
+            console.error('Failed to save FCM token — will retry next launch.');
         }
     } catch (err) {
-        console.error('Failed to enable notifications:', err);
+        localStorage.removeItem(savedKey);
+        console.error('Error saving FCM token — will retry next launch:', err);
     }
 }
 
-export function scheduleNotification(event) {
-    if (!state.notificationPermission || !event || event.completed) return;
-    
-    const eventTime = new Date(event.datetime).getTime();
-    const now = Date.now();
-    const timeUntilEvent = eventTime - now;
-    
-    // Schedule if within 15 minutes and not in the past
-    if (timeUntilEvent > 0 && timeUntilEvent <= 15 * 60 * 1000) {
-        setTimeout(() => {
-            // Double-check event still exists and is not completed
-            const currentEvent = state.events.find(e => e.id === event.id);
-            if (currentEvent && !currentEvent.completed) {
-                showNotification(currentEvent);
+async function enableNotifications() {
+    if (typeof firebase === 'undefined') {
+        console.warn('Firebase SDK not loaded.');
+        return;
+    }
+
+    const alreadySaved = localStorage.getItem('fcm_token_saved') === '1';
+
+    try {
+        if (Notification.permission === 'default') {
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                console.warn('Notification permission denied.');
+                return;
             }
-        }, timeUntilEvent);
+        }
+
+        if (Notification.permission !== 'granted') return;
+
+        const registration = await navigator.serviceWorker.register('firebase-messaging-sw.js');
+        const token = await state.messaging.getToken({
+            vapidKey: VAPID_KEY,
+            serviceWorkerRegistration: registration
+        });
+
+        if (token) {
+            await registerFcmToken(token);
+        } else {
+            console.warn('No FCM token received — will retry next launch.');
+        }
+    } catch (err) {
+        console.error('enableNotifications failed — will retry next launch:', err);
     }
 }
 
-export function showNotification(event) {
-    if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    
-    const title = `Upcoming: ${event.desc}`;
-    const body = `${formatTime(new Date(event.datetime))}${event.place ? ' at ' + event.place : ''}`;
-    
-    new Notification(title, {
-        body,
-        icon: '/icon-192.png',
-        badge: '/badge-72.png',
-        tag: event.id,
-        renotify: true,
-        data: { eventId: event.id }
-    });
-    
-    // Add to notification history
-    addToNotificationHistory({
-        id: Date.now().toString(),
-        eventId: event.id,
-        title,
-        body,
-        timestamp: new Date().toISOString(),
-        read: false
+function initForegroundMessaging() {
+    if (!state.messaging) return;
+
+    state.messaging.onMessage(payload => {
+        const { title, body } = payload.notification || {};
+        if (title) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-lg z-[200] text-sm font-medium';
+            toast.textContent = `🔔 ${title}: ${body}`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
+        }
     });
 }
 
-function addToNotificationHistory(notification) {
-    const history = JSON.parse(localStorage.getItem('notification_history') || '[]');
-    history.unshift(notification);
-    localStorage.setItem('notification_history', JSON.stringify(history.slice(0, 100))); // Keep last 100
-}
-
-function formatTime(date) {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-export function updateNotifStatus() {
-    const statusEl = document.getElementById('notif-status');
+function updateNotifStatus() {
+    const el = document.getElementById('notif-status');
     const retryBtn = document.getElementById('notif-retry-btn');
-    
-    if (!statusEl) return;
-    
-    if (state.notificationPermission) {
-        statusEl.textContent = '✅ Notifications enabled';
-        statusEl.className = 'text-sm text-emerald-400';
+    if (!el) return;
+
+    const permission = Notification.permission;
+    const tokenSaved = localStorage.getItem('fcm_token_saved') === '1';
+    const token = localStorage.getItem('fcm_registered_token');
+
+    if (permission === 'denied') {
+        el.innerHTML = '<span style="color:#f87171">🚫 Blocked — enable in browser settings</span>';
         if (retryBtn) retryBtn.classList.add('hidden');
+    } else if (permission === 'default') {
+        el.innerHTML = '<span style="color:#facc15">⚠️ Permission not granted yet</span>';
+        if (retryBtn) {
+            retryBtn.classList.remove('hidden');
+            retryBtn.textContent = 'Enable notifications';
+        }
+    } else if (!tokenSaved) {
+        el.innerHTML = '<span style="color:#facc15">⚠️ Token not yet saved to server</span>';
+        if (retryBtn) {
+            retryBtn.classList.remove('hidden');
+            retryBtn.textContent = 'Retry';
+        }
     } else {
-        statusEl.textContent = '❌ Notifications disabled. Tap to enable.';
-        statusEl.className = 'text-sm text-amber-400 cursor-pointer';
-        if (retryBtn) retryBtn.classList.remove('hidden');
+        const short = token ? ('…' + token.slice(-12)) : '';
+        el.innerHTML = '<span style="color:#4ade80">✅ Active</span>'
+            + (short ? `<span style="color:#52525b;font-size:11px;margin-left:8px;">${short}</span>` : '');
+        if (retryBtn) retryBtn.classList.add('hidden');
     }
 }
 
-export async function retryNotifications() {
+async function retryNotifications() {
+    const el = document.getElementById('notif-status');
+    if (el) el.innerHTML = '<span style="color:#a1a1aa">⏳ Trying...</span>';
     await enableNotifications();
     updateNotifStatus();
 }
+
+Object.assign(window, {
+    retryNotifications,
+    updateNotifStatus
+});
+
+export {
+    enableNotifications,
+    updateNotifStatus
+};

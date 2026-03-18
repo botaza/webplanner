@@ -1,154 +1,225 @@
 // js/planner-crud.js
 
 import { state } from './state.js';
+import { api } from './api.js';
+import { hideModal } from './utils.js';
 import { renderPlanner } from './planner-render.js';
-import { updateOccurrencePreview, hideModal, showModal } from './utils.js';
-import { scheduleNotification } from './fcm-client.js';
+import { loadDashboard } from './dashboard.js';
+import { nowDatetimeLocal } from './date-utils.js';
+import { renderHashtagSuggestions, renderPlaceSuggestions, renderDurationSuggestions } from './suggestions.js';
+import { renderPlannerHashtagFilter, applyPlannerFilter } from './planner-filter.js'; // <--- fixed import
 
-export function loadPlanner() {
-    state.loadEvents();
-    renderPlanner();
-}
+const RECURRENCE_DEFAULTS = { weekly: 10, biweekly: 6, monthly: 6, yearly: 3 };
 
-export function saveEvent() {
-    const id = state.currentEditId || Date.now().toString();
-    const datetime = document.getElementById('event-dt').value;
-    const desc = document.getElementById('event-desc').value;
-    const hashtag = document.getElementById('event-hashtag').value;
-    const place = document.getElementById('event-place').value;
-    const duration = document.getElementById('event-duration').value;
-    const recurrence = document.getElementById('event-recurrence').value;
-    const occurrences = document.getElementById('event-occurrences')?.value;
-    
-    if (!datetime || !desc) {
-        alert('Date and description are required');
-        return;
-    }
-    
-    const event = {
-        id,
-        datetime,
-        desc,
-        hashtag,
-        place,
-        duration: duration ? parseInt(duration) : null,
-        recurrence,
-        occurrences: occurrences ? parseInt(occurrences) : null,
-        completed: false,
-        occurrenceCount: 0,
-        createdAt: new Date().toISOString()
-    };
-    
-    // Check if editing existing event
-    const existingIndex = state.events.findIndex(e => e.id === id);
-    if (existingIndex >= 0) {
-        // Preserve completion status if not explicitly reset
-        const wasCompleted = state.events[existingIndex].completed;
-        const dateChanged = state.events[existingIndex].datetime !== datetime;
-        
-        event.completed = dateChanged ? false : wasCompleted;
-        event.occurrenceCount = state.events[existingIndex].occurrenceCount || 0;
-        
-        state.events[existingIndex] = event;
+function onRecurrenceChange() {
+    const rec = document.getElementById('event-recurrence').value;
+    const section = document.getElementById('recurrence-occurrences-section');
+    if (rec === 'none') {
+        section.classList.add('hidden');
+        document.getElementById('occurrence-preview').innerHTML = '';
     } else {
-        state.events.push(event);
+        section.classList.remove('hidden');
+        document.getElementById('event-occurrences').value = RECURRENCE_DEFAULTS[rec] || 6;
+        updateOccurrencePreview();
     }
-    
-    state.saveEvents();
-    
-    // Schedule notification if applicable
-    if (state.shouldNotifyEvent(event)) {
-        scheduleNotification(event);
-    }
-    
-    hideModal('modal-event');
-    state.currentEditId = null;
-    renderPlanner();
 }
 
-export function showAddEventModal() {
-    // Reset form
-    document.getElementById('event-dt').value = '';
+function getRecurrenceDates(startDt, recurrence, count) {
+    const dates = [];
+    const base = new Date(startDt.replace(' ', 'T'));
+    for (let i = 0; i < count; i++) {
+        const d = new Date(base);
+        if (recurrence === 'weekly') d.setDate(base.getDate() + i * 7);
+        if (recurrence === 'biweekly') d.setDate(base.getDate() + i * 14);
+        if (recurrence === 'monthly') d.setMonth(base.getMonth() + i);
+        if (recurrence === 'yearly') d.setFullYear(base.getFullYear() + i);
+        const pad = n => String(n).padStart(2, '0');
+        const formatted = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate())
+            + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':00';
+        dates.push(formatted);
+    }
+    return dates;
+}
+
+function updateOccurrencePreview() {
+    const rec = document.getElementById('event-recurrence').value;
+    const count = parseInt(document.getElementById('event-occurrences').value) || 0;
+    const dt = document.getElementById('event-dt').value;
+    const preview = document.getElementById('occurrence-preview');
+    if (!preview) return;
+    if (!dt || rec === 'none' || count < 1) { preview.innerHTML = ''; return; }
+    const dates = getRecurrenceDates(dt.replace('T', ' ') + ':00', rec, count);
+    preview.innerHTML = dates.map((d, i) => {
+        const dateObj = new Date(d.replace(' ', 'T'));
+        const label = dateObj.toLocaleDateString('ru-RU', {weekday:'short', day:'numeric', month:'short', year:'numeric'});
+        return `<div class="text-xs text-zinc-400 flex items-center gap-2">
+            <span class="text-emerald-500 shrink-0">${i+1}.</span>
+            <span>${label}</span>
+        </div>`;
+    }).join('');
+}
+
+function resetEventModalToCreateMode() {
+    const saveBtn = document.querySelector('#modal-event .flex.gap-3 button:last-child');
+    if (saveBtn) {
+        saveBtn.onclick = saveEvent;
+        saveBtn.textContent = "Save Event";
+    }
+    document.getElementById('event-dt').value = nowDatetimeLocal();
     document.getElementById('event-desc').value = '';
     document.getElementById('event-hashtag').value = '';
     document.getElementById('event-place').value = '';
     document.getElementById('event-duration').value = '';
     document.getElementById('event-recurrence').value = 'none';
-    
-    const occurrencesSection = document.getElementById('recurrence-occurrences-section');
-    if (occurrencesSection) occurrencesSection.classList.add('hidden');
-    
-    document.getElementById('event-occurrences').value = '';
-    
-    state.currentEditId = null;
-    showModal('modal-event');
+    document.getElementById('recurrence-occurrences-section').classList.add('hidden');
+    document.getElementById('occurrence-preview').innerHTML = '';
+    document.querySelectorAll('#hashtag-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('#place-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('#duration-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
+    const modalTitle = document.querySelector('#modal-event .text-xl.font-semibold');
+    if (modalTitle) modalTitle.textContent = 'New Event';
 }
 
-export function showEditEventModal(id) {
-    const event = state.events.find(e => e.id === id);
-    if (!event) return;
-    
-    // Populate form
-    document.getElementById('event-dt').value = event.datetime;
-    document.getElementById('event-desc').value = event.desc;
-    document.getElementById('event-hashtag').value = event.hashtag || '';
-    document.getElementById('event-place').value = event.place || '';
-    document.getElementById('event-duration').value = event.duration || '';
-    document.getElementById('event-recurrence').value = event.recurrence || 'none';
-    
-    if (event.occurrences) {
-        document.getElementById('event-occurrences').value = event.occurrences;
-        document.getElementById('recurrence-occurrences-section')?.classList.remove('hidden');
-    } else {
-        document.getElementById('recurrence-occurrences-section')?.classList.add('hidden');
+function showAddEventModal() {
+    resetEventModalToCreateMode();
+    document.getElementById('modal-event').classList.remove('hidden');
+    document.getElementById('modal-event').classList.add('flex');
+    renderHashtagSuggestions();
+    renderPlaceSuggestions();
+    renderDurationSuggestions();
+}
+
+async function saveEvent() {
+    const dt = document.getElementById('event-dt').value;
+    if (!dt) { alert("Please select date and time"); return; }
+    const recurrence = document.getElementById('event-recurrence').value;
+    const base = {
+        desc: document.getElementById('event-desc').value.trim() || '(no description)',
+        hashtag: document.getElementById('event-hashtag').value.trim(),
+        place: document.getElementById('event-place').value.trim(),
+        duration: document.getElementById('event-duration').value.trim(),
+        recurrence
+    };
+    let datetimes = [dt.replace('T', ' ') + ':00'];
+    if (recurrence !== 'none') {
+        const count = parseInt(document.getElementById('event-occurrences').value) || 1;
+        datetimes = getRecurrenceDates(dt.replace('T', ' ') + ':00', recurrence, count);
     }
-    
-    state.currentEditId = id;
-    showModal('modal-event');
-}
-
-export function deleteEvent(id) {
-    state.events = state.events.filter(e => e.id !== id);
-    state.saveEvents();
-}
-
-export function toggleEventCompletion(id) {
-    const event = state.events.find(e => e.id === id);
-    if (event) {
-        event.completed = !event.completed;
-        
-        // If resetting to incomplete, ensure notifications are re-enabled
-        if (!event.completed) {
-            // Check if it should be notified now
-            if (state.shouldNotifyEvent(event)) {
-                scheduleNotification(event);
+    const groupId = recurrence !== 'none' ? ('grp_' + Date.now()) : '';
+    try {
+        for (const dtStr of datetimes) {
+            const payload = { ...base, dt: dtStr, recurrence_group: groupId };
+            const res = await api('add_event', payload);
+            if (!res.success) {
+                alert("Save failed at " + dtStr + ": " + (res.error || "unknown"));
+                return;
             }
         }
-        
-        state.saveEvents();
+        hideModal('modal-event');
+        loadPlanner();
+        loadDashboard();
+    } catch (err) {
+        console.error(err);
+        alert("Error saving event: " + err.message);
     }
 }
 
-// NEW: Explicit reset function
-export function resetEvent(id) {
-    if (state.resetEvent(id)) {
-        const event = state.events.find(e => e.id === id);
-        if (event && state.shouldNotifyEvent(event)) {
-            scheduleNotification(event);
-        }
-        return true;
+async function editEvent(id) {
+    const ev = state.eventsData.find(e => e.id == id);
+    if (!ev) return;
+    document.getElementById('event-dt').value = ev.dt.replace(' ', 'T');
+    document.getElementById('event-desc').value = ev.desc || '';
+    document.getElementById('event-hashtag').value = ev.hashtag || '';
+    document.getElementById('event-place').value = ev.place || '';
+    document.getElementById('event-duration').value = ev.duration || '';
+    document.getElementById('event-recurrence').value = ev.recurrence || 'none';
+    const saveBtn = document.querySelector('#modal-event .flex.gap-3 button:last-child');
+    if (saveBtn) {
+        saveBtn.onclick = () => updateEvent(id);
+        saveBtn.textContent = "Update Event";
     }
-    return false;
+    const modalTitle = document.querySelector('#modal-event .text-xl.font-semibold');
+    if (modalTitle) modalTitle.textContent = 'Edit Event';
+    document.getElementById('modal-event').classList.remove('hidden');
+    document.getElementById('modal-event').classList.add('flex');
+    renderHashtagSuggestions();
+    renderPlaceSuggestions();
+    renderDurationSuggestions();
+    if (ev.hashtag) selectHashtag(ev.hashtag);
+    if (ev.place) selectPlace(ev.place);
+    if (ev.duration) selectDuration(ev.duration);
+    document.getElementById('recurrence-occurrences-section').classList.add('hidden');
+    document.getElementById('occurrence-preview').innerHTML = '';
 }
 
-// NEW: Update event date
-export function updateEventDate(id, newDatetime) {
-    if (state.updateEventDate(id, newDatetime)) {
-        const event = state.events.find(e => e.id === id);
-        if (event && state.shouldNotifyEvent(event)) {
-            scheduleNotification(event);
+async function updateEvent(id) {
+    const dt = document.getElementById('event-dt').value;
+    if (!dt) return alert("Date & time required");
+    const payload = {
+        id,
+        dt: dt.replace('T', ' '),
+        desc: document.getElementById('event-desc').value.trim(),
+        hashtag: document.getElementById('event-hashtag').value.trim(),
+        place: document.getElementById('event-place').value.trim(),
+        duration: document.getElementById('event-duration').value.trim(),
+        recurrence: document.getElementById('event-recurrence').value
+    };
+    try {
+        const res = await api('update_event', payload);
+        if (res.success) {
+            hideModal('modal-event');
+            loadPlanner();
+            loadDashboard();
+        } else {
+            alert("Update failed");
         }
-        return true;
+    } catch (err) {
+        console.error(err);
+        alert("Error updating event");
     }
-    return false;
 }
+
+async function deleteEvent(id) {
+    if (!confirm('Delete this event?')) return;
+    await api('delete_event', {id});
+    loadPlanner();
+    loadDashboard();
+}
+
+async function markComplete(id) {
+    if (!confirm('Mark as done?')) return;
+    await api('complete_event', {id});
+    loadPlanner();
+    loadDashboard();
+}
+
+// --- PATCH: Allow overriding completion flag ---
+async function markIncomplete(id) {
+    if (!confirm('Mark as not done?')) return;
+    await api('complete_event', {id, completed: 0});
+    loadPlanner();
+    loadDashboard();
+}
+// --- end patch ---
+
+async function loadPlanner() {
+    const data = await api('get_events');
+    state.eventsData = data || [];
+    renderPlannerHashtagFilter();
+    applyPlannerFilter();
+}
+
+Object.assign(window, {
+    onRecurrenceChange,
+    updateOccurrencePreview,
+    showAddEventModal,
+    saveEvent,
+    editEvent,
+    updateEvent,
+    deleteEvent,
+    markComplete,
+    markIncomplete, // <--- export new function
+    loadPlanner
+});
+
+export { loadPlanner, saveEvent, markIncomplete };

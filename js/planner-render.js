@@ -1,103 +1,141 @@
 // js/planner-render.js
 
 import { state } from './state.js';
-import { formatDate } from './date-utils.js';
-import { deleteEvent, toggleEventCompletion, resetEvent } from './planner-crud.js';
-import { showEditEventModal } from './planner-crud.js';
+import { nowAsDatetimeString, currentMonthKey } from './date-utils.js';
+import { getOpenGroups, setGroupOpen } from './planner-filter.js';
 
-export function renderPlanner(eventsToRender = null) {
+function renderPlanner(list) {
     const container = document.getElementById('planner-list');
-    if (!container) return;
-    
-    const events = eventsToRender || state.events;
-    
-    if (!events.length) {
-        container.innerHTML = '<div class="text-zinc-500 text-center py-8">No events yet. Tap + to add one.</div>';
+    container.innerHTML = '';
+    if (!list.length) {
+        container.innerHTML = '<div class="text-zinc-500 text-sm text-center py-8">No events</div>';
         return;
     }
-    
-    // Sort by date (newest first)
-    const sorted = [...events].sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
-    
-    let html = '';
-    sorted.forEach(event => {
-        const date = new Date(event.datetime);
-        const isCompleted = event.completed || false;
-        
-        html += `
-        <div class="bg-zinc-900 rounded-3xl p-5 ${isCompleted ? 'opacity-60' : ''}">
-            <div class="flex justify-between items-start">
-                <div class="flex-1">
-                    <div class="text-xs text-zinc-500 mb-1">${formatDate(date)}</div>
-                    <div class="font-medium text-lg mb-2 ${isCompleted ? 'line-through' : ''}">${event.desc}</div>
-                    
-                    <div class="flex flex-wrap gap-2 text-sm text-zinc-400 mb-3">
-                        ${event.hashtag ? `<span class="bg-zinc-800 px-3 py-1 rounded-full">${event.hashtag}</span>` : ''}
-                        ${event.place ? `<span class="bg-zinc-800 px-3 py-1 rounded-full">📍 ${event.place}</span>` : ''}
-                        ${event.duration ? `<span class="bg-zinc-800 px-3 py-1 rounded-full">⏱️ ${event.duration}min</span>` : ''}
-                        ${event.recurrence !== 'none' ? `<span class="bg-zinc-800 px-3 py-1 rounded-full">🔄 ${event.recurrence}</span>` : ''}
-                    </div>
-                </div>
-                
-                <div class="flex gap-2">
-                    <!-- Reset button (only for completed) -->
-                    ${isCompleted ? `
-                    <button onclick="window.resetEvent('${event.id}')" 
-                            class="w-10 h-10 bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-400 hover:bg-amber-500/30">
-                        ↩️
-                    </button>
-                    ` : ''}
-                    
-                    <!-- Edit button -->
-                    <button onclick="window.editEvent('${event.id}')" 
-                            class="w-10 h-10 bg-blue-500/20 rounded-2xl flex items-center justify-center text-blue-400 hover:bg-blue-500/30">
-                        ✏️
-                    </button>
-                    
-                    <!-- Complete toggle -->
-                    <button onclick="window.toggleEvent('${event.id}')" 
-                            class="w-10 h-10 ${isCompleted ? 'bg-zinc-700' : 'bg-emerald-500/20'} rounded-2xl flex items-center justify-center ${isCompleted ? 'text-zinc-400' : 'text-emerald-400'} hover:bg-opacity-30">
-                        ${isCompleted ? '↩️' : '✓'}
-                    </button>
-                    
-                    <!-- Delete -->
-                    <button onclick="if(confirm('Delete this event?')) window.deleteEvent('${event.id}')" 
-                            class="w-10 h-10 bg-red-500/20 rounded-2xl flex items-center justify-center text-red-400 hover:bg-red-500/30">
-                        ✕
-                    </button>
-                </div>
-            </div>
-            
-            ${event.recurrence !== 'none' && event.occurrences ? `
-            <div class="text-xs text-zinc-600 mt-3 border-t border-zinc-800 pt-3">
-                Repeats ${event.recurrence} · ${event.occurrences} total
-                ${event.occurrenceCount ? ` · ${event.occurrenceCount} completed` : ''}
-            </div>
-            ` : ''}
-        </div>
-        `;
+    const nowStr = nowAsDatetimeString();
+    const currentMonth = nowStr.slice(0, 7);
+    const todayStr = nowStr.slice(0, 10);
+    const openGroups = getOpenGroups();
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    const months = {};
+    list.forEach(ev => {
+        const mKey = (ev.dt || '').slice(0, 7);
+        const dKey = (ev.dt || '').slice(0, 10);
+        if (!months[mKey]) months[mKey] = {};
+        if (!months[mKey][dKey]) months[mKey][dKey] = [];
+        months[mKey][dKey].push(ev);
     });
-    
-    container.innerHTML = html;
+
+    Object.keys(months).sort().forEach(monthKey => {
+        const days = months[monthKey];
+        const isPastM = monthKey < currentMonth;
+        const isCurrentM = monthKey === currentMonth;
+        const totalEvents = Object.values(days).flat().length;
+
+        const mOpenKey = 'm:' + monthKey;
+        const mIsOpen = mOpenKey in openGroups ? openGroups[mOpenKey] : !isPastM;
+
+        const [year, month] = monthKey.split('-');
+        const mLabel = monthNames[parseInt(month) - 1] + ' ' + year;
+
+        const mHeader = document.createElement('div');
+        mHeader.className = 'flex items-center justify-between px-1 py-2 cursor-pointer select-none mt-1';
+        mHeader.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span class="text-sm font-bold ${isPastM ? 'text-zinc-500' : isCurrentM ? 'text-emerald-400' : 'text-zinc-100'}">${mLabel}</span>
+                <span class="text-xs ${isPastM ? 'text-zinc-600' : 'text-zinc-500'}">(${totalEvents})</span>
+                ${isCurrentM ? '<span class="text-xs text-emerald-700 font-medium">now</span>' : ''}
+            </div>
+            <span class="text-zinc-500 text-xs" id="mchev-${monthKey}">${mIsOpen ? '▼' : '▶'}</span>
+        `;
+        mHeader.onclick = () => {
+            const body = document.getElementById('mgroup-' + monthKey);
+            const chev = document.getElementById('mchev-' + monthKey);
+            const isNowOpen = body.style.display !== 'none';
+            body.style.display = isNowOpen ? 'none' : 'block';
+            chev.textContent = isNowOpen ? '▶' : '▼';
+            setGroupOpen(mOpenKey, !isNowOpen);
+        };
+        container.appendChild(mHeader);
+
+        const mDivider = document.createElement('div');
+        mDivider.className = 'border-t border-zinc-800';
+        container.appendChild(mDivider);
+
+        const mBody = document.createElement('div');
+        mBody.id = 'mgroup-' + monthKey;
+        mBody.className = 'mb-3';
+        mBody.style.display = mIsOpen ? 'block' : 'none';
+
+        Object.keys(days).sort().forEach(dayKey => {
+            const dayEvents = days[dayKey];
+            const isPastD = dayKey < todayStr;
+            const isToday = dayKey === todayStr;
+            const dOpenKey = 'd:' + dayKey;
+            const dIsOpen = dOpenKey in openGroups ? openGroups[dOpenKey] : !isPastD;
+            const dayDate = new Date(dayKey + 'T00:00:00');
+            const weekday = dayDate.toLocaleDateString('ru-RU', {weekday: 'short'});
+            const dayNum = dayDate.getDate();
+            const dLabel = weekday + ' ' + dayNum;
+
+            const dHeader = document.createElement('div');
+            dHeader.className = 'flex items-center justify-between px-2 py-1.5 cursor-pointer select-none';
+            dHeader.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold w-16 ${isPastD ? 'text-zinc-600' : isToday ? 'text-emerald-400' : 'text-zinc-300'}">${dLabel}</span>
+                    <span class="text-xs text-zinc-600">${dayEvents.length} event${dayEvents.length !== 1 ? 's' : ''}</span>
+                    ${isToday ? '<span class="text-xs text-emerald-700 font-medium">today</span>' : ''}
+                </div>
+                <span class="text-zinc-600 text-xs" id="dchev-${dayKey}">${dIsOpen ? '▾' : '▸'}</span>
+            `;
+            dHeader.onclick = (e) => {
+                e.stopPropagation();
+                const body = document.getElementById('dgroup-' + dayKey);
+                const chev = document.getElementById('dchev-' + dayKey);
+                const isNowOpen = body.style.display !== 'none';
+                body.style.display = isNowOpen ? 'none' : 'block';
+                chev.textContent = isNowOpen ? '▸' : '▾';
+                setGroupOpen(dOpenKey, !isNowOpen);
+            };
+            mBody.appendChild(dHeader);
+
+            const dBody = document.createElement('div');
+            dBody.id = 'dgroup-' + dayKey;
+            dBody.className = 'space-y-1.5 pl-2 pb-1';
+            dBody.style.display = dIsOpen ? 'block' : 'none';
+
+            dayEvents.forEach(ev => {
+                const dt = new Date(ev.dt.replace(' ', 'T'));
+                const timeStr = dt.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
+                const isPastEv = (ev.dt || '') < nowStr;
+                const card = document.createElement('div');
+                card.className = `bg-zinc-900 rounded-2xl px-3 py-2.5 card flex gap-3 ${isPastEv ? 'opacity-40' : ''}`;
+                card.innerHTML = `
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-xs font-semibold ${isPastEv ? 'text-zinc-500' : 'text-emerald-400'}">${timeStr}</span>
+                            ${ev.hashtag ? `<span class="text-xs bg-zinc-800 px-2 py-0.5 rounded-xl">${ev.hashtag}</span>` : ''}
+                        </div>
+                        <div class="font-medium text-sm mt-0.5 ${isPastEv ? 'text-zinc-500' : 'text-zinc-100'}">${ev.desc}</div>
+                        <div class="flex gap-3 text-xs mt-0.5 text-zinc-500 flex-wrap">
+                            ${ev.place ? `<span>📍 ${ev.place}</span>` : ''}
+                            ${ev.duration ? `<span>⏱ ${ev.duration} min</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end justify-between shrink-0 gap-2">
+                        <div onclick="editEvent('${ev.id}'); event.stopPropagation()"
+                             class="text-emerald-400 text-sm cursor-pointer">✏️</div>
+                        <div onclick="deleteEvent('${ev.id}'); event.stopPropagation()"
+                             class="text-red-400 text-sm cursor-pointer">🗑</div>
+                    </div>
+                `;
+                card.onclick = () => markComplete(ev.id);
+                dBody.appendChild(card);
+            });
+            mBody.appendChild(dBody);
+        });
+        container.appendChild(mBody);
+    });
 }
 
-// Make functions available globally for onclick handlers
-window.toggleEvent = (id) => {
-    toggleEventCompletion(id);
-    renderPlanner();
-};
-
-window.deleteEvent = (id) => {
-    deleteEvent(id);
-    renderPlanner();
-};
-
-window.resetEvent = (id) => {
-    if (state.resetEvent(id)) {
-        renderPlanner();
-    }
-};
-
-window.editEvent = (id) => {
-    showEditEventModal(id);
-};
+export { renderPlanner };
