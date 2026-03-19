@@ -93,7 +93,7 @@ textarea {
     -webkit-overflow-scrolling: touch;
 }
 
-/* ── Scrollable body inside the panel ───────────────────────────────────── */
+/* ── Scrollable body inside the panel ───────────────────────────────── */
 .modal-sheet .modal-body {
     overflow-y: auto;
     flex: 1;
@@ -284,7 +284,6 @@ textarea:focus-visible {
 }
 
 /* ── Planner Card Action Icons ───────────────────────────────────────────── */
-/* Fallback styles for action buttons (complements Tailwind classes) */
 #planner-list .w-8.h-8 {
     width: 32px;
     height: 32px;
@@ -319,7 +318,6 @@ textarea:focus-visible {
     }
 }
 
-/* Left and right action groups spacing */
 #planner-list .flex.gap-1.items-center {
     gap: 4px;
 }
@@ -328,7 +326,6 @@ textarea:focus-visible {
     margin-right: 8px;
 }
 
-/* Ensure text doesn't overlap on very small screens */
 @media (max-width: 360px) {
     #planner-list .w-8.h-8 {
         width: 28px;
@@ -341,10 +338,29 @@ textarea:focus-visible {
     }
 }
 
-/* Touch-friendly tap targets */
 @media (max-width: 768px) {
     #planner-list .w-8.h-8 {
         min-width: 32px;
         min-height: 32px;
     }
+}
+
+/* ── #completed chip — distinct "archive" appearance ─────────────────────── */
+/* Resting state: muted amber tone to signal "this is different" */
+#planner-hashtag-filter .hashtag-chip[data-tag="#completed"] {
+    border-color: #78716c;
+    color: #a8a29e;
+}
+
+#planner-hashtag-filter .hashtag-chip[data-tag="#completed"]:hover {
+    background: #292524;
+    border-color: #a8a29e;
+    color: #d6d3d1;
+}
+
+/* Active state: amber instead of green — clearly an "archive" view */
+#planner-hashtag-filter .hashtag-chip[data-tag="#completed"].active {
+    background: #78716c22;
+    border-color: #d97706;
+    color: #fbbf24;
 }

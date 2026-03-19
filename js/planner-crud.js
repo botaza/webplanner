@@ -5,6 +5,7 @@
 // PATCHED 3: Added daily recurrence defaults
 // PATCHED 4: Changed minimum occurrences from 2 to 1
 // PATCHED 5: Fixed recurrence date calculation to start AFTER original date
+// PATCHED 6: markComplete sets hashtag to #completed and saves original_hashtag; markIncomplete restores it
 
 import { state } from './state.js';
 import { api } from './api.js';
@@ -16,7 +17,7 @@ import { renderHashtagSuggestions, renderPlaceSuggestions, renderDurationSuggest
 import { renderPlannerHashtagFilter, applyPlannerFilter } from './planner-filter.js';
 
 const RECURRENCE_DEFAULTS = { 
- daily: 30,      // Added daily default (30 days)
+ daily: 30,
  weekly: 10, 
  biweekly: 6, 
  monthly: 6, 
@@ -36,11 +37,9 @@ function onRecurrenceChange() {
  }
 }
 
-// FIXED: Now starts from i=1 to generate dates AFTER the original
 function getRecurrenceDates(startDt, recurrence, count) {
  const dates = [];
  const base = new Date(startDt.replace(' ', 'T'));
- // Start from 1 to exclude the original date (we want NEW dates only)
  for (let i = 1; i <= count; i++) {
   const d = new Date(base);
   if (recurrence === 'daily') d.setDate(base.getDate() + i);
@@ -110,13 +109,12 @@ async function saveEvent() {
   hashtag: document.getElementById('event-hashtag').value.trim(),
   place: document.getElementById('event-place').value.trim(),
   duration: document.getElementById('event-duration').value.trim(),
-  recurrence
+  recurrence,
+  original_hashtag: ''
  };
  let datetimes = [dt.replace('T', ' ') + ':00'];
  if (recurrence !== 'none') {
   const count = parseInt(document.getElementById('event-occurrences').value) || 1;
-  // For new event creation, we include the original date (i=0) plus future dates
-  // This is different from repeat function which only creates future dates
   const allDates = [];
   const baseDate = new Date(dt.replace('T', ' ') + ':00');
   for (let i = 0; i < count; i++) {
@@ -152,40 +150,34 @@ async function saveEvent() {
  }
 }
 
-// FIXED: editEvent now properly populates ALL fields including recurrence and chips
 async function editEvent(id) {
     const ev = state.eventsData.find(e => e.id == id);
     if (!ev) return;
     
-    // First, set up the modal for editing mode BEFORE populating fields
     const saveBtn = document.querySelector('#modal-event .flex.gap-3 button:last-child');
     if (saveBtn) {
         saveBtn.onclick = () => updateEvent(id);
         saveBtn.textContent = "Update Event";
     }
     
-    // Set modal title
     const modalTitle = document.querySelector('#modal-event .text-xl.font-semibold');
     if (modalTitle) modalTitle.textContent = 'Edit Event';
     
-    // NOW populate ALL fields
     document.getElementById('event-dt').value = ev.dt.replace(' ', 'T');
     document.getElementById('event-desc').value = ev.desc || '';
-    document.getElementById('event-hashtag').value = ev.hashtag || '';
+    // Show original hashtag in edit mode if event is completed
+    document.getElementById('event-hashtag').value = ev.original_hashtag || ev.hashtag || '';
     document.getElementById('event-place').value = ev.place || '';
     document.getElementById('event-duration').value = ev.duration || '';
     
-    // Handle recurrence field
     const recurrenceSelect = document.getElementById('event-recurrence');
     if (recurrenceSelect) {
         recurrenceSelect.value = ev.recurrence || 'none';
     }
     
-    // Handle recurrence section visibility
     const recurrenceSection = document.getElementById('recurrence-occurrences-section');
     if (ev.recurrence && ev.recurrence !== 'none') {
         recurrenceSection.classList.remove('hidden');
-        // Set a default occurrences value
         document.getElementById('event-occurrences').value = '10';
         updateOccurrencePreview();
     } else {
@@ -193,49 +185,34 @@ async function editEvent(id) {
         document.getElementById('occurrence-preview').innerHTML = '';
     }
     
-    // Clear any previously active chips
     document.querySelectorAll('#hashtag-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('#place-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('#duration-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
     
-    // Show the modal
     document.getElementById('modal-event').classList.remove('hidden');
     document.getElementById('modal-event').classList.add('flex');
     
-    // Render suggestion chips
     renderHashtagSuggestions();
     renderPlaceSuggestions();
     renderDurationSuggestions();
     
-    // Select chips after a short delay to ensure they're rendered
+    // The displayed hashtag (original or current)
+    const displayHashtag = ev.original_hashtag || ev.hashtag || '';
+
     setTimeout(() => {
-        // Select hashtag chip if exists
-        if (ev.hashtag) {
-            const chips = document.querySelectorAll('#hashtag-suggestions .hashtag-chip');
-            chips.forEach(chip => {
-                if (chip.dataset.tag === ev.hashtag) {
-                    chip.classList.add('active');
-                }
+        if (displayHashtag) {
+            document.querySelectorAll('#hashtag-suggestions .hashtag-chip').forEach(chip => {
+                if (chip.dataset.tag === displayHashtag) chip.classList.add('active');
             });
         }
-        
-        // Select place chip if exists
         if (ev.place) {
-            const chips = document.querySelectorAll('#place-suggestions .hashtag-chip');
-            chips.forEach(chip => {
-                if (chip.dataset.place === ev.place) {
-                    chip.classList.add('active');
-                }
+            document.querySelectorAll('#place-suggestions .hashtag-chip').forEach(chip => {
+                if (chip.dataset.place === ev.place) chip.classList.add('active');
             });
         }
-        
-        // Select duration chip if exists
         if (ev.duration) {
-            const chips = document.querySelectorAll('#duration-suggestions .hashtag-chip');
-            chips.forEach(chip => {
-                if (chip.dataset.dur === ev.duration) {
-                    chip.classList.add('active');
-                }
+            document.querySelectorAll('#duration-suggestions .hashtag-chip').forEach(chip => {
+                if (chip.dataset.dur === ev.duration) chip.classList.add('active');
             });
         }
     }, 100);
@@ -244,14 +221,27 @@ async function editEvent(id) {
 async function updateEvent(id) {
  const dt = document.getElementById('event-dt').value;
  if (!dt) return alert("Date & time required");
+
+ // Find the existing event so we can preserve original_hashtag if already completed
+ const ev = state.eventsData.find(e => e.id == id);
+ const newHashtag = document.getElementById('event-hashtag').value.trim();
+
+ // If the event was completed and user is manually editing the hashtag away from #completed,
+ // clear original_hashtag so it doesn't get restored on markIncomplete
+ const wasCompleted = ev && ev.completed;
+ const originalHashtag = wasCompleted && newHashtag !== '#completed'
+  ? ''           // user is overriding — clear the saved original
+  : (ev && ev.original_hashtag) || '';
+
  const payload = {
   id,
   dt: dt.replace('T', ' '),
   desc: document.getElementById('event-desc').value.trim(),
-  hashtag: document.getElementById('event-hashtag').value.trim(),
+  hashtag: newHashtag,
   place: document.getElementById('event-place').value.trim(),
   duration: document.getElementById('event-duration').value.trim(),
-  recurrence: document.getElementById('event-recurrence').value
+  recurrence: document.getElementById('event-recurrence').value,
+  original_hashtag: originalHashtag
  };
  try {
   const res = await api('update_event', payload);
@@ -275,42 +265,66 @@ async function deleteEvent(id) {
  loadDashboard();
 }
 
-// PATCH: markComplete now toggles the completed flag
+// PATCHED 6: markComplete sets hashtag to #completed and saves original_hashtag
 async function markComplete(id, completed = true) {
- // PATCH: No confirmation for quick toggle, but you can add if needed
- // if (!confirm(completed ? 'Mark as done?' : 'Mark as not done?')) return;
- await api('complete_event', {id, completed: completed ? 1 : 0});
+ const ev = state.eventsData.find(e => e.id == id);
+ if (!ev) return;
+
+ if (completed) {
+  // Save original hashtag before overwriting, but don't double-save if already completed
+  const originalHashtag = ev.hashtag !== '#completed' ? (ev.hashtag || '') : (ev.original_hashtag || '');
+  await api('update_event', {
+   id,
+   dt: ev.dt,
+   desc: ev.desc,
+   hashtag: '#completed',
+   place: ev.place || '',
+   duration: ev.duration || '',
+   recurrence: ev.recurrence || 'none',
+   original_hashtag: originalHashtag,
+   completed: 1
+  });
+ } else {
+  // Restore original hashtag
+  const restoredHashtag = ev.original_hashtag || '';
+  await api('update_event', {
+   id,
+   dt: ev.dt,
+   desc: ev.desc,
+   hashtag: restoredHashtag,
+   place: ev.place || '',
+   duration: ev.duration || '',
+   recurrence: ev.recurrence || 'none',
+   original_hashtag: '',
+   completed: 0
+  });
+ }
+
  loadPlanner();
  loadDashboard();
 }
 
-// PATCH: New function to reset completed event to incomplete
+// markIncomplete is just markComplete with completed=false
 async function markIncomplete(id) {
- await markComplete(id, false); // Reuse markComplete with completed=false
+ await markComplete(id, false);
 }
 
-// NEW: Function to show repeat event modal
 function showRepeatEventModal(id) {
  const ev = state.eventsData.find(e => e.id == id);
  if (!ev) return;
  
- // Store the event ID in the modal for later use
  const modal = document.getElementById('modal-repeat-event');
  modal.dataset.eventId = id;
  
- // Set default values
  document.getElementById('repeat-frequency').value = 'weekly';
  document.getElementById('repeat-occurrences').value = '10';
  
- // Show preview
  updateRepeatPreview(ev);
  
- // Show modal
  modal.classList.remove('hidden');
  modal.classList.add('flex');
 }
 
-// NEW: Update repeat preview
 function updateRepeatPreview(ev) {
  const freq = document.getElementById('repeat-frequency').value;
  const count = parseInt(document.getElementById('repeat-occurrences').value) || 10;
@@ -321,7 +335,6 @@ function updateRepeatPreview(ev) {
   return;
  }
  
- // This now correctly shows dates AFTER the original (starts from i=1)
  const dates = getRecurrenceDates(ev.dt, freq, count);
  preview.innerHTML = dates.map((d, i) => {
   const dateObj = new Date(d.replace(' ', 'T'));
@@ -330,7 +343,6 @@ function updateRepeatPreview(ev) {
  }).join('');
 }
 
-// NEW: Confirm and create recurring series
 async function confirmRepeatEvent() {
  const modal = document.getElementById('modal-repeat-event');
  const eventId = modal.dataset.eventId;
@@ -345,46 +357,33 @@ async function confirmRepeatEvent() {
  const freq = document.getElementById('repeat-frequency').value;
  const count = parseInt(document.getElementById('repeat-occurrences').value);
  
- // PATCHED: Changed minimum from 2 to 1
  if (count < 1 || count > 100) {
   alert('Please enter a number between 1 and 100');
   return;
  }
  
- // If count is 1, just create one future occurrence
  if (count === 1) {
-  if (!confirm('This will create 1 future occurrence and delete the original. Continue?')) {
-   return;
-  }
+  if (!confirm('This will create 1 future occurrence and delete the original. Continue?')) return;
  } else {
-  if (!confirm(`Create ${count} future occurrences (${freq}) and delete the original?`)) {
-   return;
-  }
+  if (!confirm(`Create ${count} future occurrences (${freq}) and delete the original?`)) return;
  }
  
  try {
-  // Generate all future dates (starting from i=1, so excludes original)
   const dates = getRecurrenceDates(ev.dt, freq, count);
   
-  // Create base event data (without id, dt, recurrence_group)
   const base = {
    desc: ev.desc || '',
    hashtag: ev.hashtag || '',
    place: ev.place || '',
    duration: ev.duration || '',
-   recurrence: freq // Store the frequency
+   recurrence: freq,
+   original_hashtag: ev.original_hashtag || ''
   };
   
-  // Generate a group ID for this series
   const groupId = 'grp_' + Date.now();
   
-  // Create all future events
   for (const dtStr of dates) {
-   const payload = { 
-    ...base, 
-    dt: dtStr, 
-    recurrence_group: groupId 
-   };
+   const payload = { ...base, dt: dtStr, recurrence_group: groupId };
    const res = await api('add_event', payload);
    if (!res.success) {
     alert("Failed to create recurring series");
@@ -392,10 +391,8 @@ async function confirmRepeatEvent() {
    }
   }
   
-  // Delete the original event
   await api('delete_event', {id: eventId});
   
-  // Close modal and refresh
   hideModal('modal-repeat-event');
   loadPlanner();
   loadDashboard();
@@ -413,7 +410,6 @@ async function loadPlanner() {
  applyPlannerFilter();
 }
 
-// Add event listeners for repeat modal inputs
 document.addEventListener('DOMContentLoaded', () => {
  const freqSelect = document.getElementById('repeat-frequency');
  const countInput = document.getElementById('repeat-occurrences');
@@ -451,8 +447,8 @@ Object.assign(window, {
  deleteEvent,
  markComplete,
  markIncomplete,
- showRepeatEventModal,    // NEW
- confirmRepeatEvent,      // NEW
+ showRepeatEventModal,
+ confirmRepeatEvent,
  loadPlanner
 });
 

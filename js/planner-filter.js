@@ -1,9 +1,11 @@
-// js/planner-filter.js - FIXED
+// js/planner-filter.js
+// PATCHED: Added #completed to hashtag chips
+// PATCHED: applyPlannerFilter hides completed events unless #completed filter is active
 
 import { state } from './state.js';
-import { renderPlanner } from './planner-render.js'; // ✅ FIX
+import { renderPlanner } from './planner-render.js';
 
-const COMMON_HASHTAGS = ['#pers', '#cons', '#job', '#event', '#control', '#class'];
+const COMMON_HASHTAGS = ['#pers', '#cons', '#job', '#event', '#control', '#class', '#completed'];
 const GROUPS_KEY = 'planner_open_groups';
 
 function getOpenGroups() {
@@ -23,7 +25,9 @@ function renderPlannerHashtagFilter() {
     container.innerHTML = chips.map(tag => {
         const isAll = tag === 'all';
         const isActive = isAll ? !state.activePlannerHashtag : state.activePlannerHashtag === tag;
-        return `<div class="hashtag-chip ${isActive ? 'active' : ''}"
+        // Give #completed chip a distinct style hint
+        const completedClass = tag === '#completed' ? 'opacity-60' : '';
+        return `<div class="hashtag-chip ${isActive ? 'active' : ''} ${completedClass}"
                      data-tag="${tag}"
                      onclick="setPlannerHashtagFilter('${tag}')">
                     ${isAll ? 'All' : tag}
@@ -39,20 +43,33 @@ function setPlannerHashtagFilter(tag) {
 
 function applyPlannerFilter() {
     const term = (document.getElementById('planner-filter')?.value || '').toLowerCase();
+    const showingCompleted = state.activePlannerHashtag === '#completed';
+
     let filtered = state.eventsData;
 
-    if (state.activePlannerHashtag) {
+    // Unless explicitly viewing #completed, hide all completed events
+    if (!showingCompleted) {
+        filtered = filtered.filter(e => !e.completed);
+    } else {
+        // When #completed is active, only show completed events
+        filtered = filtered.filter(e => e.completed);
+    }
+
+    // Apply hashtag filter (skip for 'all' and '#completed' since we already filtered above)
+    if (state.activePlannerHashtag && state.activePlannerHashtag !== '#completed') {
         filtered = filtered.filter(e => e.hashtag === state.activePlannerHashtag);
     }
 
+    // Apply text search
     if (term) {
         filtered = filtered.filter(e =>
             (e.desc?.toLowerCase().includes(term)) ||
-            (e.hashtag?.toLowerCase().includes(term))
+            (e.hashtag?.toLowerCase().includes(term)) ||
+            (e.original_hashtag?.toLowerCase().includes(term))
         );
     }
 
-    renderPlanner(filtered); // ✅ now valid
+    renderPlanner(filtered);
 }
 
 function filterPlanner() {

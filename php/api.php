@@ -1,6 +1,7 @@
 <?php
 // php/api.php
 // UPDATED: Added daily recurrence support for events
+// UPDATED: Added original_hashtag field to add_event and update_event
 
 header('Content-Type: application/json');
 $dataDir = __DIR__ . '/../data';
@@ -48,6 +49,7 @@ if ($action === 'add_event') {
         'dt' => $_POST['dt'] ?? '',
         'desc' => $_POST['desc'] ?? '',
         'hashtag' => $_POST['hashtag'] ?? '',
+        'original_hashtag' => $_POST['original_hashtag'] ?? '',
         'place' => $_POST['place'] ?? '',
         'duration' => $_POST['duration'] ?? '',
         'recurrence' => $_POST['recurrence'] ?? 'none',
@@ -63,8 +65,9 @@ if ($action === 'update_event') {
     foreach ($data as &$e) {
         if ($e['id'] == $_POST['id']) {
             $e['dt'] = $_POST['dt'] ?? $e['dt'];
-            $e['desc'] = $_POST['desc'] ?? $e['desc'];   //
+            $e['desc'] = $_POST['desc'] ?? $e['desc'];
             $e['hashtag'] = $_POST['hashtag'] ?? $e['hashtag'];
+            $e['original_hashtag'] = $_POST['original_hashtag'] ?? ($e['original_hashtag'] ?? '');
             $e['place'] = $_POST['place'] ?? $e['place'];
             $e['duration'] = $_POST['duration'] ?? ($e['duration'] ?? '');
             $e['recurrence_group'] = $_POST['recurrence_group'] ?? ($e['recurrence_group'] ?? '');
@@ -211,10 +214,8 @@ if ($action === 'archive_expenses_old') {
         }
     }
     
-    // Write back kept data
     write($files['expenses'], $keep);
     
-    // Append to archive file
     $archiveFile = $dataDir . '/expenses-archive.json';
     $existingArchive = read($archiveFile);
     write($archiveFile, array_merge($existingArchive, $archive));

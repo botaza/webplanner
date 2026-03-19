@@ -1,8 +1,9 @@
 // js/suggestions.js
+// PATCHED: Added #completed to COMMON_HASHTAGS
 
 import { state } from './state.js';
 
-const COMMON_HASHTAGS = ['#pers', '#cons', '#job', '#event', '#control', '#class'];
+const COMMON_HASHTAGS = ['#pers', '#cons', '#job', '#event', '#control', '#class', '#completed'];
 
 function renderHashtagSuggestions() {
     const container = document.getElementById('hashtag-suggestions');
@@ -83,7 +84,6 @@ function selectDuration(val) {
     });
 }
 
-// ✅ KEEP global access (for inline onclick)
 Object.assign(window, {
     selectHashtag,
     selectPlace,
@@ -93,7 +93,6 @@ Object.assign(window, {
     renderDurationSuggestions
 });
 
-// ✅ ADD THIS (CRITICAL FIX)
 export {
     renderHashtagSuggestions,
     renderPlaceSuggestions,
