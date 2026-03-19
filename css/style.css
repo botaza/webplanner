@@ -282,3 +282,69 @@ textarea:focus-visible {
         display: block !important;
     }
 }
+
+/* ── Planner Card Action Icons ───────────────────────────────────────────── */
+/* Fallback styles for action buttons (complements Tailwind classes) */
+#planner-list .w-8.h-8 {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#planner-list .w-8.h-8:active {
+    background-color: rgba(34, 197, 94, 0.1);
+    transform: scale(0.95);
+}
+
+/* Hover states (for non-touch devices) */
+@media (hover: hover) {
+    #planner-list .w-8.h-8:hover.text-emerald-400 {
+        color: #22c55e;
+        background-color: rgba(34, 197, 94, 0.1);
+    }
+    
+    #planner-list .w-8.h-8:hover.text-white {
+        color: #ffffff;
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    #planner-list .w-8.h-8:hover.text-red-400 {
+        color: #ef4444;
+        background-color: rgba(239, 68, 68, 0.1);
+    }
+}
+
+/* Left and right action groups spacing */
+#planner-list .flex.gap-1.items-center {
+    gap: 4px;
+}
+
+#planner-list .mr-2 {
+    margin-right: 8px;
+}
+
+/* Ensure text doesn't overlap on very small screens */
+@media (max-width: 360px) {
+    #planner-list .w-8.h-8 {
+        width: 28px;
+        height: 28px;
+        font-size: 1rem;
+    }
+    
+    #planner-list .mr-2 {
+        margin-right: 4px;
+    }
+}
+
+/* Touch-friendly tap targets */
+@media (max-width: 768px) {
+    #planner-list .w-8.h-8 {
+        min-width: 32px;
+        min-height: 32px;
+    }
+}

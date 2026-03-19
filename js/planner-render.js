@@ -1,6 +1,7 @@
 // js/planner-render.js
-// PATCHED: Completed events stay visible with visual indicator + toggle button
-// PATCHED 2: Added repeat button (🔄) to each event card
+// PATCHED: Split action icons to left/right edges for better tap targets
+// Left side: 🔄 (repeat), ✓/↺ (toggle complete)
+// Right side: ✏️ (edit), 🗑 (delete)
 
 import { state } from './state.js';
 import { nowAsDatetimeString, currentMonthKey } from './date-utils.js';
@@ -106,10 +107,11 @@ function renderPlanner(list) {
      ? '<button class="text-xs text-zinc-400 hover:text-emerald-400" onclick="event.stopPropagation(); markIncomplete(\'' + ev.id + '\')">↺ reset</button>'
      : '<button class="text-xs text-zinc-400 hover:text-emerald-400" onclick="event.stopPropagation(); markComplete(\'' + ev.id + '\')">✓ done</button>';
 
-    // Create the event card with 4 buttons now: repeat, toggle, edit, delete
+    // Create the event card with icons split to left/right edges
     const card = document.createElement('div');
-    card.className = `bg-zinc-900 rounded-2xl px-3 py-2.5 card flex gap-3 ${completedClass}`;
+    card.className = `bg-zinc-900 rounded-2xl px-3 py-2.5 card flex items-center ${completedClass}`;
     card.innerHTML = `
+     <!-- Left side: Main content + action icons -->
      <div class="flex-1 min-w-0">
       <div class="flex items-center gap-2">
        <span class="font-mono text-sm">${timeStr}</span>
@@ -122,12 +124,27 @@ function renderPlanner(list) {
        ${ev.duration ? `⏱ ${ev.duration} min` : ''}
       </div>
      </div>
-     <div class="flex flex-col gap-1 items-end">
-      <!-- NEW: Repeat button (🔄) -->
-      <button class="text-zinc-400 hover:text-emerald-400" onclick="event.stopPropagation(); showRepeatEventModal('${ev.id}')" title="Create recurring series">🔄</button>
-      ${toggleBtn}
-      <button class="text-zinc-400 hover:text-white" onclick="event.stopPropagation(); editEvent('${ev.id}')" title="Edit">✏️</button>
-      <button class="text-zinc-400 hover:text-red-400" onclick="event.stopPropagation(); deleteEvent('${ev.id}')" title="Delete">🗑</button>
+     
+     <!-- Left action group: Repeat and Toggle -->
+     <div class="flex gap-1 items-center mr-2">
+      <button class="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-emerald-400 text-lg" 
+              onclick="event.stopPropagation(); showRepeatEventModal('${ev.id}')" 
+              title="Create recurring series">🔄</button>
+      <button class="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-emerald-400 text-lg" 
+              onclick="event.stopPropagation(); ${ev.completed ? 'markIncomplete' : 'markComplete'}('${ev.id}')" 
+              title="${ev.completed ? 'Mark not done' : 'Mark done'}">
+        ${ev.completed ? '↺' : '✓'}
+      </button>
+     </div>
+     
+     <!-- Right action group: Edit and Delete -->
+     <div class="flex gap-1 items-center">
+      <button class="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-white text-lg" 
+              onclick="event.stopPropagation(); editEvent('${ev.id}')" 
+              title="Edit">✏️</button>
+      <button class="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-red-400 text-lg" 
+              onclick="event.stopPropagation(); deleteEvent('${ev.id}')" 
+              title="Delete">🗑</button>
      </div>
     `;
     dBody.appendChild(card);
