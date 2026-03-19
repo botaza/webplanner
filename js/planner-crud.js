@@ -1,4 +1,5 @@
 // js/planner-crud.js
+// PATCHED: Fixed editEvent to properly populate all fields
 // PATCHED: Added support for toggling completion status and date updates
 // PATCHED 2: Added repeatEvent function to create recurring series from a single event
 // PATCHED 3: Added daily recurrence defaults
@@ -151,32 +152,93 @@ async function saveEvent() {
  }
 }
 
+// FIXED: editEvent now properly populates ALL fields including recurrence and chips
 async function editEvent(id) {
- const ev = state.eventsData.find(e => e.id == id);
- if (!ev) return;
- document.getElementById('event-dt').value = ev.dt.replace(' ', 'T');
- document.getElementById('event-desc').value = ev.desc || '';
- document.getElementById('event-hashtag').value = ev.hashtag || '';
- document.getElementById('event-place').value = ev.place || '';
- document.getElementById('event-duration').value = ev.duration || '';
- document.getElementById('event-recurrence').value = ev.recurrence || 'none';
- const saveBtn = document.querySelector('#modal-event .flex.gap-3 button:last-child');
- if (saveBtn) {
-  saveBtn.onclick = () => updateEvent(id);
-  saveBtn.textContent = "Update Event";
- }
- const modalTitle = document.querySelector('#modal-event .text-xl.font-semibold');
- if (modalTitle) modalTitle.textContent = 'Edit Event';
- document.getElementById('modal-event').classList.remove('hidden');
- document.getElementById('modal-event').classList.add('flex');
- renderHashtagSuggestions();
- renderPlaceSuggestions();
- renderDurationSuggestions();
- if (ev.hashtag) selectHashtag(ev.hashtag);
- if (ev.place) selectPlace(ev.place);
- if (ev.duration) selectDuration(ev.duration);
- document.getElementById('recurrence-occurrences-section').classList.add('hidden');
- document.getElementById('occurrence-preview').innerHTML = '';
+    const ev = state.eventsData.find(e => e.id == id);
+    if (!ev) return;
+    
+    // First, set up the modal for editing mode BEFORE populating fields
+    const saveBtn = document.querySelector('#modal-event .flex.gap-3 button:last-child');
+    if (saveBtn) {
+        saveBtn.onclick = () => updateEvent(id);
+        saveBtn.textContent = "Update Event";
+    }
+    
+    // Set modal title
+    const modalTitle = document.querySelector('#modal-event .text-xl.font-semibold');
+    if (modalTitle) modalTitle.textContent = 'Edit Event';
+    
+    // NOW populate ALL fields
+    document.getElementById('event-dt').value = ev.dt.replace(' ', 'T');
+    document.getElementById('event-desc').value = ev.desc || '';
+    document.getElementById('event-hashtag').value = ev.hashtag || '';
+    document.getElementById('event-place').value = ev.place || '';
+    document.getElementById('event-duration').value = ev.duration || '';
+    
+    // Handle recurrence field
+    const recurrenceSelect = document.getElementById('event-recurrence');
+    if (recurrenceSelect) {
+        recurrenceSelect.value = ev.recurrence || 'none';
+    }
+    
+    // Handle recurrence section visibility
+    const recurrenceSection = document.getElementById('recurrence-occurrences-section');
+    if (ev.recurrence && ev.recurrence !== 'none') {
+        recurrenceSection.classList.remove('hidden');
+        // Set a default occurrences value
+        document.getElementById('event-occurrences').value = '10';
+        updateOccurrencePreview();
+    } else {
+        recurrenceSection.classList.add('hidden');
+        document.getElementById('occurrence-preview').innerHTML = '';
+    }
+    
+    // Clear any previously active chips
+    document.querySelectorAll('#hashtag-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('#place-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('#duration-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
+    
+    // Show the modal
+    document.getElementById('modal-event').classList.remove('hidden');
+    document.getElementById('modal-event').classList.add('flex');
+    
+    // Render suggestion chips
+    renderHashtagSuggestions();
+    renderPlaceSuggestions();
+    renderDurationSuggestions();
+    
+    // Select chips after a short delay to ensure they're rendered
+    setTimeout(() => {
+        // Select hashtag chip if exists
+        if (ev.hashtag) {
+            const chips = document.querySelectorAll('#hashtag-suggestions .hashtag-chip');
+            chips.forEach(chip => {
+                if (chip.dataset.tag === ev.hashtag) {
+                    chip.classList.add('active');
+                }
+            });
+        }
+        
+        // Select place chip if exists
+        if (ev.place) {
+            const chips = document.querySelectorAll('#place-suggestions .hashtag-chip');
+            chips.forEach(chip => {
+                if (chip.dataset.place === ev.place) {
+                    chip.classList.add('active');
+                }
+            });
+        }
+        
+        // Select duration chip if exists
+        if (ev.duration) {
+            const chips = document.querySelectorAll('#duration-suggestions .hashtag-chip');
+            chips.forEach(chip => {
+                if (chip.dataset.dur === ev.duration) {
+                    chip.classList.add('active');
+                }
+            });
+        }
+    }, 100);
 }
 
 async function updateEvent(id) {
