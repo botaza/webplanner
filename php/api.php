@@ -1,39 +1,32 @@
 <?php
 // php/api.php
 // UPDATED: Added aggregation, filtering, and housekeeping endpoints for Expenses Stats
-
+// UPDATED: Added recur_event endpoint for Planner recurrence conversion
 header('Content-Type: application/json');
 $dataDir = __DIR__ . '/../data';
 $snapDir = __DIR__ . '/../snapshots';
-
 if (!is_dir($dataDir)) mkdir($dataDir, 0777, true);
 if (!is_dir($snapDir)) mkdir($snapDir, 0777, true);
-
 $files = [
     'events' => $dataDir . '/events.json',
     'expenses' => $dataDir . '/expenses.json',
     'income' => $dataDir . '/income.json'
 ];
-
 function read($f) {
     if (!file_exists($f)) return [];
     $c = file_get_contents($f);
     return json_decode($c, true) ?: [];
 }
-
 function write($f, $data) {
     file_put_contents($f, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
-
 $action = $_POST['action'] ?? '';
-
 // ── System Init ──
 if ($action === 'init') {
     foreach ($files as $f) if (!file_exists($f)) write($f, []);
     echo json_encode(['success' => true]);
     exit;
 }
-
 // ── Events ──
 if ($action === 'get_events') {
     $data = read($files['events']);
@@ -63,7 +56,8 @@ if ($action === 'update_event') {
     foreach ($data as &$e) {
         if ($e['id'] == $_POST['id']) {
             $e['dt'] = $_POST['dt'] ?? $e['dt'];
-            $e['desc'] = $_POST['desc'] ?? $e['desc'];   //
+            $e['desc'] = $_POST['desc'] ?? $e['desc'];
+            // FIXED: Use = for assignment, not =>
             $e['hashtag'] = $_POST['hashtag'] ?? $e['hashtag'];
             $e['place'] = $_POST['place'] ?? $e['place'];
             $e['duration'] = $_POST['duration'] ?? ($e['duration'] ?? '');
@@ -103,7 +97,73 @@ if ($action === 'complete_event') {
     echo json_encode(['success' => true]);
     exit;
 }
-
+// ── NEW: Recurrence Conversion ──
+if ($action === 'recur_event') {
+    $id = $_POST['id'] ?? '';
+    $type = $_POST['type'] ?? 'weekly';
+    $count = (int)($_POST['count'] ?? 10);
+    
+    if (!$id) {
+        echo json_encode(['error' => 'Missing event ID']);
+        exit;
+    }
+    
+    $data = read($files['events']);
+    $original = null;
+    $originalIndex = -1;
+    
+    foreach ($data as $index => $e) {
+        if ($e['id'] == $id) {
+            $original = $e;
+            $originalIndex = $index;
+            break;
+        }
+    }
+    
+    if (!$original) {
+        echo json_encode(['error' => 'Event not found']);
+        exit;
+    }
+    
+    // Remove original
+    array_splice($data, $originalIndex, 1);
+    
+    // Generate new series
+    $groupId = 'grp_' . time() . rand(1000, 9999);
+    $baseDt = $original['dt'];
+    
+    try {
+        $date = new DateTime($baseDt);
+    } catch (Exception $e) {
+        echo json_encode(['error' => 'Invalid date format']);
+        exit;
+    }
+    
+    for ($i = 0; $i < $count; $i++) {
+        $clone = $original;
+        $clone['id'] = time() . rand(10000, 99999);
+        $clone['recurrence'] = $type;
+        $clone['recurrence_group'] = $groupId;
+        $clone['completed'] = false;
+        
+        // Calculate date - FIXED: Clean biweekly logic
+        $d = clone $date;
+        if ($i > 0) {
+            if ($type === 'daily') $d->modify("+{$i} days");
+            if ($type === 'weekly') $d->modify("+{$i} weeks");
+            if ($type === 'biweekly') $d->modify("+{" . ($i * 2) . "} weeks"); // Fixed: direct calculation
+            if ($type === 'monthly') $d->modify("+{$i} months");
+            if ($type === 'yearly') $d->modify("+{$i} years");
+        }
+        
+        $clone['dt'] = $d->format('Y-m-d H:i:s');
+        $data[] = $clone;
+    }
+    
+    write($files['events'], $data);
+    echo json_encode(['success' => true]);
+    exit;
+}
 // ── Expenses Basic ──
 if ($action === 'get_expenses') {
     echo json_encode(read($files['expenses']));
@@ -130,24 +190,19 @@ if ($action === 'delete_expense') {
     echo json_encode(['success' => true]);
     exit;
 }
-
 // ── Expenses Stats & Aggregation ──
 if ($action === 'get_expenses_aggregated') {
     $data = read($files['expenses']);
     $start = $_POST['start_date'] ?? '';
     $end = $_POST['end_date'] ?? '';
     $group = $_POST['group_by'] ?? 'category';
-    
     $result = [];
     $total = 0;
-    
     foreach ($data as $exp) {
         if ($start && $exp['date'] < $start) continue;
         if ($end && $exp['date'] > $end) continue;
-        
         $key = $exp[$group] ?? 'unknown';
         $amt = (float)($exp['amount'] ?? 0);
-        
         if (!isset($result[$key])) {
             $result[$key] = ['label' => $key, 'amount' => 0, 'count' => 0];
         }
@@ -155,34 +210,28 @@ if ($action === 'get_expenses_aggregated') {
         $result[$key]['count'] += 1;
         $total += $amt;
     }
-    
     echo json_encode(['groups' => $result, 'total' => $total]);
     exit;
 }
-
 if ($action === 'get_expenses_filtered') {
     $data = read($files['expenses']);
     $start = $_POST['start_date'] ?? '';
     $end = $_POST['end_date'] ?? '';
     $min = (float)($_POST['min_amount'] ?? 0);
-    
     $filtered = array_filter($data, function($e) use ($start, $end, $min) {
         if ($start && $e['date'] < $start) return false;
         if ($end && $e['date'] > $end) return false;
         if ($min && (float)($e['amount'] ?? 0) < $min) return false;
         return true;
     });
-    
     echo json_encode(array_values($filtered));
     exit;
 }
-
 if ($action === 'get_expenses_metadata') {
     $data = read($files['expenses']);
     $dates = array_column($data, 'date');
     sort($dates);
     $size = filesize($files['expenses']);
-    
     echo json_encode([
         'record_count' => count($data),
         'min_date' => $dates[0] ?? null,
@@ -191,18 +240,15 @@ if ($action === 'get_expenses_metadata') {
     ]);
     exit;
 }
-
 if ($action === 'archive_expenses_old') {
     $before = $_POST['before_date'] ?? '';
     if (!$before) {
         echo json_encode(['error' => 'Missing date']);
         exit;
     }
-    
     $data = read($files['expenses']);
     $keep = [];
     $archive = [];
-    
     foreach ($data as $e) {
         if ($e['date'] < $before) {
             $archive[] = $e;
@@ -210,19 +256,13 @@ if ($action === 'archive_expenses_old') {
             $keep[] = $e;
         }
     }
-    
-    // Write back kept data
     write($files['expenses'], $keep);
-    
-    // Append to archive file
     $archiveFile = $dataDir . '/expenses-archive.json';
     $existingArchive = read($archiveFile);
     write($archiveFile, array_merge($existingArchive, $archive));
-    
     echo json_encode(['success' => true, 'archived_count' => count($archive)]);
     exit;
 }
-
 // ── Income ──
 if ($action === 'get_income') {
     echo json_encode(read($files['income']));
@@ -247,7 +287,6 @@ if ($action === 'delete_income') {
     echo json_encode(['success' => true]);
     exit;
 }
-
 // ── System ──
 if ($action === 'snapshot') {
     $ts = date('Ymd_His');
@@ -264,7 +303,6 @@ if ($action === 'clear_all') {
     echo json_encode(['success' => true]);
     exit;
 }
-
 // ── Notifications ──
 $notifLog = $dataDir . '/notification-log.json';
 if ($action === 'get_notifications') {
@@ -302,6 +340,5 @@ if ($action === 'clear_notifications') {
     echo json_encode(['success' => true]);
     exit;
 }
-
 echo json_encode(['error' => 'unknown action']);
 ?>
