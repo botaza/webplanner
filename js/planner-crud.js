@@ -1,5 +1,6 @@
 // js/planner-crud.js
 // PATCHED: Added support for toggling completion status and date updates
+// PATCHED 2: Added repeatEvent function to create recurring series from a single event
 
 import { state } from './state.js';
 import { api } from './api.js';
@@ -30,6 +31,7 @@ function getRecurrenceDates(startDt, recurrence, count) {
  const base = new Date(startDt.replace(' ', 'T'));
  for (let i = 0; i < count; i++) {
   const d = new Date(base);
+  if (recurrence === 'daily') d.setDate(base.getDate() + i);
   if (recurrence === 'weekly') d.setDate(base.getDate() + i * 7);
   if (recurrence === 'biweekly') d.setDate(base.getDate() + i * 14);
   if (recurrence === 'monthly') d.setMonth(base.getMonth() + i);
@@ -198,12 +200,148 @@ async function markIncomplete(id) {
  await markComplete(id, false); // Reuse markComplete with completed=false
 }
 
+// NEW: Function to show repeat event modal
+function showRepeatEventModal(id) {
+ const ev = state.eventsData.find(e => e.id == id);
+ if (!ev) return;
+ 
+ // Store the event ID in the modal for later use
+ const modal = document.getElementById('modal-repeat-event');
+ modal.dataset.eventId = id;
+ 
+ // Set default values
+ document.getElementById('repeat-frequency').value = 'weekly';
+ document.getElementById('repeat-occurrences').value = '10';
+ 
+ // Show preview
+ updateRepeatPreview(ev);
+ 
+ // Show modal
+ modal.classList.remove('hidden');
+ modal.classList.add('flex');
+}
+
+// NEW: Update repeat preview
+function updateRepeatPreview(ev) {
+ const freq = document.getElementById('repeat-frequency').value;
+ const count = parseInt(document.getElementById('repeat-occurrences').value) || 10;
+ const preview = document.getElementById('repeat-preview');
+ 
+ if (!ev || !ev.dt) {
+  preview.innerHTML = 'No date available';
+  return;
+ }
+ 
+ const dates = getRecurrenceDates(ev.dt, freq, count);
+ preview.innerHTML = dates.map((d, i) => {
+  const dateObj = new Date(d.replace(' ', 'T'));
+  const label = dateObj.toLocaleDateString('ru-RU', {day:'numeric', month:'short', year:'numeric'});
+  return `<div>${i+1}. ${label}</div>`;
+ }).join('');
+}
+
+// NEW: Confirm and create recurring series
+async function confirmRepeatEvent() {
+ const modal = document.getElementById('modal-repeat-event');
+ const eventId = modal.dataset.eventId;
+ const ev = state.eventsData.find(e => e.id == eventId);
+ 
+ if (!ev) {
+  alert('Event not found');
+  hideModal('modal-repeat-event');
+  return;
+ }
+ 
+ const freq = document.getElementById('repeat-frequency').value;
+ const count = parseInt(document.getElementById('repeat-occurrences').value);
+ 
+ if (count < 2 || count > 100) {
+  alert('Please enter a number between 2 and 100');
+  return;
+ }
+ 
+ if (!confirm(`Create ${count} recurring events (${freq}) and delete the original?`)) {
+  return;
+ }
+ 
+ try {
+  // Generate all dates
+  const dates = getRecurrenceDates(ev.dt, freq, count);
+  
+  // Create base event data (without id, dt, recurrence_group)
+  const base = {
+   desc: ev.desc || '',
+   hashtag: ev.hashtag || '',
+   place: ev.place || '',
+   duration: ev.duration || '',
+   recurrence: freq // Store the frequency
+  };
+  
+  // Generate a group ID for this series
+  const groupId = 'grp_' + Date.now();
+  
+  // Create all events
+  for (const dtStr of dates) {
+   const payload = { 
+    ...base, 
+    dt: dtStr, 
+    recurrence_group: groupId 
+   };
+   const res = await api('add_event', payload);
+   if (!res.success) {
+    alert("Failed to create recurring series");
+    return;
+   }
+  }
+  
+  // Delete the original event
+  await api('delete_event', {id: eventId});
+  
+  // Close modal and refresh
+  hideModal('modal-repeat-event');
+  loadPlanner();
+  loadDashboard();
+  
+ } catch (err) {
+  console.error('Error creating recurring series:', err);
+  alert('Failed to create recurring series');
+ }
+}
+
 async function loadPlanner() {
  const data = await api('get_events');
  state.eventsData = data || [];
  renderPlannerHashtagFilter();
  applyPlannerFilter();
 }
+
+// Add event listeners for repeat modal inputs
+document.addEventListener('DOMContentLoaded', () => {
+ const freqSelect = document.getElementById('repeat-frequency');
+ const countInput = document.getElementById('repeat-occurrences');
+ 
+ if (freqSelect) {
+  freqSelect.addEventListener('change', () => {
+   const modal = document.getElementById('modal-repeat-event');
+   const eventId = modal?.dataset.eventId;
+   if (eventId) {
+    const ev = state.eventsData.find(e => e.id == eventId);
+    if (ev) updateRepeatPreview(ev);
+   }
+  });
+ }
+ 
+ if (countInput) {
+  countInput.addEventListener('input', () => {
+   const modal = document.getElementById('modal-repeat-event');
+   const eventId = modal?.dataset.eventId;
+   if (eventId) {
+    const ev = state.eventsData.find(e => e.id == eventId);
+    if (ev) updateRepeatPreview(ev);
+   }
+  });
+ }
+});
 
 Object.assign(window, {
  onRecurrenceChange,
@@ -213,8 +351,10 @@ Object.assign(window, {
  editEvent,
  updateEvent,
  deleteEvent,
- markComplete,    // Now accepts optional 'completed' parameter
- markIncomplete,  // New exported function
+ markComplete,
+ markIncomplete,
+ showRepeatEventModal,    // NEW
+ confirmRepeatEvent,      // NEW
  loadPlanner
 });
 

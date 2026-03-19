@@ -314,6 +314,39 @@ class="nav-item flex flex-col items-center py-3">
 </div>
 </div>
 </div>
+<!-- REPEAT EVENT MODAL (NEW) -->
+<div id="modal-repeat-event" class="hidden fixed inset-0 bg-black/80 items-end z-[100]">
+<div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto">
+<div class="px-6 pt-5 pb-4 border-b border-zinc-800">
+<div class="flex justify-between items-center">
+<div class="text-xl font-semibold">Repeat Event</div>
+<button onclick="hideModal('modal-repeat-event')" class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
+</div>
+</div>
+<div class="p-6 space-y-4">
+<div class="text-sm text-zinc-400 mb-2">Create a recurring series from this event. The original event will be replaced.</div>
+<div>
+<label class="text-xs text-zinc-400 block mb-1">Repeat every</label>
+<select id="repeat-frequency" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+<option value="daily">Daily</option>
+<option value="weekly">Weekly</option>
+<option value="biweekly">Bi-weekly</option>
+<option value="monthly">Monthly</option>
+<option value="yearly">Yearly</option>
+</select>
+</div>
+<div>
+<label class="text-xs text-zinc-400 block mb-1">Number of occurrences <span class="text-zinc-500">(including this one)</span></label>
+<input id="repeat-occurrences" type="number" min="2" max="100" value="10" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+</div>
+<div id="repeat-preview" class="mt-3 text-xs text-zinc-500 p-3 bg-zinc-950 rounded-2xl max-h-32 overflow-y-auto"></div>
+</div>
+<div class="px-6 py-4 border-t border-zinc-800 flex gap-3">
+<button onclick="hideModal('modal-repeat-event')" class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
+<button onclick="window.confirmRepeatEvent()" class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Create Series</button>
+</div>
+</div>
+</div>
 <!-- ADD EXPENSE MODAL -->
 <div id="modal-expense" class="hidden fixed inset-0 bg-black/80 flex items-end z-[100]">
 <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto max-h-[90vh] overflow-hidden flex flex-col">

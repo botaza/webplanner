@@ -1,6 +1,6 @@
 <?php
 // php/api.php
-// UPDATED: Added aggregation, filtering, and housekeeping endpoints for Expenses Stats
+// UPDATED: Added daily recurrence support for events
 
 header('Content-Type: application/json');
 $dataDir = __DIR__ . '/../data';

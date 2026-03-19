@@ -1,5 +1,6 @@
 // js/planner-render.js
 // PATCHED: Completed events stay visible with visual indicator + toggle button
+// PATCHED 2: Added repeat button (🔄) to each event card
 
 import { state } from './state.js';
 import { nowAsDatetimeString, currentMonthKey } from './date-utils.js';
@@ -96,18 +97,17 @@ function renderPlanner(list) {
     const timeStr = dt.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
     const isPastEv = (ev.dt || '') < nowStr;
     
-    // PATCH: Visual indicator for completed events (strikethrough + opacity)
-    // Events always stay displayed regardless of completion status
+    // Visual indicator for completed events (strikethrough + opacity)
     const completedClass = ev.completed ? 'line-through opacity-50' : '';
     const completedBadge = ev.completed ? '<span class="text-xs text-emerald-400 ml-2">✓ done</span>' : '';
     
-    // PATCH: Toggle button instead of just marking complete
+    // Toggle button based on completion status
     const toggleBtn = ev.completed 
      ? '<button class="text-xs text-zinc-400 hover:text-emerald-400" onclick="event.stopPropagation(); markIncomplete(\'' + ev.id + '\')">↺ reset</button>'
      : '<button class="text-xs text-zinc-400 hover:text-emerald-400" onclick="event.stopPropagation(); markComplete(\'' + ev.id + '\')">✓ done</button>';
 
+    // Create the event card with 4 buttons now: repeat, toggle, edit, delete
     const card = document.createElement('div');
-    // PATCH: Remove opacity-40 for past events, use completedClass instead
     card.className = `bg-zinc-900 rounded-2xl px-3 py-2.5 card flex gap-3 ${completedClass}`;
     card.innerHTML = `
      <div class="flex-1 min-w-0">
@@ -123,13 +123,13 @@ function renderPlanner(list) {
       </div>
      </div>
      <div class="flex flex-col gap-1 items-end">
+      <!-- NEW: Repeat button (🔄) -->
+      <button class="text-zinc-400 hover:text-emerald-400" onclick="event.stopPropagation(); showRepeatEventModal('${ev.id}')" title="Create recurring series">🔄</button>
       ${toggleBtn}
-      <button class="text-zinc-400 hover:text-white" onclick="event.stopPropagation(); editEvent('${ev.id}')">✏️</button>
-      <button class="text-zinc-400 hover:text-red-400" onclick="event.stopPropagation(); deleteEvent('${ev.id}')">🗑</button>
+      <button class="text-zinc-400 hover:text-white" onclick="event.stopPropagation(); editEvent('${ev.id}')" title="Edit">✏️</button>
+      <button class="text-zinc-400 hover:text-red-400" onclick="event.stopPropagation(); deleteEvent('${ev.id}')" title="Delete">🗑</button>
      </div>
     `;
-    // PATCH: Card click no longer auto-completes; use explicit button
-    // card.onclick = () => markComplete(ev.id);
     dBody.appendChild(card);
    });
    mBody.appendChild(dBody);
