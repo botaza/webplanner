@@ -1,6 +1,7 @@
 // js/planner-crud.js
 // PATCHED: Added support for toggling completion status and date updates
 // PATCHED 2: Added repeatEvent function to create recurring series from a single event
+// PATCHED 3: Added daily recurrence defaults
 
 import { state } from './state.js';
 import { api } from './api.js';
@@ -11,7 +12,13 @@ import { nowDatetimeLocal } from './date-utils.js';
 import { renderHashtagSuggestions, renderPlaceSuggestions, renderDurationSuggestions } from './suggestions.js';
 import { renderPlannerHashtagFilter, applyPlannerFilter } from './planner-filter.js';
 
-const RECURRENCE_DEFAULTS = { weekly: 10, biweekly: 6, monthly: 6, yearly: 3 };
+const RECURRENCE_DEFAULTS = { 
+ daily: 30,      // Added daily default (30 days)
+ weekly: 10, 
+ biweekly: 6, 
+ monthly: 6, 
+ yearly: 3 
+};
 
 function onRecurrenceChange() {
  const rec = document.getElementById('event-recurrence').value;
