@@ -3,6 +3,7 @@
 // PATCHED 2: Added repeatEvent function to create recurring series from a single event
 // PATCHED 3: Added daily recurrence defaults
 // PATCHED 4: Changed minimum occurrences from 2 to 1
+// PATCHED 5: Fixed recurrence date calculation to start AFTER original date
 
 import { state } from './state.js';
 import { api } from './api.js';
@@ -34,10 +35,12 @@ function onRecurrenceChange() {
  }
 }
 
+// FIXED: Now starts from i=1 to generate dates AFTER the original
 function getRecurrenceDates(startDt, recurrence, count) {
  const dates = [];
  const base = new Date(startDt.replace(' ', 'T'));
- for (let i = 0; i < count; i++) {
+ // Start from 1 to exclude the original date (we want NEW dates only)
+ for (let i = 1; i <= count; i++) {
   const d = new Date(base);
   if (recurrence === 'daily') d.setDate(base.getDate() + i);
   if (recurrence === 'weekly') d.setDate(base.getDate() + i * 7);
@@ -111,7 +114,23 @@ async function saveEvent() {
  let datetimes = [dt.replace('T', ' ') + ':00'];
  if (recurrence !== 'none') {
   const count = parseInt(document.getElementById('event-occurrences').value) || 1;
-  datetimes = getRecurrenceDates(dt.replace('T', ' ') + ':00', recurrence, count);
+  // For new event creation, we include the original date (i=0) plus future dates
+  // This is different from repeat function which only creates future dates
+  const allDates = [];
+  const baseDate = new Date(dt.replace('T', ' ') + ':00');
+  for (let i = 0; i < count; i++) {
+   const d = new Date(baseDate);
+   if (recurrence === 'daily') d.setDate(baseDate.getDate() + i);
+   if (recurrence === 'weekly') d.setDate(baseDate.getDate() + i * 7);
+   if (recurrence === 'biweekly') d.setDate(baseDate.getDate() + i * 14);
+   if (recurrence === 'monthly') d.setMonth(baseDate.getMonth() + i);
+   if (recurrence === 'yearly') d.setFullYear(baseDate.getFullYear() + i);
+   const pad = n => String(n).padStart(2, '0');
+   const formatted = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate())
+    + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':00';
+   allDates.push(formatted);
+  }
+  datetimes = allDates;
  }
  const groupId = recurrence !== 'none' ? ('grp_' + Date.now()) : '';
  try {
@@ -240,6 +259,7 @@ function updateRepeatPreview(ev) {
   return;
  }
  
+ // This now correctly shows dates AFTER the original (starts from i=1)
  const dates = getRecurrenceDates(ev.dt, freq, count);
  preview.innerHTML = dates.map((d, i) => {
   const dateObj = new Date(d.replace(' ', 'T'));
@@ -269,20 +289,19 @@ async function confirmRepeatEvent() {
   return;
  }
  
- // If count is 1, just duplicate the event once (creates 1 new event + deletes original = net same)
- // But for clarity, we'll warn if they choose 1
+ // If count is 1, just create one future occurrence
  if (count === 1) {
-  if (!confirm('This will create 1 duplicate of this event and delete the original. Continue?')) {
+  if (!confirm('This will create 1 future occurrence and delete the original. Continue?')) {
    return;
   }
  } else {
-  if (!confirm(`Create ${count} recurring events (${freq}) and delete the original?`)) {
+  if (!confirm(`Create ${count} future occurrences (${freq}) and delete the original?`)) {
    return;
   }
  }
  
  try {
-  // Generate all dates
+  // Generate all future dates (starting from i=1, so excludes original)
   const dates = getRecurrenceDates(ev.dt, freq, count);
   
   // Create base event data (without id, dt, recurrence_group)
@@ -297,7 +316,7 @@ async function confirmRepeatEvent() {
   // Generate a group ID for this series
   const groupId = 'grp_' + Date.now();
   
-  // Create all events
+  // Create all future events
   for (const dtStr of dates) {
    const payload = { 
     ...base, 
