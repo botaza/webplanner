@@ -2,6 +2,7 @@
 // PATCHED: Added support for toggling completion status and date updates
 // PATCHED 2: Added repeatEvent function to create recurring series from a single event
 // PATCHED 3: Added daily recurrence defaults
+// PATCHED 4: Changed minimum occurrences from 2 to 1
 
 import { state } from './state.js';
 import { api } from './api.js';
@@ -262,13 +263,22 @@ async function confirmRepeatEvent() {
  const freq = document.getElementById('repeat-frequency').value;
  const count = parseInt(document.getElementById('repeat-occurrences').value);
  
- if (count < 2 || count > 100) {
-  alert('Please enter a number between 2 and 100');
+ // PATCHED: Changed minimum from 2 to 1
+ if (count < 1 || count > 100) {
+  alert('Please enter a number between 1 and 100');
   return;
  }
  
- if (!confirm(`Create ${count} recurring events (${freq}) and delete the original?`)) {
-  return;
+ // If count is 1, just duplicate the event once (creates 1 new event + deletes original = net same)
+ // But for clarity, we'll warn if they choose 1
+ if (count === 1) {
+  if (!confirm('This will create 1 duplicate of this event and delete the original. Continue?')) {
+   return;
+  }
+ } else {
+  if (!confirm(`Create ${count} recurring events (${freq}) and delete the original?`)) {
+   return;
+  }
  }
  
  try {
