@@ -6,6 +6,7 @@
 // 3. Filter out completed events from notification logic
 // 4. Fixed isWithinTimeWindow() to use real timestamps instead of broken Hi math
 // 5. Widened default tolerance to 7 minutes (safe with 1-minute loop)
+// 6. Rule 6 now buckets each event into exactly one horizon (no overlaps)
 date_default_timezone_set('Asia/Vladivostok'); 
 // ✅ CHANGE: Define DIRECTORY only, not the full file path
 define('SERVICE_ACCOUNT_DIR', '/var/www/html/'); 
@@ -243,7 +244,7 @@ if (isWithinTimeWindow(17, 0)) {
             !empty($e['dt']) && ($e['hashtag'] ?? '') === '#event' && strtotime($e['dt']) > $now
         );
         usort($upcoming, fn($a, $b) => strtotime($a['dt']) - strtotime($b['dt']));
-        $upcoming = array_slice(array_values($upcoming), 0, 10);
+        $upcoming = array_values($upcoming);
 
         if (!empty($upcoming)) {
             $anythingToDo = true;
@@ -272,7 +273,7 @@ if (isWithinTimeWindow(19, 0)) {
             !empty($e['dt']) && ($e['hashtag'] ?? '') === '#control' && strtotime($e['dt']) > $now
         );
         usort($upcoming, fn($a, $b) => strtotime($a['dt']) - strtotime($b['dt']));
-        $upcoming = array_slice(array_values($upcoming), 0, 10);
+        $upcoming = array_values($upcoming);
 
         if (!empty($upcoming)) {
             $anythingToDo = true;
@@ -301,7 +302,7 @@ if (isWithinTimeWindow(21, 0)) {
             !empty($e['dt']) && ($e['hashtag'] ?? '') === '#pers' && strtotime($e['dt']) > $now
         );
         usort($upcoming, fn($a, $b) => strtotime($a['dt']) - strtotime($b['dt']));
-        $upcoming = array_slice(array_values($upcoming), 0, 10);
+        $upcoming = array_values($upcoming);
 
         if (!empty($upcoming)) {
             $anythingToDo = true;
@@ -349,34 +350,43 @@ if (isWithinTimeWindow(23, 0)) {
     }
 }
 
-// ── RULE 6: Daily 08:00 — events within 3, 7, 14 days ────────────────────────
+// ── RULE 6: Daily 08:00 — events within 3, 7, 14 days (each event in one bucket only) ──
 if (isWithinTimeWindow(8, 0)) {
-    foreach ([3, 7, 14] as $horizon) {
-        $key = "horizon_{$horizon}d:" . $today;
-        if (alreadyNotified($notified, $key)) continue;
+    $key = 'horizon:' . $today;
+    if (!alreadyNotified($notified, $key)) {
+        $buckets = [3 => [], 7 => [], 14 => []];
 
-        $horizonEvents = array_filter($events, function($e) use ($now, $horizon) {
-            if (empty($e['dt'])) return false;
+        foreach ($events as $e) {
+            if (empty($e['dt'])) continue;
             $days = daysFromNow($e['dt']);
-            return $days > 0 && $days <= $horizon;
-        });
-        usort($horizonEvents, fn($a, $b) => strtotime($a['dt']) - strtotime($b['dt']));
-        $horizonEvents = array_values($horizonEvents);
+            if ($days <= 0 || $days > 14) continue;
 
-        if (!empty($horizonEvents)) {
+            if ($days <= 3)      $buckets[3][]  = $e;
+            elseif ($days <= 7)  $buckets[7][]  = $e;
+            else                 $buckets[14][] = $e;
+        }
+
+        $lines = [];
+        foreach ($buckets as $horizon => $evs) {
+            if (empty($evs)) continue;
+            usort($evs, fn($a, $b) => strtotime($a['dt']) - strtotime($b['dt']));
+            $lines[] = "📆 Within {$horizon} days:";
+            foreach ($evs as $e) {
+                $lines[] = '  • ' . date('d M', strtotime($e['dt'])) . ' ' . formatEventLine($e);
+            }
+        }
+
+        if (!empty($lines)) {
             $anythingToDo = true;
-            $title = "📆 Events in {$horizon} days";
-            $lines = array_map(function($e) {
-                return '• ' . date('d M', strtotime($e['dt'])) . ' ' . formatEventLine($e);
-            }, $horizonEvents);
+            $title = '📆 Upcoming events';
             $body = implode("\n", $lines);
 
-            if (!getToken()) break;
-            if (notify($accessToken, $tokens, $title, $body, "rule6_horizon_{$horizon}d")) {
+            if (!getToken()) goto saveNotified;
+            if (notify($accessToken, $tokens, $title, $body, 'rule6_horizon')) {
                 markNotified($notified, $key);
             }
         } else {
-            echo date('Y-m-d H:i:s') . " [rule6] No events within {$horizon} days.\n";
+            echo date('Y-m-d H:i:s') . " [rule6] No events within 14 days.\n";
             markNotified($notified, $key);
         }
     }
