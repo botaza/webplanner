@@ -364,10 +364,13 @@ if (isWithinTimeWindow(8, 0)) {
         foreach ($events as $e) {
             if (empty($e['dt'])) continue;
             $days = daysFromNow($e['dt']);
-            $daysRounded = (int)round($days);
-            if (!in_array($daysRounded, [3, 7, 14])) continue;
+            if ($days <= 0) continue;
 
-            $buckets[$daysRounded][] = $e;
+            // Each bucket covers a ±0.5 day window around the target
+            // so every event lands in at most one bucket
+            if ($days >= 2.5 && $days < 3.5)       $buckets[3][]  = $e;
+            elseif ($days >= 6.5 && $days < 7.5)   $buckets[7][]  = $e;
+            elseif ($days >= 13.5 && $days < 14.5) $buckets[14][] = $e;
         }
 
         $lines = [];
