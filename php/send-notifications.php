@@ -7,6 +7,9 @@
 // 4. Fixed isWithinTimeWindow() to use real timestamps instead of broken Hi math
 // 5. Widened default tolerance to 7 minutes (safe with 1-minute loop)
 // 6. Rule 6 now buckets each event into exactly one horizon (no overlaps)
+// 7. Rules 2-5 now mark notified unconditionally to prevent repeat fires on FCM failure
+// 8. Rules 2-5 now use notifyBatched() (20 events per notification)
+// 9. Rule 6 now matches events on EXACTLY day 3, 7, or 14 (not within)
 date_default_timezone_set('Asia/Vladivostok'); 
 // ✅ CHANGE: Define DIRECTORY only, not the full file path
 define('SERVICE_ACCOUNT_DIR', '/var/www/html/'); 
@@ -126,6 +129,20 @@ function notify(string $accessToken, array $tokens, string $title, string $body,
         if (!$ok) $allOk = false;
     }
     logNotification($title, $body, $rule, count($tokens), $eventId, $eventDesc, $allOk ? 'sent' : 'partial');
+    return $allOk;
+}
+
+function notifyBatched(string $accessToken, array $tokens, string $title, array $lines,
+    string $rule, int $batchSize = 20): bool {
+    $batches = array_chunk($lines, $batchSize);
+    $total = count($batches);
+    $allOk = true;
+    foreach ($batches as $i => $chunk) {
+        $batchTitle = $total > 1 ? $title . ' (' . ($i + 1) . '/' . $total . ')' : $title;
+        $body = implode("\n", $chunk);
+        $ok = notify($accessToken, $tokens, $batchTitle, $body, $rule);
+        if (!$ok) $allOk = false;
+    }
     return $allOk;
 }
 
@@ -252,16 +269,13 @@ if (isWithinTimeWindow(17, 0)) {
             $lines = array_map(function($e) {
                 return '• ' . date('d M', strtotime($e['dt'])) . ' ' . formatEventLine($e);
             }, $upcoming);
-            $body = implode("\n", $lines);
 
             if (!getToken()) goto saveNotified;
-            if (notify($accessToken, $tokens, $title, $body, 'rule2_event_hashtag')) {
-                markNotified($notified, $key);
-            }
+            notifyBatched($accessToken, $tokens, $title, $lines, 'rule2_event_hashtag');
         } else {
             echo date('Y-m-d H:i:s') . " [rule2] No #event events upcoming.\n";
-            markNotified($notified, $key);
         }
+        markNotified($notified, $key);
     }
 }
 
@@ -281,16 +295,13 @@ if (isWithinTimeWindow(19, 0)) {
             $lines = array_map(function($e) {
                 return '• ' . date('d M', strtotime($e['dt'])) . ' ' . formatEventLine($e);
             }, $upcoming);
-            $body = implode("\n", $lines);
 
             if (!getToken()) goto saveNotified;
-            if (notify($accessToken, $tokens, $title, $body, 'rule3_control_hashtag')) {
-                markNotified($notified, $key);
-            }
+            notifyBatched($accessToken, $tokens, $title, $lines, 'rule3_control_hashtag');
         } else {
             echo date('Y-m-d H:i:s') . " [rule3] No #control events upcoming.\n";
-            markNotified($notified, $key);
         }
+        markNotified($notified, $key);
     }
 }
 
@@ -310,16 +321,13 @@ if (isWithinTimeWindow(21, 0)) {
             $lines = array_map(function($e) {
                 return '• ' . date('d M', strtotime($e['dt'])) . ' ' . formatEventLine($e);
             }, $upcoming);
-            $body = implode("\n", $lines);
 
             if (!getToken()) goto saveNotified;
-            if (notify($accessToken, $tokens, $title, $body, 'rule4_pers_hashtag')) {
-                markNotified($notified, $key);
-            }
+            notifyBatched($accessToken, $tokens, $title, $lines, 'rule4_pers_hashtag');
         } else {
             echo date('Y-m-d H:i:s') . " [rule4] No #pers events upcoming.\n";
-            markNotified($notified, $key);
         }
+        markNotified($notified, $key);
     }
 }
 
@@ -337,16 +345,13 @@ if (isWithinTimeWindow(23, 0)) {
             $anythingToDo = true;
             $title = '📋 Tomorrow\'s events';
             $lines = array_map(fn($e) => '• ' . formatEventLine($e), $tomorrowEvents);
-            $body = implode("\n", $lines);
 
             if (!getToken()) goto saveNotified;
-            if (notify($accessToken, $tokens, $title, $body, 'rule5_tomorrow')) {
-                markNotified($notified, $key);
-            }
+            notifyBatched($accessToken, $tokens, $title, $lines, 'rule5_tomorrow');
         } else {
             echo date('Y-m-d H:i:s') . " [rule5] No events tomorrow.\n";
-            markNotified($notified, $key);
         }
+        markNotified($notified, $key);
     }
 }
 
@@ -359,11 +364,10 @@ if (isWithinTimeWindow(8, 0)) {
         foreach ($events as $e) {
             if (empty($e['dt'])) continue;
             $days = daysFromNow($e['dt']);
-            if ($days <= 0 || $days > 14) continue;
+            $daysRounded = (int)round($days);
+            if (!in_array($daysRounded, [3, 7, 14])) continue;
 
-            if ($days <= 3)      $buckets[3][]  = $e;
-            elseif ($days <= 7)  $buckets[7][]  = $e;
-            else                 $buckets[14][] = $e;
+            $buckets[$daysRounded][] = $e;
         }
 
         $lines = [];
@@ -382,13 +386,11 @@ if (isWithinTimeWindow(8, 0)) {
             $body = implode("\n", $lines);
 
             if (!getToken()) goto saveNotified;
-            if (notify($accessToken, $tokens, $title, $body, 'rule6_horizon')) {
-                markNotified($notified, $key);
-            }
+            notify($accessToken, $tokens, $title, $body, 'rule6_horizon');
         } else {
-            echo date('Y-m-d H:i:s') . " [rule6] No events within 14 days.\n";
-            markNotified($notified, $key);
+            echo date('Y-m-d H:i:s') . " [rule6] No events on day 3, 7, or 14.\n";
         }
+        markNotified($notified, $key);
     }
 }
 
