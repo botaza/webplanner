@@ -63,7 +63,12 @@ export async function loadIncome() {
 
         _renderList();
 
-        if (statsOpen) renderIncomeStats();
+        // Keep list hidden if stats panel is open
+        if (statsOpen) {
+            const list = document.getElementById('income-list');
+            if (list) list.classList.add('hidden');
+            renderIncomeStats();
+        }
 
     } catch (err) {
         console.error('[income.js] Failed to load income data:', err);
@@ -238,17 +243,20 @@ export function toggleIncomeMonth(month) {
 export function toggleIncomeStats() {
     statsOpen = !statsOpen;
     const panel = document.getElementById('income-stats-panel');
+    const list  = document.getElementById('income-list');
     const btn   = document.getElementById('income-stats-toggle-btn');
 
     if (!panel) return;
 
     if (statsOpen) {
         panel.classList.remove('hidden');
+        if (list) list.classList.add('hidden');
         if (btn) btn.classList.add('active');
         renderStatsViewButtons();
         renderIncomeStats();
     } else {
         panel.classList.add('hidden');
+        if (list) list.classList.remove('hidden');
         if (btn) btn.classList.remove('active');
     }
 }
