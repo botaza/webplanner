@@ -39,10 +39,11 @@ export function initAdvancedFilter(containerId = 'expenses-filter-controls') {
                     Apply
                 </button>
             </div>
+
             <div class="mt-3 flex gap-2">
-                <button onclick="window.setExpenseLimit(500)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full text-zinc-400">>500</button>
-                <button onclick="window.setExpenseLimit(1000)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full text-zinc-400">>1k</button>
-                <button onclick="window.setExpenseLimit(5000)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full text-zinc-400">>5k</button>
+                <button onclick="window.setExpenseLimit(2000)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full text-zinc-400">>2000</button>
+                <button onclick="window.setExpenseLimit(3000)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full text-zinc-400">>3000</button>
+                <button onclick="window.setExpenseLimit(5000)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full text-zinc-400">>5000</button>
                 <button onclick="window.setExpenseLimit(0)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full text-zinc-400">All</button>
             </div>
         </div>
