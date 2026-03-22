@@ -55,16 +55,9 @@ export function renderExpensesList(list) {
     monthTotals[m] = groupedByMonth[m].reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
   });
 
-  // Initialize expanded state for current month/day
+  // Initialize expanded state — no auto-expand, all folders start closed
   if (!state.expandedExpenseMonths) state.expandedExpenseMonths = new Set();
   if (!state.expandedExpenseDays) state.expandedExpenseDays = new Set();
-
-  if (state.expandedExpenseMonths.size === 0) {
-    state.expandedExpenseMonths.add(currentMonth);
-  }
-  if (state.expandedExpenseDays.size === 0) {
-    state.expandedExpenseDays.add(new Date().toISOString().slice(0, 10));
-  }
 
   // Render
   const html = months.map(month => {
