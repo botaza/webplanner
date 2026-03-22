@@ -60,6 +60,11 @@ export async function loadDashboard() {
             adjEl.textContent = compTotal > 0 ? 'adjusted this month' : 'this month';
         }
 
+        // Re-apply visibility mask if numbers are currently hidden
+        if (localStorage.getItem('dash_numbers_hidden') === '1') {
+            if (typeof _applyDashVisibility === 'function') _applyDashVisibility(true);
+        }
+
         // Load upcoming events
         const evs     = await api('get_events') || [];
         const nowStr  = new Date().toISOString().slice(0, 16).replace('T', ' ');
