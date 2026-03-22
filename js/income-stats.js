@@ -413,4 +413,4 @@ Object.assign(window, {
     showIncomeMonthPicker
 });
 
-export { renderIncomeStats };
+
