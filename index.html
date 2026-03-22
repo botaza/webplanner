@@ -81,13 +81,13 @@ class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium f
 <div onclick="switchScreen('screen-expenses')"
 class="card bg-zinc-900 rounded-3xl p-5 cursor-pointer">
 <div class="text-emerald-400 text-sm font-medium">EXPENSES</div>
-<div id="dash-exp-total" class="text-4xl font-semibold mt-2">0</div>
+<div id="dash-exp-total" class="text-3xl font-semibold mt-2 leading-tight">0</div>
 <div class="text-xs text-zinc-500 mt-1">this month</div>
 </div>
 <div onclick="switchScreen('screen-income')"
 class="card bg-zinc-900 rounded-3xl p-5 cursor-pointer">
 <div class="text-emerald-400 text-sm font-medium">INCOME</div>
-<div id="dash-inc-total" class="text-4xl font-semibold mt-2">0</div>
+<div id="dash-inc-total" class="text-3xl font-semibold mt-2 leading-tight">0</div>
 <div id="dash-adj-label" class="text-xs text-zinc-500 mt-1">this month</div>
 </div>
 </div>
@@ -549,13 +549,13 @@ function _applyDashVisibility(hide) {
     const mask   = '••••';
 
     if (hide) {
-        if (expEl) { expEl.dataset.real = expEl.textContent; expEl.textContent = mask; }
-        if (incEl) { incEl.dataset.real = incEl.textContent; incEl.textContent = mask; }
+        if (expEl) { expEl.dataset.real = expEl.textContent; expEl.dataset.realClass = expEl.className; expEl.textContent = mask; }
+        if (incEl) { incEl.dataset.real = incEl.textContent; incEl.dataset.realClass = incEl.className; incEl.textContent = mask; }
         if (adjEl) { adjEl.dataset.real = adjEl.textContent; }
         if (btn)   btn.textContent = '🙈';
     } else {
-        if (expEl && expEl.dataset.real) expEl.textContent = expEl.dataset.real;
-        if (incEl && incEl.dataset.real) incEl.textContent = incEl.dataset.real;
+        if (expEl && expEl.dataset.real) { expEl.textContent = expEl.dataset.real; if (expEl.dataset.realClass) expEl.className = expEl.dataset.realClass; }
+        if (incEl && incEl.dataset.real) { incEl.textContent = incEl.dataset.real; if (incEl.dataset.realClass) incEl.className = incEl.dataset.realClass; }
         if (btn)   btn.textContent = '👁';
     }
 }
