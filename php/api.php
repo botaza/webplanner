@@ -2,6 +2,7 @@
 // php/api.php
 // UPDATED: Added daily recurrence support for events
 // UPDATED: Added original_hashtag field to add_event and update_event
+// UPDATED: Added compensation CRUD; income now stores tool field
 
 header('Content-Type: application/json');
 $dataDir = __DIR__ . '/../data';
@@ -11,9 +12,10 @@ if (!is_dir($dataDir)) mkdir($dataDir, 0777, true);
 if (!is_dir($snapDir)) mkdir($snapDir, 0777, true);
 
 $files = [
-    'events' => $dataDir . '/events.json',
-    'expenses' => $dataDir . '/expenses.json',
-    'income' => $dataDir . '/income.json'
+    'events'        => $dataDir . '/events.json',
+    'expenses'      => $dataDir . '/expenses.json',
+    'income'        => $dataDir . '/income.json',
+    'compensations' => $dataDir . '/compensations.json'
 ];
 
 function read($f) {
@@ -184,7 +186,7 @@ if ($action === 'get_expenses_metadata') {
     $data = read($files['expenses']);
     $dates = array_column($data, 'date');
     sort($dates);
-    $size = filesize($files['expenses']);
+    $size = file_exists($files['expenses']) ? filesize($files['expenses']) : 0;
     
     echo json_encode([
         'record_count' => count($data),
@@ -232,10 +234,11 @@ if ($action === 'get_income') {
 if ($action === 'add_income') {
     $data = read($files['income']);
     $data[] = [
-        'id' => time() . rand(10000, 99999),
-        'date' => $_POST['date'] ?? '',
+        'id'     => time() . rand(10000, 99999),
+        'date'   => $_POST['date'] ?? '',
         'amount' => (float)($_POST['amount'] ?? 0),
-        'desc' => $_POST['desc'] ?? ''
+        'tool'   => $_POST['tool'] ?? '',
+        'desc'   => $_POST['desc'] ?? ''
     ];
     write($files['income'], $data);
     echo json_encode(['success' => true]);
@@ -246,6 +249,90 @@ if ($action === 'delete_income') {
     $data = array_filter($data, fn($e) => $e['id'] != $_POST['id']);
     write($files['income'], array_values($data));
     echo json_encode(['success' => true]);
+    exit;
+}
+
+// ── Income Aggregation ──
+if ($action === 'get_income_aggregated') {
+    $data = read($files['income']);
+    $start = $_POST['start_date'] ?? '';
+    $end   = $_POST['end_date'] ?? '';
+
+    $result = [];
+    $total  = 0;
+
+    foreach ($data as $inc) {
+        if ($start && $inc['date'] < $start) continue;
+        if ($end   && $inc['date'] > $end)   continue;
+
+        $key = $inc['tool'] ?? 'unknown';
+        if (!$key) $key = 'unknown';
+        $amt = (float)($inc['amount'] ?? 0);
+
+        if (!isset($result[$key])) {
+            $result[$key] = ['label' => $key, 'amount' => 0, 'count' => 0];
+        }
+        $result[$key]['amount'] += $amt;
+        $result[$key]['count']  += 1;
+        $total += $amt;
+    }
+
+    echo json_encode(['groups' => $result, 'total' => $total]);
+    exit;
+}
+
+// ── Compensations ──
+if ($action === 'get_compensations') {
+    echo json_encode(read($files['compensations']));
+    exit;
+}
+if ($action === 'add_compensation') {
+    $data = read($files['compensations']);
+    $data[] = [
+        'id'     => time() . rand(10000, 99999),
+        'date'   => $_POST['date'] ?? '',
+        'amount' => (float)($_POST['amount'] ?? 0),
+        'tool'   => $_POST['tool'] ?? '',
+        'desc'   => $_POST['desc'] ?? ''
+    ];
+    write($files['compensations'], $data);
+    echo json_encode(['success' => true]);
+    exit;
+}
+if ($action === 'delete_compensation') {
+    $data = read($files['compensations']);
+    $data = array_filter($data, fn($e) => $e['id'] != $_POST['id']);
+    write($files['compensations'], array_values($data));
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// ── Compensation Aggregation ──
+if ($action === 'get_compensations_aggregated') {
+    $data  = read($files['compensations']);
+    $start = $_POST['start_date'] ?? '';
+    $end   = $_POST['end_date'] ?? '';
+
+    $result = [];
+    $total  = 0;
+
+    foreach ($data as $comp) {
+        if ($start && $comp['date'] < $start) continue;
+        if ($end   && $comp['date'] > $end)   continue;
+
+        $key = $comp['tool'] ?? 'unknown';
+        if (!$key) $key = 'unknown';
+        $amt = (float)($comp['amount'] ?? 0);
+
+        if (!isset($result[$key])) {
+            $result[$key] = ['label' => $key, 'amount' => 0, 'count' => 0];
+        }
+        $result[$key]['amount'] += $amt;
+        $result[$key]['count']  += 1;
+        $total += $amt;
+    }
+
+    echo json_encode(['groups' => $result, 'total' => $total]);
     exit;
 }
 

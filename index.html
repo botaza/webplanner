@@ -52,6 +52,7 @@ firebase.initializeApp(firebaseConfig);
 </script>
 </head>
 <body class="bg-zinc-950 text-zinc-200 min-h-screen pb-20">
+
 <!-- HEADER -->
 <header class="bg-zinc-900 border-b border-zinc-800 px-4 py-3 flex items-center justify-between fixed top-0 left-0 right-0 z-50">
 <div class="flex items-center gap-3">
@@ -64,7 +65,9 @@ class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium f
 <span>Snapshot</span>
 </button>
 </header>
+
 <main class="pt-16 px-4 max-w-xl mx-auto">
+
 <!-- DASHBOARD -->
 <div id="screen-dashboard" class="screen">
 <div class="grid grid-cols-2 gap-4 mb-8">
@@ -78,7 +81,7 @@ class="card bg-zinc-900 rounded-3xl p-5 cursor-pointer">
 class="card bg-zinc-900 rounded-3xl p-5 cursor-pointer">
 <div class="text-emerald-400 text-sm font-medium">INCOME</div>
 <div id="dash-inc-total" class="text-4xl font-semibold mt-2">0</div>
-<div class="text-xs text-zinc-500 mt-1">this month</div>
+<div id="dash-adj-label" class="text-xs text-zinc-500 mt-1">this month</div>
 </div>
 </div>
 <div class="mb-6">
@@ -91,6 +94,7 @@ class="text-emerald-400 text-sm font-medium">All →</button>
 </div>
 <div class="text-xs text-zinc-500 text-center mt-12">Tap bottom bar to navigate</div>
 </div>
+
 <!-- PLANNER -->
 <div id="screen-planner" class="screen hidden">
 <div class="flex justify-between items-center mb-4">
@@ -106,6 +110,7 @@ class="fixed bottom-24 right-4 w-14 h-14 bg-emerald-500 hover:bg-emerald-600 rou
 +
 </button>
 </div>
+
 <!-- EXPENSES -->
 <div id="screen-expenses" class="screen hidden">
 <div class="flex gap-3 mb-4">
@@ -133,24 +138,23 @@ class="flex-1 bg-zinc-800 hover:bg-zinc-700 py-4 rounded-3xl text-lg font-medium
 🔍 Above Limit
 </button>
 </div>
-<!-- Date Range Selector (For Pie Charts) -->
+<!-- Date Range Selector -->
 <div class="bg-zinc-900 rounded-2xl p-3 space-y-2">
 <div class="text-xs text-zinc-500 font-medium">Date Range</div>
 <div class="flex gap-2">
 <div class="flex-1">
 <label class="text-[10px] text-zinc-500 block mb-1">From</label>
-<input type="date" id="stats-date-start" 
+<input type="date" id="stats-date-start"
 class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm"
 onchange="window.setStatsDateRange()">
 </div>
 <div class="flex-1">
 <label class="text-[10px] text-zinc-500 block mb-1">To</label>
-<input type="date" id="stats-date-end" 
+<input type="date" id="stats-date-end"
 class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm"
 onchange="window.setStatsDateRange()">
 </div>
 </div>
-<!-- Reset Button - Full Width Below Date Inputs -->
 <button onclick="window.resetStatsDateRange()"
 class="w-full bg-zinc-800 hover:bg-zinc-700 py-2 rounded-xl text-xs text-zinc-400 flex items-center justify-center gap-2">
 <span>🔄</span>
@@ -168,16 +172,53 @@ Close Stats
 </button>
 </div>
 </div>
+
 <!-- INCOME -->
 <div id="screen-income" class="screen hidden">
-<div class="flex gap-3 mb-4">
-<button onclick="showAddIncomeModal()"
-class="flex-1 bg-emerald-500 hover:bg-emerald-600 py-4 rounded-3xl text-lg font-medium">+ Income</button>
-<button onclick="showMonthPicker('inc')"
-class="flex-1 bg-zinc-800 hover:bg-zinc-700 py-4 rounded-3xl text-lg font-medium">Stats</button>
+
+    <!-- Top action bar -->
+    <div class="flex gap-2 mb-4">
+        <button onclick="showAddIncomeModal()"
+                class="flex-1 bg-emerald-500 hover:bg-emerald-600 py-4 rounded-3xl text-base font-medium">
+            + Income
+        </button>
+        <button onclick="showAddCompensationModal()"
+                class="flex-1 bg-amber-600 hover:bg-amber-500 py-4 rounded-3xl text-base font-medium">
+            + Compensation
+        </button>
+        <button id="income-stats-toggle-btn"
+                onclick="toggleIncomeStats()"
+                class="stats-view-btn px-5 py-4 rounded-3xl text-base font-medium whitespace-nowrap">
+            Stats
+        </button>
+    </div>
+
+    <!-- Stats panel (hidden by default, toggled by JS) -->
+    <div id="income-stats-panel" class="hidden mb-4">
+        <div class="bg-zinc-900 rounded-3xl p-4">
+            <!-- Stats tab buttons -->
+            <div class="flex gap-2 mb-4">
+                <button class="income-stats-view-btn stats-view-btn active"
+                        data-view="tools"
+                        onclick="setIncomeStatsView('tools')">
+                    Tools
+                </button>
+                <button class="income-stats-view-btn stats-view-btn"
+                        data-view="monthly"
+                        onclick="setIncomeStatsView('monthly')">
+                    Monthly
+                </button>
+            </div>
+            <!-- Stats content rendered by income-stats.js -->
+            <div id="income-stats-container"></div>
+        </div>
+    </div>
+
+    <!-- Combined income + compensation list -->
+    <div id="income-list"></div>
+
 </div>
-<div id="income-list" class="space-y-3"></div>
-</div>
+
 <!-- MORE -->
 <div id="screen-more" class="screen hidden">
 <div class="space-y-4">
@@ -213,6 +254,7 @@ Future: Android push via PWA
 </div>
 </div>
 </div>
+
 <!-- NOTIFICATIONS -->
 <div id="screen-notifications" class="screen hidden">
 <div class="flex justify-between items-center mb-4">
@@ -223,7 +265,9 @@ class="text-xs text-red-400 font-medium">Clear all</button>
 <div id="notifications-list" class="space-y-2"></div>
 <div id="notifications-pagination" class="flex justify-center gap-3 mt-4"></div>
 </div>
+
 </main>
+
 <!-- BOTTOM NAV -->
 <nav class="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 z-50">
 <div class="max-w-xl mx-auto grid grid-cols-6 text-[10px] font-medium">
@@ -259,6 +303,7 @@ class="nav-item flex flex-col items-center py-3">
 </button>
 </div>
 </nav>
+
 <!-- ADD EVENT MODAL -->
 <div id="modal-event" class="hidden fixed inset-0 bg-black/80 items-end z-[100]">
 <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto flex flex-col" style="max-height: 90vh;">
@@ -314,7 +359,8 @@ class="nav-item flex flex-col items-center py-3">
 </div>
 </div>
 </div>
-<!-- REPEAT EVENT MODAL (NEW) -->
+
+<!-- REPEAT EVENT MODAL -->
 <div id="modal-repeat-event" class="hidden fixed inset-0 bg-black/80 items-end z-[100]">
 <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto">
 <div class="px-6 pt-5 pb-4 border-b border-zinc-800">
@@ -347,6 +393,7 @@ class="nav-item flex flex-col items-center py-3">
 </div>
 </div>
 </div>
+
 <!-- ADD EXPENSE MODAL -->
 <div id="modal-expense" class="hidden fixed inset-0 bg-black/80 flex items-end z-[100]">
 <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto max-h-[90vh] overflow-hidden flex flex-col">
@@ -385,35 +432,99 @@ class="nav-item flex flex-col items-center py-3">
 </div>
 </div>
 </div>
+
 <!-- ADD INCOME MODAL -->
-<div id="modal-income" class="hidden fixed inset-0 bg-black/80 flex items-end z-[100]">
-<div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto flex flex-col" style="max-height: 90vh;">
-<div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-zinc-800 shrink-0">
-<div class="text-xl font-semibold">New Income</div>
-<button onclick="hideModal('modal-income')" class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
+<div id="modal-income" class="modal-sheet hidden">
+    <div>
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-zinc-800 shrink-0">
+            <div class="text-xl font-semibold">New Income</div>
+            <button onclick="closeIncomeModal()"
+                    class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
+        </div>
+        <div class="modal-body px-6 py-4 space-y-4">
+            <div>
+                <label class="text-xs text-zinc-400 block mb-1">Date</label>
+                <input id="inc-date" type="date"
+                       class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+            </div>
+            <div>
+                <label class="text-xs text-zinc-400 block mb-1">Amount</label>
+                <input id="inc-amount" type="number" step="0.01" placeholder="0"
+                       class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+            </div>
+            <div>
+                <label class="text-xs text-zinc-400 block mb-2">Tool</label>
+                <div id="inc-tool-buttons" class="flex flex-wrap gap-2"></div>
+                <div id="inc-tool-other-group" class="hidden mt-3">
+                    <input id="inc-tool-other" type="text" placeholder="Specify tool…"
+                           class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-3 text-base">
+                </div>
+            </div>
+            <div>
+                <label class="text-xs text-zinc-400 block mb-1">Description <span class="text-zinc-600">(optional)</span></label>
+                <input id="inc-desc" type="text" placeholder="Salary / Freelance / Project…"
+                       class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+            </div>
+        </div>
+        <div class="flex gap-3 px-6 py-4 border-t border-zinc-800 shrink-0"
+             style="padding-bottom: max(1rem, env(safe-area-inset-bottom));">
+            <button onclick="closeIncomeModal()"
+                    class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
+            <button onclick="saveIncome()"
+                    class="flex-1 py-4 bg-emerald-500 hover:bg-emerald-600 rounded-3xl text-lg font-medium">Save Income</button>
+        </div>
+    </div>
 </div>
-<div class="overflow-y-auto flex-1 px-6 py-4 space-y-4" style="-webkit-overflow-scrolling: touch; overscroll-behavior: contain;">
-<div>
-<label class="text-xs text-zinc-400 block mb-1">Date</label>
-<input id="inc-date" type="date" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+
+<!-- ADD COMPENSATION MODAL -->
+<div id="modal-compensation" class="modal-sheet hidden">
+    <div>
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-zinc-800 shrink-0">
+            <div>
+                <div class="text-xl font-semibold">New Compensation</div>
+                <div class="text-xs text-zinc-500 mt-0.5">Will be deducted from total income</div>
+            </div>
+            <button onclick="closeCompensationModal()"
+                    class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
+        </div>
+        <div class="modal-body px-6 py-4 space-y-4">
+            <div>
+                <label class="text-xs text-zinc-400 block mb-1">Date</label>
+                <input id="comp-date" type="date"
+                       class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+            </div>
+            <div>
+                <label class="text-xs text-zinc-400 block mb-1">Amount</label>
+                <input id="comp-amount" type="number" step="0.01" placeholder="0"
+                       class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+            </div>
+            <div>
+                <label class="text-xs text-zinc-400 block mb-2">Tool</label>
+                <div id="comp-tool-buttons" class="flex flex-wrap gap-2"></div>
+                <div id="comp-tool-other-group" class="hidden mt-3">
+                    <input id="comp-tool-other" type="text" placeholder="Specify tool…"
+                           class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-3 text-base">
+                </div>
+            </div>
+            <div>
+                <label class="text-xs text-zinc-400 block mb-1">Description <span class="text-zinc-600">(optional)</span></label>
+                <input id="comp-desc" type="text" placeholder="Tax / Fee / Deduction…"
+                       class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+            </div>
+        </div>
+        <div class="flex gap-3 px-6 py-4 border-t border-zinc-800 shrink-0"
+             style="padding-bottom: max(1rem, env(safe-area-inset-bottom));">
+            <button onclick="closeCompensationModal()"
+                    class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
+            <button onclick="saveCompensation()"
+                    class="flex-1 py-4 bg-amber-600 hover:bg-amber-500 rounded-3xl text-lg font-medium">Save Compensation</button>
+        </div>
+    </div>
 </div>
-<div>
-<label class="text-xs text-zinc-400 block mb-1">Amount</label>
-<input id="inc-amount" type="number" step="0.01" placeholder="0" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
-</div>
-<div>
-<label class="text-xs text-zinc-400 block mb-1">Description</label>
-<input id="inc-desc" type="text" placeholder="Salary / Freelance" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
-</div>
-</div>
-<div class="px-6 py-4 border-t border-zinc-800 flex gap-3 shrink-0">
-<button onclick="hideModal('modal-income')" class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
-<button onclick="saveIncome()" class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Save Income</button>
-</div>
-</div>
-</div>
+
 <!-- App logic -->
 <script type="module" src="js/app.js"></script>
+
 <!-- Inline helpers for stats -->
 <script>
 function toggleExpenseStatsView() {
@@ -429,5 +540,6 @@ function toggleExpenseStatsView() {
     }
 }
 </script>
+
 </body>
 </html>
