@@ -300,5 +300,3 @@ Object.assign(window, {
     // Reload (used by dashboard refresh etc.)
     loadIncome
 });
-
-export { loadIncome };
