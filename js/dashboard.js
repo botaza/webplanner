@@ -45,14 +45,25 @@ export async function loadDashboard() {
         const incEl  = document.getElementById('dash-inc-total');
         const adjEl  = document.getElementById('dash-adj-label');
 
-        if (expEl) expEl.textContent = `−${expTotal.toLocaleString('ru-RU')}`;
+        const expStr = `−${expTotal.toLocaleString('ru-RU')}`;
+        const incStr = (() => { const sign = adjTotal >= 0 ? '+' : '−'; return `${sign}${Math.abs(adjTotal).toLocaleString('ru-RU')}`; })();
+
+        function _dashFontClass(str) {
+            const len = str.replace(/[^0-9]/g, '').length;
+            if (len <= 5) return 'text-3xl';
+            if (len <= 7) return 'text-2xl';
+            return 'text-xl';
+        }
+
+        if (expEl) {
+            expEl.textContent = expStr;
+            expEl.className = `${_dashFontClass(expStr)} font-semibold mt-2 leading-tight`;
+        }
 
         if (incEl) {
-            const sign = adjTotal >= 0 ? '+' : '−';
-            incEl.textContent = `${sign}${Math.abs(adjTotal).toLocaleString('ru-RU')}`;
-            incEl.className = adjTotal >= 0
-                ? 'text-4xl font-semibold mt-2 text-zinc-200'
-                : 'text-4xl font-semibold mt-2 text-red-400';
+            incEl.textContent = incStr;
+            const incColor = adjTotal >= 0 ? 'text-zinc-200' : 'text-red-400';
+            incEl.className = `${_dashFontClass(incStr)} font-semibold mt-2 leading-tight ${incColor}`;
         }
 
         // Show small label clarifying it's adjusted if there are compensations
