@@ -267,7 +267,7 @@ if (isWithinTimeWindow(17, 0)) {
             $anythingToDo = true;
             $title = '📅 Upcoming #event';
             $lines = array_map(function($e) {
-                return '• ' . date('d M', strtotime($e['dt'])) . ' ' . formatEventLine($e);
+                return '• ' . date('D d M', strtotime($e['dt'])) . ' ' . formatEventLine($e);
             }, $upcoming);
 
             if (!getToken()) goto saveNotified;
@@ -293,7 +293,7 @@ if (isWithinTimeWindow(19, 0)) {
             $anythingToDo = true;
             $title = '🎛 Upcoming #control';
             $lines = array_map(function($e) {
-                return '• ' . date('d M', strtotime($e['dt'])) . ' ' . formatEventLine($e);
+                return '• ' . date('D d M', strtotime($e['dt'])) . ' ' . formatEventLine($e);
             }, $upcoming);
 
             if (!getToken()) goto saveNotified;
@@ -319,7 +319,7 @@ if (isWithinTimeWindow(21, 0)) {
             $anythingToDo = true;
             $title = '👤 Upcoming #pers';
             $lines = array_map(function($e) {
-                return '• ' . date('d M', strtotime($e['dt'])) . ' ' . formatEventLine($e);
+                return '• ' . date('D d M', strtotime($e['dt'])) . ' ' . formatEventLine($e);
             }, $upcoming);
 
             if (!getToken()) goto saveNotified;
@@ -379,7 +379,7 @@ if (isWithinTimeWindow(8, 0)) {
             usort($evs, fn($a, $b) => strtotime($a['dt']) - strtotime($b['dt']));
             $lines[] = "📆 Within {$horizon} days:";
             foreach ($evs as $e) {
-                $lines[] = '  • ' . date('d M', strtotime($e['dt'])) . ' ' . formatEventLine($e);
+                $lines[] = '  • ' . date('D d M', strtotime($e['dt'])) . ' ' . formatEventLine($e);
             }
         }
 
