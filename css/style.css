@@ -198,22 +198,27 @@ nav.fixed.bottom-0 {
 }
 
 /* Expense item card transition */
+/* FIXED: Removed transform:scale on :active — on Android, a transform on a parent
+   creates a new stacking context that swallows child button click events.
+   touch-action:manipulation prevents double-tap zoom without blocking clicks. */
 #expenses-list .card,
 #expenses-list [class*="bg-zinc-900/30 rounded-xl"] {
-    transition: transform 0.2s ease, background-color 0.2s ease;
+    transition: background-color 0.2s ease;
+    touch-action: manipulation;
 }
 
 #expenses-list .card:active,
 #expenses-list [class*="bg-zinc-900/30 rounded-xl"]:active {
-    transform: scale(0.98);
+    background-color: rgba(255,255,255,0.04);
 }
 
-/* Delete button hover effect */
-#expenses-list [onclick*="deleteExpense"] {
+/* Edit/Delete button effects — scoped to buttons, not the card */
+#expenses-list button[data-action] {
     transition: color 0.2s ease, transform 0.2s ease;
+    touch-action: manipulation;
 }
 
-#expenses-list [onclick*="deleteExpense"]:hover {
+#expenses-list button[data-action]:active {
     transform: scale(1.1);
 }
 
