@@ -1,65 +1,56 @@
 body {
-    -webkit-tap-highlight-color: transparent;
+-webkit-tap-highlight-color: transparent;
 }
-
 .screen {
-    display: none;
+display: none;
 }
-
 .screen.active {
-    display: block;
+display: block;
 }
-
 input[type="datetime-local"],
 input[type="date"] {
-    color-scheme: dark;
+color-scheme: dark;
 }
-
 /* ── Chips / buttons ─────────────────────────────────────────────────────── */
 .hashtag-chip,
 .tool-btn,
 .category-btn {
-    background: #27272a;
-    border: 1px solid #3f3f46;
-    color: #d4d4d4;
-    padding: 10px 12px;
-    border-radius: 9999px;
-    font-size: 14px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.15s;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
+background: #27272a;
+border: 1px solid #3f3f46;
+color: #d4d4d4;
+padding: 10px 12px;
+border-radius: 9999px;
+font-size: 14px;
+text-align: center;
+cursor: pointer;
+transition: all 0.15s;
+user-select: none;
+-webkit-tap-highlight-color: transparent;
 }
-
 .hashtag-chip:hover,
 .tool-btn:hover,
 .category-btn:hover {
-    background: #3a3a40;
+background: #3a3a40;
 }
-
 .hashtag-chip.active,
 .tool-btn.active,
 .category-btn.active {
-    background: #22c55e22;
-    border-color: #22c55e;
-    color: #22c55e;
+background: #22c55e22;
+border-color: #22c55e;
+color: #22c55e;
 }
-
 .hashtag-row,
 #exp-tool-buttons,
 #exp-category-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+display: flex;
+flex-wrap: wrap;
+gap: 10px;
 }
-
 #exp-category-buttons .category-btn {
-    font-size: 24px;
-    padding: 12px;
-    aspect-ratio: 1 / 1;
+font-size: 24px;
+padding: 12px;
+aspect-ratio: 1 / 1;
 }
-
 /* ── Prevent input zoom on iOS ───────────────────────────────────────────── */
 input[type="date"],
 input[type="datetime-local"],
@@ -67,300 +58,268 @@ input[type="number"],
 input[type="text"],
 select,
 textarea {
-    font-size: 16px !important;
+font-size: 16px !important;
 }
-
 /* ── Modal base: sits at bottom, slides up ───────────────────────────────── */
 .modal-sheet {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.8);
-    z-index: 100;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
+position: fixed;
+inset: 0;
+background: rgba(0, 0, 0, 0.8);
+z-index: 100;
+display: flex;
+align-items: flex-end;
+justify-content: center;
 }
-
 /* ── Modal inner panel ───────────────────────────────────────────────────── */
 .modal-sheet > div {
-    width: 100%;
-    max-width: 40rem;
-    background: #18181b;
-    border-radius: 1.5rem 1.5rem 0 0;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    -webkit-overflow-scrolling: touch;
+width: 100%;
+max-width: 40rem;
+background: #18181b;
+border-radius: 1.5rem 1.5rem 0 0;
+max-height: 90vh;
+display: flex;
+flex-direction: column;
+-webkit-overflow-scrolling: touch;
 }
-
 /* ── Scrollable body inside the panel ───────────────────────────────── */
 .modal-sheet .modal-body {
-    overflow-y: auto;
-    flex: 1;
-    padding-bottom: env(safe-area-inset-bottom, 16px);
+overflow-y: auto;
+flex: 1;
+padding-bottom: env(safe-area-inset-bottom, 16px);
 }
-
 /* ── Expense modal specifically ──────────────────────────────────────────── */
 #modal-expense > div {
-    max-height: 90vh;
+max-height: 90vh;
 }
-
 #modal-expense .overflow-y-auto {
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+-webkit-overflow-scrolling: touch;
+overscroll-behavior: contain;
 }
-
 /* ── Event modal ─────────────────────────────────────────────────────────── */
 #modal-event > div {
-    max-height: 90vh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+max-height: 90vh;
+overflow-y: auto;
+-webkit-overflow-scrolling: touch;
+overscroll-behavior: contain;
 }
-
 /* ── Keep the sticky action buttons always visible at the bottom ─────────── */
 #modal-event .flex.gap-3.mt-8,
 #modal-income .flex.gap-3.mt-8 {
-    position: sticky;
-    bottom: 0;
-    background: #18181b;
-    padding-top: 12px;
-    margin-top: 12px;
-    padding-bottom: env(safe-area-inset-bottom, 12px);
+position: sticky;
+bottom: 0;
+background: #18181b;
+padding-top: 12px;
+margin-top: 12px;
+padding-bottom: env(safe-area-inset-bottom, 12px);
 }
-
 /* ── Income modal ────────────────────────────────────────────────────────── */
 #modal-income > div {
-    max-height: 90vh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+max-height: 90vh;
+overflow-y: auto;
+-webkit-overflow-scrolling: touch;
+overscroll-behavior: contain;
 }
-
 /* ── Safe-area padding for the bottom nav ────────────────────────────────── */
 nav.fixed.bottom-0 {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+padding-bottom: env(safe-area-inset-bottom, 0px);
 }
-
 /* ── Stats View Buttons ──────────────────────────────────────────────────── */
 .stats-view-btn {
-    background: #27272a;
-    border: 1px solid #3f3f46;
-    color: #d4d4d4;
-    padding: 8px 16px;
-    border-radius: 9999px;
-    font-size: 13px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.15s;
-    white-space: nowrap;
+background: #27272a;
+border: 1px solid #3f3f46;
+color: #d4d4d4;
+padding: 8px 16px;
+border-radius: 9999px;
+font-size: 13px;
+text-align: center;
+cursor: pointer;
+transition: all 0.15s;
+white-space: nowrap;
 }
-
 .stats-view-btn:hover {
-    background: #3a3a40;
+background: #3a3a40;
 }
-
 .stats-view-btn.active {
-    background: #22c55e22;
-    border-color: #22c55e;
-    color: #22c55e;
+background: #22c55e22;
+border-color: #22c55e;
+color: #22c55e;
 }
-
 /* ── Expandable Expenses List ────────────────────────────────────────────── */
 /* Month header styling */
 #expenses-list > div > div[class*="bg-zinc-900 rounded-3xl p-4 mb-3"] {
-    transition: background-color 0.2s ease;
+transition: background-color 0.2s ease;
 }
-
 #expenses-list > div > div[class*="bg-zinc-900 rounded-3xl p-4 mb-3"]:hover {
-    background-color: #27272a;
+background-color: #27272a;
 }
-
 /* Day header styling */
 #expenses-list > div > div[id^="month-content-"] > div > div[class*="bg-zinc-900/50 rounded-2xl p-3"] {
-    transition: background-color 0.2s ease;
+transition: background-color 0.2s ease;
 }
-
 #expenses-list > div > div[id^="month-content-"] > div > div[class*="bg-zinc-900/50 rounded-3xl p-3"]:hover {
-    background-color: #27272a50;
+background-color: #27272a50;
 }
-
 /* Smooth expand/collapse animation */
 #expenses-list [id^="month-content-"],
 #expenses-list [id^="day-content-"] {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    overflow: hidden;
+transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+overflow: hidden;
 }
-
 /* Hidden state for collapsed sections */
 #expenses-list .hidden {
-    display: none !important;
+display: none !important;
 }
-
 /* Expense item card transition */
 #expenses-list .card,
 #expenses-list [class*="bg-zinc-900/30 rounded-xl"] {
-    transition: transform 0.2s ease, background-color 0.2s ease;
+transition: transform 0.2s ease, background-color 0.2s ease;
 }
-
 #expenses-list .card:active,
 #expenses-list [class*="bg-zinc-900/30 rounded-xl"]:active {
-    transform: scale(0.98);
+transform: scale(0.98);
 }
-
+/* ── Expense Action Buttons (Edit/Delete) - TOUCH FIX ───────────────────── */
+.expense-action-btn {
+touch-action: manipulation; /* Prevents double-tap zoom and improves touch response */
+cursor: pointer;
+z-index: 10; /* Ensure above card active state */
+position: relative;
+-webkit-tap-highlight-color: transparent; /* Remove gray flash on mobile */
+user-select: none; /* Prevent text selection during rapid tapping */
+}
+.expense-action-btn:active {
+transform: scale(1.1); /* Specific feedback for button, overrides card scale */
+opacity: 0.8;
+}
 /* Delete button hover effect */
 #expenses-list [onclick*="deleteExpense"] {
-    transition: color 0.2s ease, transform 0.2s ease;
+transition: color 0.2s ease, transform 0.2s ease;
 }
-
 #expenses-list [onclick*="deleteExpense"]:hover {
-    transform: scale(1.1);
+transform: scale(1.1);
 }
-
 /* ── Housekeeping Card ───────────────────────────────────────────────────── */
 #housekeeping-container > div {
-    transition: background-color 0.2s ease;
+transition: background-color 0.2s ease;
 }
-
 #housekeeping-container > div:hover {
-    background-color: #27272a;
+background-color: #27272a;
 }
-
 /* ── Loading Spinner ─────────────────────────────────────────────────────── */
 @keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
+to {
+transform: rotate(360deg);
 }
-
+}
 .animate-spin {
-    animation: spin 1s linear infinite;
+animation: spin 1s linear infinite;
 }
-
 /* ── Scrollbar Styling (Webkit) ──────────────────────────────────────────── */
 ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+width: 6px;
+height: 6px;
 }
-
 ::-webkit-scrollbar-track {
-    background: #18181b;
+background: #18181b;
 }
-
 ::-webkit-scrollbar-thumb {
-    background: #3f3f46;
-    border-radius: 3px;
+background: #3f3f46;
+border-radius: 3px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-    background: #52525b;
+background: #52525b;
 }
-
 /* ── Focus States for Accessibility ──────────────────────────────────────── */
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-    outline: 2px solid #22c55e;
-    outline-offset: 2px;
+outline: 2px solid #22c55e;
+outline-offset: 2px;
 }
-
 /* ── Print Styles ────────────────────────────────────────────────────────── */
 @media print {
-    nav,
-    header,
-    button,
-    .modal-sheet {
-        display: none !important;
-    }
-    
-    .screen {
-        display: block !important;
-    }
-    
-    .screen.active {
-        display: block !important;
-    }
+nav,
+header,
+button,
+.modal-sheet {
+display: none !important;
+}
+.screen {
+    display: block !important;
 }
 
+.screen.active {
+    display: block !important;
+}
+}
 /* ── Planner Card Action Icons ───────────────────────────────────────────── */
 #planner-list .w-8.h-8 {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 9999px;
-    transition: all 0.15s ease;
-    -webkit-tap-highlight-color: transparent;
+width: 32px;
+height: 32px;
+display: flex;
+align-items: center;
+justify-content: center;
+border-radius: 9999px;
+transition: all 0.15s ease;
+-webkit-tap-highlight-color: transparent;
 }
-
 #planner-list .w-8.h-8:active {
-    background-color: rgba(34, 197, 94, 0.1);
-    transform: scale(0.95);
+background-color: rgba(34, 197, 94, 0.1);
+transform: scale(0.95);
 }
-
 /* Hover states (for non-touch devices) */
 @media (hover: hover) {
-    #planner-list .w-8.h-8:hover.text-emerald-400 {
-        color: #22c55e;
-        background-color: rgba(34, 197, 94, 0.1);
-    }
-    
-    #planner-list .w-8.h-8:hover.text-white {
-        color: #ffffff;
-        background-color: rgba(255, 255, 255, 0.1);
-    }
-    
-    #planner-list .w-8.h-8:hover.text-red-400 {
-        color: #ef4444;
-        background-color: rgba(239, 68, 68, 0.1);
-    }
+#planner-list .w-8.h-8:hover.text-emerald-400 {
+color: #22c55e;
+background-color: rgba(34, 197, 94, 0.1);
+}
+#planner-list .w-8.h-8:hover.text-white {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
+#planner-list .w-8.h-8:hover.text-red-400 {
+    color: #ef4444;
+    background-color: rgba(239, 68, 68, 0.1);
+}
+}
 #planner-list .flex.gap-1.items-center {
-    gap: 4px;
+gap: 4px;
 }
-
 #planner-list .mr-2 {
-    margin-right: 8px;
+margin-right: 8px;
 }
-
 @media (max-width: 360px) {
-    #planner-list .w-8.h-8 {
-        width: 28px;
-        height: 28px;
-        font-size: 1rem;
-    }
-    
-    #planner-list .mr-2 {
-        margin-right: 4px;
-    }
+#planner-list .w-8.h-8 {
+width: 28px;
+height: 28px;
+font-size: 1rem;
 }
-
+#planner-list .mr-2 {
+    margin-right: 4px;
+}
+}
 @media (max-width: 768px) {
-    #planner-list .w-8.h-8 {
-        min-width: 32px;
-        min-height: 32px;
-    }
+#planner-list .w-8.h-8 {
+min-width: 32px;
+min-height: 32px;
 }
-
+}
 /* ── #completed chip — distinct "archive" appearance ─────────────────────── */
 /* Resting state: muted amber tone to signal "this is different" */
 #planner-hashtag-filter .hashtag-chip[data-tag="#completed"] {
-    border-color: #78716c;
-    color: #a8a29e;
+border-color: #78716c;
+color: #a8a29e;
 }
-
 #planner-hashtag-filter .hashtag-chip[data-tag="#completed"]:hover {
-    background: #292524;
-    border-color: #a8a29e;
-    color: #d6d3d1;
+background: #292524;
+border-color: #a8a29e;
+color: #d6d3d1;
 }
-
 /* Active state: amber instead of green — clearly an "archive" view */
 #planner-hashtag-filter .hashtag-chip[data-tag="#completed"].active {
-    background: #78716c22;
-    border-color: #d97706;
-    color: #fbbf24;
+background: #78716c22;
+border-color: #d97706;
+color: #fbbf24;
 }
