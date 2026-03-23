@@ -1,10 +1,7 @@
 // js/expenses-render.js
 // RENDERING LOGIC FOR EXPENSES LIST
 // Handles drawing the expense cards in the main view and stats views
-// PATCHED: Stats view now supports grouping; Toggles are context-aware
-// UPDATED: Edit button added to main list expense cards
-// UPDATED: renderCategoryDrilldown added for stats categories view
-// FIXED: Edit button click handling on touch devices - improved event delegation
+// FIXED: Direct button binding instead of event delegation for touch devices
 
 import { state } from './state.js';
 
@@ -134,17 +131,19 @@ export function renderExpensesList(list) {
                 const category = exp.category ? ` • ${exp.category}` : '';
                 const desc     = exp.desc     ? ` • ${exp.desc}`     : '';
                 return `
-                  <div class="bg-zinc-900/30 rounded-xl p-3 flex justify-between items-center text-sm expense-item">
+                  <div class="bg-zinc-900/30 rounded-xl p-3 flex justify-between items-center text-sm expense-item" data-expense-id="${exp.id}">
                     <div class="flex-1 pointer-events-none">
                       <div class="text-zinc-300">${tool}${category}${desc}</div>
                     </div>
                     <div class="flex items-center gap-2">
                       <div class="font-medium text-emerald-400 pointer-events-none">−${amount}</div>
-                      <button data-action="edit" data-id="${exp.id}"
+                      <button type="button" data-action="edit" data-id="${exp.id}"
                               class="edit-expense-btn text-zinc-400 hover:text-white text-base transition px-1"
+                              style="pointer-events: auto; touch-action: manipulation;"
                               title="Edit">✏️</button>
-                      <button data-action="delete" data-id="${exp.id}"
+                      <button type="button" data-action="delete" data-id="${exp.id}"
                               class="delete-expense-btn text-red-400 hover:text-red-300 text-base transition px-1"
+                              style="pointer-events: auto; touch-action: manipulation;"
                               title="Delete">🗑</button>
                     </div>
                   </div>
@@ -161,78 +160,67 @@ export function renderExpensesList(list) {
 
   container.innerHTML = `<div class="pb-20">${html}</div>`;
 
-  // IMPROVED: Event delegation for edit/delete buttons with proper touch handling
-  // Remove existing listener if present to avoid duplicates
-  if (container._expDelegated) {
-    if (container._expClickHandler) {
-      container.removeEventListener('click', container._expClickHandler);
-    }
-    if (container._expTouchHandler) {
-      container.removeEventListener('touchstart', container._expTouchHandler);
-    }
-  }
-  
-  // Create and store the click handler
-  const clickHandler = function(e) {
-    // Check if click was on edit button
-    const editBtn = e.target.closest('[data-action="edit"]');
-    if (editBtn) {
-      e.preventDefault();
-      e.stopPropagation();
-      const id = editBtn.dataset.id;
-      if (id && window.editExpense) {
-        window.editExpense(id);
-      }
-      return;
-    }
+  // DIRECT BUTTON BINDING - more reliable on touch devices than event delegation
+  setTimeout(() => {
+    const editButtons = container.querySelectorAll('[data-action="edit"]');
+    const deleteButtons = container.querySelectorAll('[data-action="delete"]');
     
-    // Check if click was on delete button
-    const deleteBtn = e.target.closest('[data-action="delete"]');
-    if (deleteBtn) {
-      e.preventDefault();
-      e.stopPropagation();
-      const id = deleteBtn.dataset.id;
-      if (id && window.deleteExpense) {
-        window.deleteExpense(id);
-      }
-      return;
-    }
-  };
-  
-  // Touch handler for better mobile response
-  const touchHandler = function(e) {
-    const editBtn = e.target.closest('[data-action="edit"]');
-    if (editBtn) {
-      e.preventDefault();
-      e.stopPropagation();
-      const id = editBtn.dataset.id;
-      if (id && window.editExpense) {
-        // Add haptic feedback if available
-        if (navigator.vibrate) navigator.vibrate(50);
-        window.editExpense(id);
-      }
-      return;
-    }
+    editButtons.forEach(btn => {
+      // Remove any existing listeners to prevent duplicates
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+      
+      newBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = newBtn.dataset.id;
+        console.log('[expenses-render] Edit button clicked, id:', id);
+        if (id && window.editExpense) {
+          window.editExpense(id);
+        } else {
+          console.error('[expenses-render] editExpense not found or no id');
+        }
+      });
+      
+      newBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = newBtn.dataset.id;
+        console.log('[expenses-render] Edit button touched, id:', id);
+        if (id && window.editExpense) {
+          // Add haptic feedback
+          if (navigator.vibrate) navigator.vibrate(50);
+          window.editExpense(id);
+        }
+      }, { passive: false });
+    });
     
-    const deleteBtn = e.target.closest('[data-action="delete"]');
-    if (deleteBtn) {
-      e.preventDefault();
-      e.stopPropagation();
-      const id = deleteBtn.dataset.id;
-      if (id && window.deleteExpense) {
-        if (navigator.vibrate) navigator.vibrate(50);
-        window.deleteExpense(id);
-      }
-      return;
-    }
-  };
-  
-  // Store handlers for cleanup
-  container._expClickHandler = clickHandler;
-  container._expTouchHandler = touchHandler;
-  container.addEventListener('click', clickHandler);
-  container.addEventListener('touchstart', touchHandler, { passive: false });
-  container._expDelegated = true;
+    deleteButtons.forEach(btn => {
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+      
+      newBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = newBtn.dataset.id;
+        if (id && window.deleteExpense) {
+          window.deleteExpense(id);
+        }
+      });
+      
+      newBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = newBtn.dataset.id;
+        if (id && window.deleteExpense) {
+          if (navigator.vibrate) navigator.vibrate(50);
+          window.deleteExpense(id);
+        }
+      }, { passive: false });
+    });
+    
+    console.log('[expenses-render] Bound', editButtons.length, 'edit buttons and', deleteButtons.length, 'delete buttons');
+  }, 0);
 }
 
 /**
