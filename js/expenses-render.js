@@ -1,7 +1,9 @@
 // js/expenses-render.js
 // RENDERING LOGIC FOR EXPENSES LIST
 // Handles drawing the expense cards in the main view and stats views
-// FIXED: Direct button binding instead of event delegation for touch devices
+// PATCHED: Stats view now supports grouping; Toggles are context-aware
+// UPDATED: Edit button added to main list expense cards
+// UPDATED: renderCategoryDrilldown added for stats categories view
 
 import { state } from './state.js';
 
@@ -131,19 +133,17 @@ export function renderExpensesList(list) {
                 const category = exp.category ? ` • ${exp.category}` : '';
                 const desc     = exp.desc     ? ` • ${exp.desc}`     : '';
                 return `
-                  <div class="bg-zinc-900/30 rounded-xl p-3 flex justify-between items-center text-sm expense-item" data-expense-id="${exp.id}">
-                    <div class="flex-1 pointer-events-none">
+                  <div class="bg-zinc-900/30 rounded-xl p-3 flex justify-between items-center text-sm">
+                    <div class="flex-1">
                       <div class="text-zinc-300">${tool}${category}${desc}</div>
                     </div>
                     <div class="flex items-center gap-2">
-                      <div class="font-medium text-emerald-400 pointer-events-none">−${amount}</div>
-                      <button type="button" data-action="edit" data-id="${exp.id}"
-                              class="edit-expense-btn text-zinc-400 hover:text-white text-base transition px-1"
-                              style="pointer-events: auto; touch-action: manipulation;"
+                      <div class="font-medium text-emerald-400">−${amount}</div>
+                      <button onclick="window.editExpense('${exp.id}'); event.stopPropagation()"
+                              class="text-zinc-400 hover:text-white text-base transition px-1"
                               title="Edit">✏️</button>
-                      <button type="button" data-action="delete" data-id="${exp.id}"
-                              class="delete-expense-btn text-red-400 hover:text-red-300 text-base transition px-1"
-                              style="pointer-events: auto; touch-action: manipulation;"
+                      <button onclick="window.deleteExpense('${exp.id}'); event.stopPropagation()"
+                              class="text-red-400 hover:text-red-300 text-base transition px-1"
                               title="Delete">🗑</button>
                     </div>
                   </div>
@@ -159,68 +159,6 @@ export function renderExpensesList(list) {
   }).join('');
 
   container.innerHTML = `<div class="pb-20">${html}</div>`;
-
-  // DIRECT BUTTON BINDING - more reliable on touch devices than event delegation
-  setTimeout(() => {
-    const editButtons = container.querySelectorAll('[data-action="edit"]');
-    const deleteButtons = container.querySelectorAll('[data-action="delete"]');
-    
-    editButtons.forEach(btn => {
-      // Remove any existing listeners to prevent duplicates
-      const newBtn = btn.cloneNode(true);
-      btn.parentNode.replaceChild(newBtn, btn);
-      
-      newBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const id = newBtn.dataset.id;
-        console.log('[expenses-render] Edit button clicked, id:', id);
-        if (id && window.editExpense) {
-          window.editExpense(id);
-        } else {
-          console.error('[expenses-render] editExpense not found or no id');
-        }
-      });
-      
-      newBtn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const id = newBtn.dataset.id;
-        console.log('[expenses-render] Edit button touched, id:', id);
-        if (id && window.editExpense) {
-          // Add haptic feedback
-          if (navigator.vibrate) navigator.vibrate(50);
-          window.editExpense(id);
-        }
-      }, { passive: false });
-    });
-    
-    deleteButtons.forEach(btn => {
-      const newBtn = btn.cloneNode(true);
-      btn.parentNode.replaceChild(newBtn, btn);
-      
-      newBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const id = newBtn.dataset.id;
-        if (id && window.deleteExpense) {
-          window.deleteExpense(id);
-        }
-      });
-      
-      newBtn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const id = newBtn.dataset.id;
-        if (id && window.deleteExpense) {
-          if (navigator.vibrate) navigator.vibrate(50);
-          window.deleteExpense(id);
-        }
-      }, { passive: false });
-    });
-    
-    console.log('[expenses-render] Bound', editButtons.length, 'edit buttons and', deleteButtons.length, 'delete buttons');
-  }, 0);
 }
 
 /**
@@ -390,6 +328,7 @@ export function renderCategoryDrilldown(container, groupsData, allExpenses) {
     const label    = group.label || key;
     const total    = parseFloat(group.amount || 0).toLocaleString('ru-RU');
     const count    = entries.length;
+    // FIXED: safeKey computed first, then used for BOTH state lookup and DOM IDs
     const safeKey  = key.replace(/[^a-z0-9_-]/gi, '_');
     const isOpen   = state.expandedStatsCategories.has(safeKey);
 
@@ -437,6 +376,9 @@ export function renderCategoryDrilldown(container, groupsData, allExpenses) {
     ${blocksHTML}
   `;
 
+  // FIXED: Use event delegation on the section element instead of inline onclick
+  // on injected HTML — inline onclick on dynamically appended innerHTML is
+  // unreliable on Android Chrome (events swallowed by parent scroll containers).
   section.addEventListener('click', function(e) {
     const btn = e.target.closest('button[data-safekey]');
     if (!btn) return;

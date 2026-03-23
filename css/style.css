@@ -197,74 +197,24 @@ nav.fixed.bottom-0 {
     display: none !important;
 }
 
-/* FIXED: Expense item card styling - completely disabled transform on active to prevent shake */
-#expenses-list .expense-item,
+/* Expense item card transition */
+#expenses-list .card,
 #expenses-list [class*="bg-zinc-900/30 rounded-xl"] {
-    transition: background-color 0.2s ease;
-    touch-action: manipulation;
-    cursor: default;
+    transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
-#expenses-list .expense-item:active,
-#expenses-list [class*="bg-zinc-900/30 rounded-xl"]:active {
-    background-color: rgba(255, 255, 255, 0.04);
-    /* No transform - prevents the shaking effect */
-}
-
-/* CRITICAL FIX: Completely disable any transform on card active states */
 #expenses-list .card:active,
-#expenses-list [class*="bg-zinc-900/30 rounded-xl"]:active,
-#expenses-list .expense-item:active,
-#expenses-list [class*="bg-zinc-900/50 rounded-2xl"]:active {
-    transform: none !important;
-    -webkit-transform: none !important;
+#expenses-list [class*="bg-zinc-900/30 rounded-xl"]:active {
+    transform: scale(0.98);
 }
 
-/* Edit/Delete button styles - ensure they're always clickable */
-#expenses-list button[data-action] {
+/* Delete button hover effect */
+#expenses-list [onclick*="deleteExpense"] {
     transition: color 0.2s ease, transform 0.2s ease;
-    touch-action: manipulation;
-    cursor: pointer;
-    position: relative;
-    z-index: 10;
-    background: transparent;
-    border: none;
-    font-size: 1.125rem;
-    padding: 8px;
-    min-width: 36px;
-    min-height: 36px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 9999px;
 }
 
-#expenses-list button[data-action]:active {
-    transform: scale(0.9);
-}
-
-#expenses-list button[data-action="edit"]:hover {
-    color: #ffffff;
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-#expenses-list button[data-action="delete"]:hover {
-    color: #ef4444;
-    background-color: rgba(239, 68, 68, 0.1);
-}
-
-/* Ensure buttons are always above other elements */
-.edit-expense-btn,
-.delete-expense-btn {
-    pointer-events: auto !important;
-    position: relative;
-    z-index: 20;
-}
-
-/* Prevent text selection on buttons */
-#expenses-list button[data-action] {
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
+#expenses-list [onclick*="deleteExpense"]:hover {
+    transform: scale(1.1);
 }
 
 /* ── Housekeeping Card ───────────────────────────────────────────────────── */
@@ -413,40 +363,4 @@ textarea:focus-visible {
     background: #78716c22;
     border-color: #d97706;
     color: #fbbf24;
-}
-
-/* ── Mobile touch optimizations ──────────────────────────────────────────── */
-@media (max-width: 768px) {
-    /* Increase tap target sizes for better touch experience */
-    button,
-    .tool-btn,
-    .category-btn,
-    .hashtag-chip,
-    .stats-view-btn,
-    .nav-item {
-        min-height: 44px;
-    }
-    
-    /* Better touch feedback */
-    .tool-btn:active,
-    .category-btn:active,
-    .hashtag-chip:active,
-    .stats-view-btn:active {
-        transform: scale(0.97);
-        transition: transform 0.1s ease;
-    }
-    
-    /* Ensure modal buttons are easily tappable */
-    .modal-sheet button,
-    #modal-event button,
-    #modal-expense button,
-    #modal-income button,
-    #modal-compensation button {
-        min-height: 48px;
-    }
-    
-    /* Improve scroll performance */
-    .overflow-y-auto {
-        -webkit-overflow-scrolling: touch;
-    }
 }

@@ -4,7 +4,6 @@
 // UPDATED: Added editExpense and handleUpdateExpense for inline editing
 // UPDATED: Exposed toggleStatsCategoryDrilldown to window
 // FIXED: closeExpenseModal defined locally so Cancel/× always resets modal mode to Add
-// FIXED: Added touch feedback for edit button
 
 import { state } from './state.js';
 import { api } from './api.js';
@@ -131,21 +130,11 @@ function showAddExpenseModal() {
 }
 
 // ── EDIT EXPENSE FLOW ──
-// FIXED: Added visual touch feedback and improved error handling
+
 function editExpense(id) {
-    // Add visual feedback for touch devices
-    const btn = document.querySelector(`[data-action="edit"][data-id="${id}"]`);
-    if (btn) {
-        btn.style.transform = 'scale(0.85)';
-        setTimeout(() => {
-            if (btn) btn.style.transform = '';
-        }, 150);
-    }
-    
     const expense = (state.expensesData || []).find(e => String(e.id) === String(id));
     if (!expense) {
         console.error('[expenses.js] editExpense: expense not found', id);
-        alert('Could not find expense to edit');
         return;
     }
 
@@ -222,7 +211,7 @@ Object.assign(window, {
     showAddExpenseModal,
     saveExpense:       handleSaveExpense,
     deleteExpense:     handleDeleteExpense,
-    editExpense,                                    // FIXED: explicitly exposed
+    editExpense,
     loadExpenses,
 
     // Expose local closeExpenseModal so any button in index.html can call it
