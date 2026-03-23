@@ -134,15 +134,15 @@ export function renderExpensesList(list) {
                 const desc     = exp.desc     ? ` • ${exp.desc}`     : '';
                 return `
                   <div class="bg-zinc-900/30 rounded-xl p-3 flex justify-between items-center text-sm">
-                    <div class="flex-1">
+                    <div class="flex-1 pointer-events-none">
                       <div class="text-zinc-300">${tool}${category}${desc}</div>
                     </div>
                     <div class="flex items-center gap-2">
-                      <div class="font-medium text-emerald-400">−${amount}</div>
-                      <button onclick="window.editExpense('${exp.id}'); event.stopPropagation()"
+                      <div class="font-medium text-emerald-400 pointer-events-none">−${amount}</div>
+                      <button data-action="edit" data-id="${exp.id}"
                               class="text-zinc-400 hover:text-white text-base transition px-1"
                               title="Edit">✏️</button>
-                      <button onclick="window.deleteExpense('${exp.id}'); event.stopPropagation()"
+                      <button data-action="delete" data-id="${exp.id}"
                               class="text-red-400 hover:text-red-300 text-base transition px-1"
                               title="Delete">🗑</button>
                     </div>
@@ -159,6 +159,22 @@ export function renderExpensesList(list) {
   }).join('');
 
   container.innerHTML = `<div class="pb-20">${html}</div>`;
+
+  // FIXED: Event delegation for edit/delete buttons — inline onclick on
+  // dynamically injected innerHTML is unreliable on Android Chrome.
+  // Guard flag prevents stacking duplicate listeners on re-renders.
+  if (!container._expDelegated) {
+    container._expDelegated = true;
+    container.addEventListener('click', function(e) {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      e.stopPropagation();
+      const id     = btn.dataset.id;
+      const action = btn.dataset.action;
+      if (action === 'edit')   window.editExpense(id);
+      if (action === 'delete') window.deleteExpense(id);
+    });
+  }
 }
 
 /**
