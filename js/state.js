@@ -9,7 +9,9 @@ export const state = {
     selectedExpenseCategory: null,
     activePlannerHashtag: null,
     notifPage: 1,
-    // NEW: Track expanded state for expenses list (Month → Day hierarchy)
+    // Track expanded state for expenses list (Month → Day hierarchy)
     expandedExpenseMonths: new Set(),
-    expandedExpenseDays: new Set()
+    expandedExpenseDays: new Set(),
+    // Track expanded state for stats category drilldown accordions
+    expandedStatsCategories: new Set()
 };

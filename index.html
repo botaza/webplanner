@@ -407,7 +407,7 @@ class="nav-item flex flex-col items-center py-3">
 <div class="flex justify-between items-center px-6 pt-5 pb-3 border-b border-zinc-800 shrink-0">
     <!-- PATCHED: id="exp-modal-title" added so JS can swap "New Expense" ↔ "Edit Expense" -->
     <div id="exp-modal-title" class="text-xl font-semibold">New Expense</div>
-    <button onclick="hideModal('modal-expense')" class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
+    <button onclick="closeExpenseModal()" class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
 </div>
 <div class="p-6 overflow-y-auto flex-1 space-y-4" style="-webkit-overflow-scrolling: touch; overscroll-behavior: contain;">
 <div>
@@ -435,7 +435,7 @@ class="nav-item flex flex-col items-center py-3">
 </div>
 </div>
 <div class="px-6 py-4 border-t border-zinc-800 flex gap-3 shrink-0">
-<button onclick="hideModal('modal-expense')" class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
+<button onclick="closeExpenseModal()" class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
 <!-- PATCHED: id="exp-save-btn" added so JS can swap "Save Expense" ↔ "Update Expense" -->
 <button id="exp-save-btn" onclick="saveExpense()" class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Save Expense</button>
 </div>

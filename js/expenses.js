@@ -3,6 +3,7 @@
 // Coordinates UI, CRUD, Rendering, Stats, and Housekeeping
 // UPDATED: Added editExpense and handleUpdateExpense for inline editing
 // UPDATED: Exposed toggleStatsCategoryDrilldown to window
+// FIXED: closeExpenseModal defined locally so Cancel/× always resets modal mode to Add
 
 import { state } from './state.js';
 import { api } from './api.js';
@@ -13,7 +14,8 @@ import { todayString } from './date-utils.js';
 import {
     initExpenseUI,
     showExpenseModal,
-    closeExpenseModal,
+    // NOTE: closeExpenseModal intentionally NOT imported from expenses-ui.js —
+    // we define it locally below so it also resets the modal mode on every close.
     renderExpenseTools,
     renderExpenseCategories,
     handleToolSelect,
@@ -61,10 +63,6 @@ let _editingExpenseId = null;
 
 // ── INITIALIZATION ──
 
-/**
- * Initialize all expense-related modules
- * Called once when app boots or when switching to expenses screen
- */
 export function initExpenses() {
     console.log('[expenses.js] Initializing modules...');
     initExpenseUI();
@@ -76,9 +74,6 @@ export function initExpenses() {
 
 // ── LOAD & RENDER ──
 
-/**
- * Load expenses from backend and render list
- */
 export async function loadExpenses() {
     try {
         const data = await loadExpensesData();
@@ -93,15 +88,25 @@ export async function loadExpenses() {
     }
 }
 
-// ── ADD EXPENSE FLOW ──
+// ── MODAL OPEN / CLOSE ──
 
 /**
- * Open the modal in Add mode (blank form)
+ * Close the expense modal and always reset to Add mode.
+ * Defined here (not imported from expenses-ui.js) so we can also clear
+ * _editingExpenseId and restore the title/button on every close path
+ * — including Cancel button, × button, and post-save.
  */
+function closeExpenseModal() {
+    _editingExpenseId = null;
+    _setModalMode('add');
+    hideModal('modal-expense');
+}
+
+// ── ADD EXPENSE FLOW ──
+
 function showAddExpenseModal() {
     _editingExpenseId = null;
 
-    // Reset all fields
     const dateEl   = document.getElementById('exp-date');
     const amountEl = document.getElementById('exp-amount');
     const descEl   = document.getElementById('exp-desc');
@@ -121,16 +126,11 @@ function showAddExpenseModal() {
     const otherGroup = document.getElementById('exp-tool-other-group');
     if (otherGroup) otherGroup.classList.add('hidden');
 
-    // Set modal title and button label to Add mode
     _setModalMode('add');
 }
 
 // ── EDIT EXPENSE FLOW ──
 
-/**
- * Open the modal pre-populated with an existing expense's values.
- * @param {string} id - Expense ID to edit
- */
 function editExpense(id) {
     const expense = (state.expensesData || []).find(e => String(e.id) === String(id));
     if (!expense) {
@@ -139,19 +139,13 @@ function editExpense(id) {
     }
 
     _editingExpenseId = id;
-
-    // Pre-fill the form (renders tool + category buttons in correct active state)
     populateExpenseForm(expense);
-
     showExpenseModal();
-
-    // Set modal title and button label to Edit mode
     _setModalMode('edit');
 }
 
-/**
- * Handle Save button — routes to add or update depending on _editingExpenseId
- */
+// ── SAVE / UPDATE ──
+
 async function handleSaveExpense() {
     const formData = getExpenseFormData();
     if (!formData) return;
@@ -167,9 +161,8 @@ async function handleSaveExpense() {
         if (res?.success) {
             await loadExpenses();
             await loadDashboard();
-            closeExpenseModal();
             resetExpenseForm();
-            _editingExpenseId = null;
+            closeExpenseModal(); // resets _editingExpenseId and mode internally
         } else {
             alert('Could not save expense' + (res?.error ? `: ${res.error}` : ''));
         }
@@ -179,12 +172,8 @@ async function handleSaveExpense() {
     }
 }
 
-// ── DELETE EXPENSE FLOW ──
+// ── DELETE ──
 
-/**
- * Handle Delete Expense
- * @param {string} id - Expense ID
- */
 async function handleDeleteExpense(id) {
     if (!confirm('Delete this expense?')) return;
     try {
@@ -197,12 +186,8 @@ async function handleDeleteExpense(id) {
     }
 }
 
-// ── HELPERS ──
+// ── PRIVATE HELPERS ──
 
-/**
- * Switch the modal title and save-button label between Add and Edit modes.
- * @param {'add'|'edit'} mode
- */
 function _setModalMode(mode) {
     const title   = document.getElementById('exp-modal-title');
     const saveBtn = document.getElementById('exp-save-btn');
@@ -216,27 +201,22 @@ function _setModalMode(mode) {
     }
 }
 
-/**
- * Selector wrappers (keep the window API clean)
- */
 function selectExpenseTool(code)     { handleToolSelect(code); }
 function selectExpenseCategory(name) { handleCategorySelect(name); }
-
-/**
- * Stats refresh — called by toggle handlers in expenses-render.js
- */
-function refreshExpenseStats() {
-    renderStatsContainer();
-}
+function refreshExpenseStats()       { renderStatsContainer(); }
 
 // ── GLOBAL EXPOSURE ──
 Object.assign(window, {
     // Core actions
     showAddExpenseModal,
-    saveExpense:    handleSaveExpense,
-    deleteExpense:  handleDeleteExpense,
+    saveExpense:       handleSaveExpense,
+    deleteExpense:     handleDeleteExpense,
     editExpense,
     loadExpenses,
+
+    // Expose local closeExpenseModal so any button in index.html can call it
+    // and always get the mode-reset behaviour
+    closeExpenseModal,
 
     // UI selections
     selectExpenseTool,
