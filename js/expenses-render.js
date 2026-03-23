@@ -4,8 +4,29 @@
 // PATCHED: Stats view now supports grouping; Toggles are context-aware
 // UPDATED: Edit button added to main list expense cards
 // UPDATED: renderCategoryDrilldown added for stats categories view
+// FIXED: Edit button on touch screens — replaced inline onclick with event delegation
 
 import { state } from './state.js';
+
+// ── EVENT DELEGATION SETUP ──
+// Called once after the expenses-list container is populated.
+// Handles edit button taps on touch screens via delegated listener.
+// We keep a single listener per container by tracking it on the element itself.
+
+function _attachExpensesListDelegation(container) {
+    if (container._editDelegationAttached) return;
+    container._editDelegationAttached = true;
+
+    // Use 'pointerup' so it fires reliably on both touch and mouse
+    container.addEventListener('pointerup', function (e) {
+        const btn = e.target.closest('[data-edit-id]');
+        if (!btn) return;
+        e.stopPropagation();
+        e.preventDefault();
+        const id = btn.dataset.editId;
+        if (id && window.editExpense) window.editExpense(id);
+    });
+}
 
 /**
  * Render the main expenses list with expandable month/day groups
@@ -139,12 +160,14 @@ export function renderExpensesList(list) {
                     </div>
                     <div class="flex items-center gap-2">
                       <div class="font-medium text-emerald-400">−${amount}</div>
-                      <button onclick="window.editExpense('${exp.id}'); event.stopPropagation()"
-                              class="text-zinc-400 hover:text-white text-base transition px-1"
-                              title="Edit">✏️</button>
+                      <button data-edit-id="${exp.id}"
+                              class="text-zinc-400 hover:text-white text-base transition px-1 touch-manipulation"
+                              title="Edit"
+                              style="min-width:32px;min-height:32px;">✏️</button>
                       <button onclick="window.deleteExpense('${exp.id}'); event.stopPropagation()"
-                              class="text-red-400 hover:text-red-300 text-base transition px-1"
-                              title="Delete">🗑</button>
+                              class="text-red-400 hover:text-red-300 text-base transition px-1 touch-manipulation"
+                              title="Delete"
+                              style="min-width:32px;min-height:32px;">🗑</button>
                     </div>
                   </div>
                 `;
@@ -159,6 +182,9 @@ export function renderExpensesList(list) {
   }).join('');
 
   container.innerHTML = `<div class="pb-20">${html}</div>`;
+
+  // Attach delegated pointer listener for edit buttons (touch-safe)
+  _attachExpensesListDelegation(container);
 }
 
 /**
@@ -328,7 +354,6 @@ export function renderCategoryDrilldown(container, groupsData, allExpenses) {
     const label    = group.label || key;
     const total    = parseFloat(group.amount || 0).toLocaleString('ru-RU');
     const count    = entries.length;
-    // FIXED: safeKey computed first, then used for BOTH state lookup and DOM IDs
     const safeKey  = key.replace(/[^a-z0-9_-]/gi, '_');
     const isOpen   = state.expandedStatsCategories.has(safeKey);
 
@@ -376,10 +401,8 @@ export function renderCategoryDrilldown(container, groupsData, allExpenses) {
     ${blocksHTML}
   `;
 
-  // FIXED: Use event delegation on the section element instead of inline onclick
-  // on injected HTML — inline onclick on dynamically appended innerHTML is
-  // unreliable on Android Chrome (events swallowed by parent scroll containers).
-  section.addEventListener('click', function(e) {
+  // Event delegation — touch-safe (same pattern as edit button fix above)
+  section.addEventListener('pointerup', function(e) {
     const btn = e.target.closest('button[data-safekey]');
     if (!btn) return;
     e.stopPropagation();
