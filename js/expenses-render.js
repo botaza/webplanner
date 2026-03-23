@@ -319,7 +319,7 @@ export function renderCategoryDrilldown(container, groupsData, allExpenses) {
   // Sort categories by total amount descending (mirrors pie chart order)
   const sortedKeys = keys.sort((a, b) => (groups[b]?.amount || 0) - (groups[a]?.amount || 0));
 
-  // Track open state locally (keyed by category name)
+  // Track open state — keyed by safeKey (consistent with toggleStatsCategoryDrilldown)
   if (!state.expandedStatsCategories) state.expandedStatsCategories = new Set();
 
   const blocksHTML = sortedKeys.map(key => {
@@ -328,8 +328,9 @@ export function renderCategoryDrilldown(container, groupsData, allExpenses) {
     const label    = group.label || key;
     const total    = parseFloat(group.amount || 0).toLocaleString('ru-RU');
     const count    = entries.length;
-    const isOpen   = state.expandedStatsCategories.has(key);
+    // FIXED: safeKey computed first, then used for BOTH state lookup and DOM IDs
     const safeKey  = key.replace(/[^a-z0-9_-]/gi, '_');
+    const isOpen   = state.expandedStatsCategories.has(safeKey);
 
     const rows = entries.map(exp => {
       const amount = parseFloat(exp.amount || 0).toLocaleString('ru-RU');
@@ -337,26 +338,27 @@ export function renderCategoryDrilldown(container, groupsData, allExpenses) {
       const desc   = exp.desc ? ` • ${exp.desc}` : '';
       return `
         <div class="flex justify-between items-center text-sm py-2 border-b border-zinc-800/60 last:border-0">
-          <div class="flex-1 min-w-0">
+          <div class="flex-1 min-w-0 pointer-events-none">
             <span class="text-zinc-400 text-xs">${exp.date || '—'}</span>
             <span class="text-zinc-300 ml-2">${tool}${desc}</span>
           </div>
-          <div class="font-medium text-emerald-400 shrink-0 ml-3">−${amount}</div>
+          <div class="font-medium text-emerald-400 shrink-0 ml-3 pointer-events-none">−${amount}</div>
         </div>
       `;
     }).join('');
 
     return `
       <div class="mb-2">
-        <div class="bg-zinc-900 rounded-2xl px-4 py-3 cursor-pointer hover:bg-zinc-800 transition flex justify-between items-center"
-             onclick="window.toggleStatsCategoryDrilldown('${safeKey}')">
-          <div class="flex items-center gap-2">
+        <button type="button"
+                class="w-full bg-zinc-900 rounded-2xl px-4 py-3 hover:bg-zinc-800 transition flex justify-between items-center text-left"
+                onclick="window.toggleStatsCategoryDrilldown('${safeKey}')">
+          <div class="flex items-center gap-2 pointer-events-none">
             <span class="text-base">${isOpen ? '📂' : '📁'}</span>
             <span class="font-medium text-zinc-200">${label}</span>
             <span class="text-xs text-zinc-500">${count} entr${count !== 1 ? 'ies' : 'y'}</span>
           </div>
-          <span class="text-emerald-400 font-semibold">−${total}</span>
-        </div>
+          <span class="text-emerald-400 font-semibold pointer-events-none">−${total}</span>
+        </button>
         <div id="stats-cat-${safeKey}" class="px-4 pt-1 pb-2 ${isOpen ? '' : 'hidden'}">
           ${rows}
         </div>
