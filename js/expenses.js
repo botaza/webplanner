@@ -1,9 +1,4 @@
 // js/expenses.js
-// ORCHESTRATOR MODULE FOR EXPENSES
-// Coordinates UI, CRUD, Rendering, Stats, and Housekeeping
-// UPDATED: Added editExpense and handleUpdateExpense for inline editing
-// UPDATED: Exposed toggleStatsCategoryDrilldown to window
-// FIXED: closeExpenseModal defined locally so Cancel/× always resets modal mode to Add
 
 import { state } from './state.js';
 import { api } from './api.js';
@@ -11,231 +6,254 @@ import { hideModal } from './utils.js';
 import { loadDashboard } from './dashboard.js';
 import { todayString } from './date-utils.js';
 
-import {
-    initExpenseUI,
-    showExpenseModal,
-    // NOTE: closeExpenseModal intentionally NOT imported from expenses-ui.js —
-    // we define it locally below so it also resets the modal mode on every close.
-    renderExpenseTools,
-    renderExpenseCategories,
-    handleToolSelect,
-    handleCategorySelect,
-    getExpenseFormData,
-    resetExpenseForm,
-    populateExpenseForm,
-    EXPENSE_TOOLS,
-    EXPENSE_CATEGORIES
-} from './expenses-ui.js';
+const EXPENSE_TOOLS = [
+    {code: "gp", name: "GP"},
+    {code: "hal", name: "Hal"},
+    {code: "sb", name: "SB"},
+    {code: "ren", name: "Ren"},
+    {code: "oz", name: "OZON"},
+    {code: "ya", name: "Yandex"},
+    {code: "cert", name: "Certificate"},
+    {code: "cash", name: "Cash"},
+    {code: "transfer", name: "Transfer"},
+    {code: "other", name: "Other…"}
+];
 
-import {
-    loadExpensesData,
-    saveExpenseData,
-    updateExpenseData,
-    deleteExpenseData
-} from './expenses-crud.js';
+const EXPENSE_CATEGORIES = [
+    {emoji: "🍔", name: "food"},
+    {emoji: "🚗", name: "transport"},
+    {emoji: "✈️", name: "travel"},
+    {emoji: "🏠", name: "housing"},
+    {emoji: "💊", name: "health"},
+    {emoji: "🚫", name: "notmy"},
+    {emoji: "🎮", name: "fun"},
+    {emoji: "🛒", name: "shop"},
+    {emoji: "➡️", name: "transfer"},
+    {emoji: "🎓", name: "education"},
+    {emoji: "🧾", name: "bills"},
+    {emoji: "🎁", name: "gifts"},
+    {emoji: "📲", name: "sbp"},
+    {emoji: "📦", name: "other"},
+    {emoji: "🏋️", name: "gym"},
+    {emoji: "💳", name: "loans"},
+];
 
-import {
-    renderExpensesList,
-    toggleExpenseMonth,
-    toggleExpenseDay,
-    toggleStatsCategoryDrilldown
-} from './expenses-render.js';
+let selectedExpenseTool = null;
+let selectedExpenseCategory = null;
+let editingExpenseId = null;
 
-import {
-    initExpenseStats,
-    setStatsView,
-    setStatsMonth,
-    showStatsMonthPicker,
-    renderStatsContainer
-} from './expenses-stats.js';
+// ── RENDER ──
 
-import {
-    initAdvancedFilter
-} from './expenses-advanced-filter.js';
-
-import {
-    initHousekeepingUI
-} from './expenses-housekeeping.js';
-
-// ── EDIT STATE ──
-// Holds the ID of the expense currently being edited, or null if adding new
-let _editingExpenseId = null;
-
-// ── INITIALIZATION ──
-
-export function initExpenses() {
-    console.log('[expenses.js] Initializing modules...');
-    initExpenseUI();
-    initExpenseStats();
-    initAdvancedFilter('expenses-filter-controls');
-    initHousekeepingUI();
-    console.log('[expenses.js] Initialization complete');
+function renderExpenseTools() {
+    const container = document.getElementById('exp-tool-buttons');
+    if (!container) return;
+    container.innerHTML = EXPENSE_TOOLS.map(t => `
+        <div class="tool-btn ${t.code === selectedExpenseTool ? 'active' : ''}"
+             data-code="${t.code}"
+             onclick="selectExpenseTool('${t.code}')">
+            ${t.name}
+        </div>
+    `).join('');
 }
 
-// ── LOAD & RENDER ──
+function selectExpenseTool(code) {
+    selectedExpenseTool = code;
+    document.querySelectorAll('#exp-tool-buttons .tool-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.code === code);
+    });
 
-export async function loadExpenses() {
-    try {
-        const data = await loadExpensesData();
-        state.expensesData = data || [];
-        renderExpensesList(state.expensesData);
-    } catch (err) {
-        console.error('[expenses.js] Failed to load expenses:', err);
-        const container = document.getElementById('expenses-list');
-        if (container) {
-            container.innerHTML = `<div class="text-red-400 text-center py-10">Failed to load expenses</div>`;
-        }
+    const other = document.getElementById('exp-tool-other-group');
+    if (code === 'other') {
+        other.classList.remove('hidden');
+    } else {
+        other.classList.add('hidden');
+        document.getElementById('exp-tool-other').value = '';
     }
 }
 
-// ── MODAL OPEN / CLOSE ──
-
-/**
- * Close the expense modal and always reset to Add mode.
- * Defined here (not imported from expenses-ui.js) so we can also clear
- * _editingExpenseId and restore the title/button on every close path
- * — including Cancel button, × button, and post-save.
- */
-function closeExpenseModal() {
-    _editingExpenseId = null;
-    _setModalMode('add');
-    hideModal('modal-expense');
+function renderExpenseCategories() {
+    const container = document.getElementById('exp-category-buttons');
+    if (!container) return;
+    container.innerHTML = EXPENSE_CATEGORIES.map(c => `
+        <div class="category-btn ${c.name === selectedExpenseCategory ? 'active' : ''}"
+             title="${c.name}"
+             onclick="selectExpenseCategory('${c.name}')">
+            ${c.emoji}
+        </div>
+    `).join('');
 }
 
-// ── ADD EXPENSE FLOW ──
+function selectExpenseCategory(name) {
+    selectedExpenseCategory = name;
+    document.querySelectorAll('#exp-category-buttons .category-btn').forEach(b => {
+        b.classList.toggle('active', b.title === name);
+    });
+}
+
+// ── ✨ UPDATED LIST RENDER (EDIT FIX HERE) ──
+
+function renderExpenses(list) {
+    const container = document.getElementById('expenses-list');
+    container.innerHTML = list.map(exp => `
+        <div class="bg-zinc-900 rounded-3xl p-5 flex justify-between items-center card">
+            <div>
+                <div class="text-xs text-zinc-500">${exp.date || '—'}</div>
+                <div class="font-semibold text-xl">−${parseFloat(exp.amount || 0).toLocaleString('ru-RU')}</div>
+                <div class="text-sm text-zinc-400 mt-1">
+                    ${exp.tool || '?'}
+                    ${exp.category ? ` • ${exp.category}` : ''}
+                    ${exp.desc ? ` • ${exp.desc}` : ''}
+                </div>
+            </div>
+
+            <div class="flex gap-3 text-2xl">
+                <!-- ✏️ EDIT BUTTON -->
+                <div onclick="editExpense('${exp.id}', event)"
+                     class="cursor-pointer select-none active:scale-90">
+                    ✏️
+                </div>
+
+                <!-- 🗑 DELETE BUTTON -->
+                <div onclick="deleteExpense('${exp.id}'); event.stopPropagation()"
+                     class="text-red-400 cursor-pointer select-none active:scale-90">
+                    🗑
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ── EDIT HANDLER ──
+
+function editExpense(id, event) {
+    if (event) event.stopPropagation();
+
+    const exp = state.expensesData.find(e => e.id == id);
+    if (!exp) return;
+
+    editingExpenseId = id;
+
+    document.getElementById('exp-date').value = exp.date || '';
+    document.getElementById('exp-amount').value = exp.amount || '';
+    document.getElementById('exp-desc').value = exp.desc || '';
+
+    // Tool
+    const knownTool = EXPENSE_TOOLS.find(t => t.code === exp.tool);
+    if (knownTool) {
+        selectedExpenseTool = knownTool.code;
+        document.getElementById('exp-tool-other-group').classList.add('hidden');
+    } else {
+        selectedExpenseTool = 'other';
+        document.getElementById('exp-tool-other-group').classList.remove('hidden');
+        document.getElementById('exp-tool-other').value = exp.tool;
+    }
+
+    // Category
+    selectedExpenseCategory = exp.category;
+
+    renderExpenseTools();
+    renderExpenseCategories();
+
+    document.getElementById('modal-expense').classList.remove('hidden');
+    document.getElementById('modal-expense').classList.add('flex');
+}
+
+// ── LOAD ──
+
+async function loadExpenses() {
+    const data = await api('get_expenses');
+    state.expensesData = data || [];
+    renderExpenses(state.expensesData);
+}
+
+// ── ADD / SAVE ──
 
 function showAddExpenseModal() {
-    _editingExpenseId = null;
+    editingExpenseId = null;
 
-    const dateEl   = document.getElementById('exp-date');
-    const amountEl = document.getElementById('exp-amount');
-    const descEl   = document.getElementById('exp-desc');
-    const otherEl  = document.getElementById('exp-tool-other');
-    if (dateEl)   dateEl.value   = todayString();
-    if (amountEl) amountEl.value = '';
-    if (descEl)   descEl.value   = '';
-    if (otherEl)  otherEl.value  = '';
+    document.getElementById('exp-date').value = todayString();
+    document.getElementById('exp-amount').value = '';
+    document.getElementById('exp-desc').value = '';
 
-    state.selectedExpenseTool     = null;
-    state.selectedExpenseCategory = null;
+    selectedExpenseTool = null;
+    selectedExpenseCategory = null;
 
-    showExpenseModal();
-    renderExpenseTools(EXPENSE_TOOLS);
-    renderExpenseCategories(EXPENSE_CATEGORIES);
+    renderExpenseTools();
+    renderExpenseCategories();
 
-    const otherGroup = document.getElementById('exp-tool-other-group');
-    if (otherGroup) otherGroup.classList.add('hidden');
+    document.getElementById('exp-tool-other-group').classList.add('hidden');
 
-    _setModalMode('add');
+    document.getElementById('modal-expense').classList.remove('hidden');
+    document.getElementById('modal-expense').classList.add('flex');
 }
 
-// ── EDIT EXPENSE FLOW ──
+async function saveExpense() {
+    if (!selectedExpenseTool) { alert("Please select a tool"); return; }
+    if (!selectedExpenseCategory) { alert("Please select a category"); return; }
 
-function editExpense(id) {
-    const expense = (state.expensesData || []).find(e => String(e.id) === String(id));
-    if (!expense) {
-        console.error('[expenses.js] editExpense: expense not found', id);
+    let toolValue = selectedExpenseTool;
+
+    if (selectedExpenseTool === 'other') {
+        const custom = document.getElementById('exp-tool-other').value.trim();
+        if (!custom) { alert("Please specify the other tool"); return; }
+        toolValue = custom;
+    }
+
+    const amountStr = document.getElementById('exp-amount').value.trim();
+    const amount = parseFloat(amountStr);
+
+    if (!amountStr || isNaN(amount) || amount <= 0) {
+        alert("Please enter a valid positive amount");
         return;
     }
 
-    _editingExpenseId = id;
-    populateExpenseForm(expense);
-    showExpenseModal();
-    _setModalMode('edit');
-}
-
-// ── SAVE / UPDATE ──
-
-async function handleSaveExpense() {
-    const formData = getExpenseFormData();
-    if (!formData) return;
+    const payload = {
+        id: editingExpenseId, // 👈 IMPORTANT
+        date: document.getElementById('exp-date').value,
+        amount,
+        tool: toolValue,
+        category: selectedExpenseCategory,
+        desc: document.getElementById('exp-desc').value.trim()
+    };
 
     try {
-        let res;
-        if (_editingExpenseId) {
-            res = await updateExpenseData(_editingExpenseId, formData);
-        } else {
-            res = await saveExpenseData(formData);
-        }
+        const action = editingExpenseId ? 'update_expense' : 'add_expense';
+        const res = await api(action, payload);
 
         if (res?.success) {
-            await loadExpenses();
-            await loadDashboard();
-            resetExpenseForm();
-            closeExpenseModal(); // resets _editingExpenseId and mode internally
+            hideModal('modal-expense');
+            loadExpenses();
+            loadDashboard();
         } else {
-            alert('Could not save expense' + (res?.error ? `: ${res.error}` : ''));
+            alert("Could not save expense");
         }
     } catch (err) {
-        console.error('[expenses.js] Save/update error:', err);
-        alert('Network/server error while saving expense');
+        console.error(err);
+        alert("Network/server error");
     }
 }
 
 // ── DELETE ──
 
-async function handleDeleteExpense(id) {
-    if (!confirm('Delete this expense?')) return;
-    try {
-        await deleteExpenseData(id);
-        await loadExpenses();
-        await loadDashboard();
-    } catch (err) {
-        console.error('[expenses.js] Delete error:', err);
-        alert('Failed to delete expense');
-    }
+async function deleteExpense(id) {
+    if (!confirm('Delete expense?')) return;
+    await api('delete_expense', {id});
+    loadExpenses();
+    loadDashboard();
 }
 
-// ── PRIVATE HELPERS ──
+// ── GLOBAL ──
 
-function _setModalMode(mode) {
-    const title   = document.getElementById('exp-modal-title');
-    const saveBtn = document.getElementById('exp-save-btn');
-
-    if (mode === 'edit') {
-        if (title)   title.textContent   = 'Edit Expense';
-        if (saveBtn) saveBtn.textContent = 'Update Expense';
-    } else {
-        if (title)   title.textContent   = 'New Expense';
-        if (saveBtn) saveBtn.textContent = 'Save Expense';
-    }
-}
-
-function selectExpenseTool(code)     { handleToolSelect(code); }
-function selectExpenseCategory(name) { handleCategorySelect(name); }
-function refreshExpenseStats()       { renderStatsContainer(); }
-
-// ── GLOBAL EXPOSURE ──
 Object.assign(window, {
-    // Core actions
-    showAddExpenseModal,
-    saveExpense:       handleSaveExpense,
-    deleteExpense:     handleDeleteExpense,
-    editExpense,
-    loadExpenses,
-
-    // Expose local closeExpenseModal so any button in index.html can call it
-    // and always get the mode-reset behaviour
-    closeExpenseModal,
-
-    // UI selections
     selectExpenseTool,
     selectExpenseCategory,
-
-    // Stats functions
-    setStatsView,
-    setStatsMonth,
-    showStatsMonthPicker,
-    refreshExpenseStats,
-
-    // Category drilldown toggle (called from renderCategoryDrilldown HTML)
-    toggleStatsCategoryDrilldown,
-
-    // Expandable list toggles
-    toggleExpenseMonth,
-    toggleExpenseDay,
-
-    // Rendering helpers
-    renderExpenseTools:      (tools) => renderExpenseTools(tools || EXPENSE_TOOLS),
-    renderExpenseCategories: (cats)  => renderExpenseCategories(cats || EXPENSE_CATEGORIES)
+    renderExpenseTools,
+    renderExpenseCategories,
+    showAddExpenseModal,
+    saveExpense,
+    deleteExpense,
+    loadExpenses,
+    editExpense
 });
+
+export { loadExpenses };
