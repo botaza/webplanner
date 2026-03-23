@@ -197,7 +197,7 @@ nav.fixed.bottom-0 {
     display: none !important;
 }
 
-/* FIXED: Expense item card styling - removed transform on active to prevent shake */
+/* FIXED: Expense item card styling - completely disabled transform on active to prevent shake */
 #expenses-list .expense-item,
 #expenses-list [class*="bg-zinc-900/30 rounded-xl"] {
     transition: background-color 0.2s ease;
@@ -209,6 +209,15 @@ nav.fixed.bottom-0 {
 #expenses-list [class*="bg-zinc-900/30 rounded-xl"]:active {
     background-color: rgba(255, 255, 255, 0.04);
     /* No transform - prevents the shaking effect */
+}
+
+/* CRITICAL FIX: Completely disable any transform on card active states */
+#expenses-list .card:active,
+#expenses-list [class*="bg-zinc-900/30 rounded-xl"]:active,
+#expenses-list .expense-item:active,
+#expenses-list [class*="bg-zinc-900/50 rounded-2xl"]:active {
+    transform: none !important;
+    -webkit-transform: none !important;
 }
 
 /* Edit/Delete button styles - ensure they're always clickable */
