@@ -350,8 +350,8 @@ export function renderCategoryDrilldown(container, groupsData, allExpenses) {
     return `
       <div class="mb-2">
         <button type="button"
-                class="w-full bg-zinc-900 rounded-2xl px-4 py-3 hover:bg-zinc-800 transition flex justify-between items-center text-left"
-                onclick="window.toggleStatsCategoryDrilldown('${safeKey}')">
+                data-safekey="${safeKey}"
+                class="w-full bg-zinc-900 rounded-2xl px-4 py-3 hover:bg-zinc-800 transition flex justify-between items-center text-left">
           <div class="flex items-center gap-2 pointer-events-none">
             <span class="text-base">${isOpen ? '📂' : '📁'}</span>
             <span class="font-medium text-zinc-200">${label}</span>
@@ -375,12 +375,23 @@ export function renderCategoryDrilldown(container, groupsData, allExpenses) {
     </div>
     ${blocksHTML}
   `;
+
+  // FIXED: Use event delegation on the section element instead of inline onclick
+  // on injected HTML — inline onclick on dynamically appended innerHTML is
+  // unreliable on Android Chrome (events swallowed by parent scroll containers).
+  section.addEventListener('click', function(e) {
+    const btn = e.target.closest('button[data-safekey]');
+    if (!btn) return;
+    e.stopPropagation();
+    toggleStatsCategoryDrilldown(btn.dataset.safekey);
+  });
+
   container.appendChild(section);
 }
 
 /**
  * Toggle a single category drilldown accordion in the stats view.
- * Called from inline onclick inside renderCategoryDrilldown.
+ * Called via event delegation from renderCategoryDrilldown.
  * @param {string} safeKey - Sanitised category key
  */
 export function toggleStatsCategoryDrilldown(safeKey) {
