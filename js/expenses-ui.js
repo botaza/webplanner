@@ -1,6 +1,7 @@
 // js/expenses-ui.js
 // UI MANIPULATION FOR EXPENSES
 // Handles modal visibility, button rendering, and form data gathering
+// UPDATED: Added populateExpenseForm to pre-fill modal for editing
 
 import { state } from './state.js';
 import { hideModal } from './utils.js';
@@ -139,42 +140,41 @@ export function handleCategorySelect(name) {
  * @returns {Object|null} Form data object or null if invalid
  */
 export function getExpenseFormData() {
-    const dateEl = document.getElementById('exp-date');
+    const dateEl   = document.getElementById('exp-date');
     const amountEl = document.getElementById('exp-amount');
-    const descEl = document.getElementById('exp-desc');
-    const otherEl = document.getElementById('exp-tool-other');
+    const descEl   = document.getElementById('exp-desc');
+    const otherEl  = document.getElementById('exp-tool-other');
 
     if (!dateEl || !amountEl) return null;
 
-    const date = dateEl.value;
+    const date      = dateEl.value;
     const amountStr = amountEl.value.trim();
-    const amount = parseFloat(amountStr);
-    const desc = descEl ? descEl.value.trim() : '';
+    const amount    = parseFloat(amountStr);
+    const desc      = descEl ? descEl.value.trim() : '';
 
-    // Validation
-    if (!date) { 
-        alert("Please select a date"); 
-        return null; 
+    if (!date) {
+        alert("Please select a date");
+        return null;
     }
     if (!amountStr || isNaN(amount) || amount <= 0) {
         alert("Please enter a valid positive amount");
         return null;
     }
-    if (!state.selectedExpenseTool) { 
-        alert("Please select a tool"); 
-        return null; 
+    if (!state.selectedExpenseTool) {
+        alert("Please select a tool");
+        return null;
     }
-    if (!state.selectedExpenseCategory) { 
-        alert("Please select a category"); 
-        return null; 
+    if (!state.selectedExpenseCategory) {
+        alert("Please select a category");
+        return null;
     }
 
     let toolValue = state.selectedExpenseTool;
     if (state.selectedExpenseTool === 'other') {
         const custom = otherEl ? otherEl.value.trim() : '';
-        if (!custom) { 
-            alert("Please specify the other tool"); 
-            return null; 
+        if (!custom) {
+            alert("Please specify the other tool");
+            return null;
         }
         toolValue = custom;
     }
@@ -189,23 +189,63 @@ export function getExpenseFormData() {
 }
 
 /**
+ * Pre-populate the expense modal with an existing expense's values.
+ * Call this before showExpenseModal() when editing.
+ * @param {Object} expense - Existing expense object { id, date, amount, tool, category, desc }
+ */
+export function populateExpenseForm(expense) {
+    const dateEl   = document.getElementById('exp-date');
+    const amountEl = document.getElementById('exp-amount');
+    const descEl   = document.getElementById('exp-desc');
+    const otherEl  = document.getElementById('exp-tool-other');
+
+    if (dateEl)   dateEl.value   = expense.date   || '';
+    if (amountEl) amountEl.value = expense.amount != null ? expense.amount : '';
+    if (descEl)   descEl.value   = expense.desc   || '';
+
+    // Resolve tool — check if it matches a known code, otherwise treat as "other"
+    const knownTool = EXPENSE_TOOLS.find(t => t.code === expense.tool);
+    if (knownTool) {
+        state.selectedExpenseTool = knownTool.code;
+        const otherGroup = document.getElementById('exp-tool-other-group');
+        if (otherGroup) otherGroup.classList.add('hidden');
+        if (otherEl) otherEl.value = '';
+    } else if (expense.tool) {
+        // Custom tool value — select "other" and fill in the text input
+        state.selectedExpenseTool = 'other';
+        const otherGroup = document.getElementById('exp-tool-other-group');
+        if (otherGroup) otherGroup.classList.remove('hidden');
+        if (otherEl) otherEl.value = expense.tool;
+    } else {
+        state.selectedExpenseTool = null;
+    }
+
+    // Resolve category
+    const knownCategory = EXPENSE_CATEGORIES.find(c => c.name === expense.category);
+    state.selectedExpenseCategory = knownCategory ? knownCategory.name : null;
+
+    // Re-render buttons to reflect pre-selected state
+    renderExpenseTools();
+    renderExpenseCategories();
+}
+
+/**
  * Reset form fields to default state
  */
 export function resetExpenseForm() {
-    const dateEl = document.getElementById('exp-date');
+    const dateEl   = document.getElementById('exp-date');
     const amountEl = document.getElementById('exp-amount');
-    const descEl = document.getElementById('exp-desc');
-    const otherEl = document.getElementById('exp-tool-other');
+    const descEl   = document.getElementById('exp-desc');
+    const otherEl  = document.getElementById('exp-tool-other');
 
-    if (dateEl) dateEl.value = '';
+    if (dateEl)   dateEl.value   = '';
     if (amountEl) amountEl.value = '';
-    if (descEl) descEl.value = '';
-    if (otherEl) otherEl.value = '';
+    if (descEl)   descEl.value   = '';
+    if (otherEl)  otherEl.value  = '';
 
-    state.selectedExpenseTool = null;
+    state.selectedExpenseTool     = null;
     state.selectedExpenseCategory = null;
-    
-    // Reset UI classes
+
     document.querySelectorAll('.tool-btn, .category-btn').forEach(b => b.classList.remove('active'));
     const otherGroup = document.getElementById('exp-tool-other-group');
     if (otherGroup) otherGroup.classList.add('hidden');
@@ -218,5 +258,4 @@ export function resetExpenseForm() {
  */
 export function initExpenseUI() {
     console.log('[expenses-ui] Initialized');
-    // Pre-render if needed, but usually done on modal open
 }

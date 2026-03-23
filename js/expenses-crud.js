@@ -1,6 +1,7 @@
 // js/expenses-crud.js
 // CRUD OPERATIONS FOR EXPENSES
 // Handles all API communication for expense data
+// UPDATED: Added updateExpenseData function
 
 import { api } from './api.js';
 import { state } from './state.js';
@@ -30,6 +31,22 @@ export async function saveExpenseData(expense) {
         return res;
     } catch (err) {
         console.error('[expenses-crud] Failed to save expense:', err);
+        throw err;
+    }
+}
+
+/**
+ * Update an existing expense by ID
+ * @param {string} id - Expense ID to update
+ * @param {Object} expense - Updated fields: { date, amount, tool, category, desc }
+ * @returns {Promise<Object>} API response
+ */
+export async function updateExpenseData(id, expense) {
+    try {
+        const res = await api('update_expense', { id, ...expense });
+        return res;
+    } catch (err) {
+        console.error('[expenses-crud] Failed to update expense:', err);
         throw err;
     }
 }
@@ -65,7 +82,6 @@ export async function getExpensesByCategory(startDate, endDate) {
         return res || {};
     } catch (err) {
         console.error('[expenses-crud] Failed to get category aggregation:', err);
-        // Fallback: client-side aggregation
         return aggregateExpensesClientSide(startDate, endDate, 'category');
     }
 }
@@ -86,7 +102,6 @@ export async function getExpensesByTool(startDate, endDate) {
         return res || {};
     } catch (err) {
         console.error('[expenses-crud] Failed to get tool aggregation:', err);
-        // Fallback: client-side aggregation
         return aggregateExpensesClientSide(startDate, endDate, 'tool');
     }
 }
@@ -108,7 +123,6 @@ export async function getExpensesByLimit(startDate, endDate, minAmount) {
         return res || [];
     } catch (err) {
         console.error('[expenses-crud] Failed to get filtered expenses:', err);
-        // Fallback: client-side filtering
         return filterExpensesClientSide(startDate, endDate, minAmount);
     }
 }
@@ -123,7 +137,6 @@ export async function getExpensesMetadata() {
         return res || {};
     } catch (err) {
         console.error('[expenses-crud] Failed to get meta', err);
-        // Fallback: calculate from loaded data
         const data = state.expensesData || [];
         const dates = data.map(e => e.date).filter(d => d).sort();
         return {
@@ -157,15 +170,15 @@ function aggregateExpensesClientSide(startDate, endDate, groupBy) {
     const data = state.expensesData || [];
     const result = {};
     let total = 0;
-    
+
     data.forEach(exp => {
         if (!exp.date) return;
         if (startDate && exp.date < startDate) return;
         if (endDate && exp.date > endDate) return;
-        
+
         const key = exp[groupBy] || 'unknown';
         const amount = parseFloat(exp.amount) || 0;
-        
+
         if (!result[key]) {
             result[key] = { label: key, amount: 0, count: 0 };
         }
@@ -173,7 +186,7 @@ function aggregateExpensesClientSide(startDate, endDate, groupBy) {
         result[key].count += 1;
         total += amount;
     });
-    
+
     return { groups: result, total };
 }
 

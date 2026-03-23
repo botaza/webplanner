@@ -3,6 +3,7 @@
 // UPDATED: Added daily recurrence support for events
 // UPDATED: Added original_hashtag field to add_event and update_event
 // UPDATED: Added compensation CRUD; income now stores tool field
+// UPDATED: Added update_expense action
 
 header('Content-Type: application/json');
 $dataDir = __DIR__ . '/../data';
@@ -124,6 +125,28 @@ if ($action === 'add_expense') {
         'category' => $_POST['category'] ?? '',
         'desc' => $_POST['desc'] ?? ''
     ];
+    write($files['expenses'], $data);
+    echo json_encode(['success' => true]);
+    exit;
+}
+if ($action === 'update_expense') {
+    $data = read($files['expenses']);
+    $updated = false;
+    foreach ($data as &$e) {
+        if ($e['id'] == $_POST['id']) {
+            if (isset($_POST['date']))     $e['date']     = $_POST['date'];
+            if (isset($_POST['amount']))   $e['amount']   = (float)$_POST['amount'];
+            if (isset($_POST['tool']))     $e['tool']     = $_POST['tool'];
+            if (isset($_POST['category'])) $e['category'] = $_POST['category'];
+            if (isset($_POST['desc']))     $e['desc']     = $_POST['desc'];
+            $updated = true;
+            break;
+        }
+    }
+    if (!$updated) {
+        echo json_encode(['error' => 'Expense not found']);
+        exit;
+    }
     write($files['expenses'], $data);
     echo json_encode(['success' => true]);
     exit;

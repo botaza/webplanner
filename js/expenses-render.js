@@ -2,6 +2,8 @@
 // RENDERING LOGIC FOR EXPENSES LIST
 // Handles drawing the expense cards in the main view and stats views
 // PATCHED: Stats view now supports grouping; Toggles are context-aware
+// UPDATED: Edit button added to main list expense cards
+// UPDATED: renderCategoryDrilldown added for stats categories view
 
 import { state } from './state.js';
 
@@ -35,19 +37,12 @@ export function renderExpensesList(list) {
   });
 
   // Get all months and separate current month
-  const allMonths = Object.keys(groupedByMonth).sort().reverse();
+  const allMonths    = Object.keys(groupedByMonth).sort().reverse();
   const currentMonth = new Date().toISOString().slice(0, 7);
 
-  // Pin current month at top, rest sort descending
   const months = [];
-  if (groupedByMonth[currentMonth]) {
-    months.push(currentMonth);
-  }
-  allMonths.forEach(m => {
-    if (m !== currentMonth) {
-      months.push(m);
-    }
-  });
+  if (groupedByMonth[currentMonth]) months.push(currentMonth);
+  allMonths.forEach(m => { if (m !== currentMonth) months.push(m); });
 
   // Calculate totals for each month
   const monthTotals = {};
@@ -55,17 +50,15 @@ export function renderExpensesList(list) {
     monthTotals[m] = groupedByMonth[m].reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
   });
 
-  // Initialize expanded state — no auto-expand, all folders start closed
   if (!state.expandedExpenseMonths) state.expandedExpenseMonths = new Set();
-  if (!state.expandedExpenseDays) state.expandedExpenseDays = new Set();
+  if (!state.expandedExpenseDays)   state.expandedExpenseDays   = new Set();
 
-  // Render
   const html = months.map(month => {
     const isMonthExpanded = state.expandedExpenseMonths.has(month);
-    const monthTotal = monthTotals[month].toLocaleString('ru-RU');
-    const count = groupedByMonth[month].length;
-    const monthLabel = formatMonthLabel(month);
-    const isCurrentMonth = month === currentMonth;
+    const monthTotal      = monthTotals[month].toLocaleString('ru-RU');
+    const count           = groupedByMonth[month].length;
+    const monthLabel      = formatMonthLabel(month);
+    const isCurrentMonth  = month === currentMonth;
 
     // Group by Day within month
     const groupedByDay = {};
@@ -75,16 +68,13 @@ export function renderExpensesList(list) {
       groupedByDay[day].push(exp);
     });
 
-    // Sort days descending
     const days = Object.keys(groupedByDay).sort().reverse();
 
-    // Calculate totals for each day
     const dayTotals = {};
     days.forEach(d => {
       dayTotals[d] = groupedByDay[d].reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
     });
 
-    // Month Header
     const monthHeader = `
       <div class="bg-zinc-900 rounded-3xl p-4 mb-3 cursor-pointer hover:bg-zinc-800 transition"
            onclick="window.toggleExpenseMonth('${month}')">
@@ -107,17 +97,15 @@ export function renderExpensesList(list) {
       </div>
     `;
 
-    // Month Content (Days)
     const monthContent = `
       <div class="ml-2 space-y-3 mb-6 ${isMonthExpanded ? '' : 'hidden'}"
            id="month-content-${month}">
         ${days.map(day => {
           const isDayExpanded = state.expandedExpenseDays.has(day);
-          const dayTotal = dayTotals[day].toLocaleString('ru-RU');
-          const dayCount = groupedByDay[day].length;
-          const dayLabel = formatDayLabel(day);
+          const dayTotal      = dayTotals[day].toLocaleString('ru-RU');
+          const dayCount      = groupedByDay[day].length;
+          const dayLabel      = formatDayLabel(day);
 
-          // Day Header
           const dayHeader = `
             <div class="bg-zinc-900/50 rounded-2xl p-3 ml-4 cursor-pointer hover:bg-zinc-800/50 transition"
                  onclick="window.toggleExpenseDay('${day}')">
@@ -136,26 +124,27 @@ export function renderExpensesList(list) {
             </div>
           `;
 
-          // Day Content (Expenses)
           const dayContent = `
             <div class="ml-8 space-y-2 ${isDayExpanded ? '' : 'hidden'}"
                  id="day-content-${day}">
               ${groupedByDay[day].map(exp => {
-                const amount = parseFloat(exp.amount || 0).toLocaleString('ru-RU');
-                const tool = exp.tool || '?';
+                const amount   = parseFloat(exp.amount || 0).toLocaleString('ru-RU');
+                const tool     = exp.tool     || '?';
                 const category = exp.category ? ` • ${exp.category}` : '';
-                const desc = exp.desc ? ` • ${exp.desc}` : '';
+                const desc     = exp.desc     ? ` • ${exp.desc}`     : '';
                 return `
                   <div class="bg-zinc-900/30 rounded-xl p-3 flex justify-between items-center text-sm">
                     <div class="flex-1">
-                      <div class="text-zinc-300">${tool}${category}${desc ? ` • ${desc}` : ''}</div>
+                      <div class="text-zinc-300">${tool}${category}${desc}</div>
                     </div>
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2">
                       <div class="font-medium text-emerald-400">−${amount}</div>
-                      <div onclick="window.deleteExpense('${exp.id}'); event.stopPropagation()"
-                           class="text-red-400 text-lg cursor-pointer hover:text-red-300 transition">
-                        🗑
-                      </div>
+                      <button onclick="window.editExpense('${exp.id}'); event.stopPropagation()"
+                              class="text-zinc-400 hover:text-white text-base transition px-1"
+                              title="Edit">✏️</button>
+                      <button onclick="window.deleteExpense('${exp.id}'); event.stopPropagation()"
+                              class="text-red-400 hover:text-red-300 text-base transition px-1"
+                              title="Delete">🗑</button>
                     </div>
                   </div>
                 `;
@@ -174,7 +163,6 @@ export function renderExpensesList(list) {
 
 /**
  * Render a specific stats list (e.g. for monthly view or filtered view)
- * PATCHED: Now uses grouping logic similar to main view
  * @param {Array} list - Array of expense objects
  * @param {string} containerId - Target DOM ID (e.g., 'expenses-stats-list')
  */
@@ -182,8 +170,7 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
   const container = document.getElementById(containerId);
   if (!container) return;
 
-  // Store data for toggle refresh
-  state.lastStatsData = list;
+  state.lastStatsData      = list;
   state.lastStatsContainer = containerId;
 
   if (!list || list.length === 0) {
@@ -195,7 +182,6 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
     return;
   }
 
-  // --- GROUPING LOGIC (Same as renderExpensesList) ---
   const sorted = [...list].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   const groupedByMonth = {};
   sorted.forEach(exp => {
@@ -210,17 +196,15 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
     monthTotals[m] = groupedByMonth[m].reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
   });
 
-  // Ensure state sets exist
   if (!state.expandedExpenseMonths) state.expandedExpenseMonths = new Set();
-  if (!state.expandedExpenseDays) state.expandedExpenseDays = new Set();
+  if (!state.expandedExpenseDays)   state.expandedExpenseDays   = new Set();
 
   const html = months.map(month => {
     const isMonthExpanded = state.expandedExpenseMonths.has(month);
-    const monthTotal = monthTotals[month].toLocaleString('ru-RU');
-    const count = groupedByMonth[month].length;
-    const monthLabel = formatMonthLabel(month);
+    const monthTotal      = monthTotals[month].toLocaleString('ru-RU');
+    const count           = groupedByMonth[month].length;
+    const monthLabel      = formatMonthLabel(month);
 
-    // Group by Day
     const groupedByDay = {};
     groupedByMonth[month].forEach(exp => {
       const day = exp.date || 'unknown';
@@ -233,7 +217,6 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
       dayTotals[d] = groupedByDay[d].reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
     });
 
-    // Month Header (Pass containerId to toggle)
     const monthHeader = `
       <div class="bg-zinc-900 rounded-3xl p-4 mb-3 cursor-pointer hover:bg-zinc-800 transition"
            onclick="window.toggleExpenseMonth('${month}', '${containerId}')">
@@ -254,15 +237,14 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
       </div>
     `;
 
-    // Month Content
     const monthContent = `
       <div class="ml-2 space-y-3 mb-6 ${isMonthExpanded ? '' : 'hidden'}"
            id="month-content-${month}">
         ${days.map(day => {
           const isDayExpanded = state.expandedExpenseDays.has(day);
-          const dayTotal = dayTotals[day].toLocaleString('ru-RU');
-          const dayCount = groupedByDay[day].length;
-          const dayLabel = formatDayLabel(day);
+          const dayTotal      = dayTotals[day].toLocaleString('ru-RU');
+          const dayCount      = groupedByDay[day].length;
+          const dayLabel      = formatDayLabel(day);
 
           const dayHeader = `
             <div class="bg-zinc-900/50 rounded-2xl p-3 ml-4 cursor-pointer hover:bg-zinc-800/50 transition"
@@ -286,18 +268,16 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
             <div class="ml-8 space-y-2 ${isDayExpanded ? '' : 'hidden'}"
                  id="day-content-${day}">
               ${groupedByDay[day].map(exp => {
-                const amount = parseFloat(exp.amount || 0).toLocaleString('ru-RU');
-                const tool = exp.tool || '?';
+                const amount   = parseFloat(exp.amount || 0).toLocaleString('ru-RU');
+                const tool     = exp.tool     || '?';
                 const category = exp.category ? ` • ${exp.category}` : '';
-                const desc = exp.desc ? ` • ${exp.desc}` : '';
+                const desc     = exp.desc     ? ` • ${exp.desc}`     : '';
                 return `
                   <div class="bg-zinc-900/30 rounded-xl p-3 flex justify-between items-center text-sm">
                     <div class="flex-1">
-                      <div class="text-zinc-300">${tool}${category}${desc ? ` • ${desc}` : ''}</div>
+                      <div class="text-zinc-300">${tool}${category}${desc}</div>
                     </div>
-                    <div class="flex items-center gap-3">
-                      <div class="font-medium text-emerald-400">−${amount}</div>
-                    </div>
+                    <div class="font-medium text-emerald-400">−${amount}</div>
                   </div>
                 `;
               }).join('')}
@@ -314,9 +294,118 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
 }
 
 /**
+ * Render collapsible per-category entry lists below the pie chart.
+ * Each category accordion shows all matching expenses for the selected time frame.
+ * @param {HTMLElement} container  - DOM element to append into (after the chart)
+ * @param {Object}      groupsData - { groups: { key: { label, amount, count } }, total }
+ * @param {Array}       allExpenses - Full flat array of expense objects for the period
+ */
+export function renderCategoryDrilldown(container, groupsData, allExpenses) {
+  if (!container) return;
+
+  const groups  = groupsData?.groups || {};
+  const keys    = Object.keys(groups);
+
+  if (keys.length === 0 || !allExpenses || allExpenses.length === 0) return;
+
+  // Build a lookup: category → sorted expenses
+  const byCategory = {};
+  allExpenses.forEach(exp => {
+    const key = exp.category || 'unknown';
+    if (!byCategory[key]) byCategory[key] = [];
+    byCategory[key].push(exp);
+  });
+
+  // Sort categories by total amount descending (mirrors pie chart order)
+  const sortedKeys = keys.sort((a, b) => (groups[b]?.amount || 0) - (groups[a]?.amount || 0));
+
+  // Track open state locally (keyed by category name)
+  if (!state.expandedStatsCategories) state.expandedStatsCategories = new Set();
+
+  const blocksHTML = sortedKeys.map(key => {
+    const group    = groups[key];
+    const entries  = (byCategory[key] || []).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    const label    = group.label || key;
+    const total    = parseFloat(group.amount || 0).toLocaleString('ru-RU');
+    const count    = entries.length;
+    const isOpen   = state.expandedStatsCategories.has(key);
+    const safeKey  = key.replace(/[^a-z0-9_-]/gi, '_');
+
+    const rows = entries.map(exp => {
+      const amount = parseFloat(exp.amount || 0).toLocaleString('ru-RU');
+      const tool   = exp.tool || '?';
+      const desc   = exp.desc ? ` • ${exp.desc}` : '';
+      return `
+        <div class="flex justify-between items-center text-sm py-2 border-b border-zinc-800/60 last:border-0">
+          <div class="flex-1 min-w-0">
+            <span class="text-zinc-400 text-xs">${exp.date || '—'}</span>
+            <span class="text-zinc-300 ml-2">${tool}${desc}</span>
+          </div>
+          <div class="font-medium text-emerald-400 shrink-0 ml-3">−${amount}</div>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="mb-2">
+        <div class="bg-zinc-900 rounded-2xl px-4 py-3 cursor-pointer hover:bg-zinc-800 transition flex justify-between items-center"
+             onclick="window.toggleStatsCategoryDrilldown('${safeKey}')">
+          <div class="flex items-center gap-2">
+            <span class="text-base">${isOpen ? '📂' : '📁'}</span>
+            <span class="font-medium text-zinc-200">${label}</span>
+            <span class="text-xs text-zinc-500">${count} entr${count !== 1 ? 'ies' : 'y'}</span>
+          </div>
+          <span class="text-emerald-400 font-semibold">−${total}</span>
+        </div>
+        <div id="stats-cat-${safeKey}" class="px-4 pt-1 pb-2 ${isOpen ? '' : 'hidden'}">
+          ${rows}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Append a titled section below the chart
+  const section = document.createElement('div');
+  section.className = 'mt-6';
+  section.innerHTML = `
+    <div class="text-xs text-zinc-500 uppercase font-medium tracking-wide mb-3">
+      Entries by Category
+    </div>
+    ${blocksHTML}
+  `;
+  container.appendChild(section);
+}
+
+/**
+ * Toggle a single category drilldown accordion in the stats view.
+ * Called from inline onclick inside renderCategoryDrilldown.
+ * @param {string} safeKey - Sanitised category key
+ */
+export function toggleStatsCategoryDrilldown(safeKey) {
+  if (!state.expandedStatsCategories) state.expandedStatsCategories = new Set();
+
+  const panel  = document.getElementById(`stats-cat-${safeKey}`);
+  const isOpen = !panel?.classList.contains('hidden');
+
+  if (isOpen) {
+    state.expandedStatsCategories.delete(safeKey);
+    if (panel) panel.classList.add('hidden');
+  } else {
+    state.expandedStatsCategories.add(safeKey);
+    if (panel) panel.classList.remove('hidden');
+  }
+
+  // Flip folder icon on the header button
+  const header = panel?.previousElementSibling;
+  if (header) {
+    const icon = header.querySelector('span.text-base');
+    if (icon) icon.textContent = isOpen ? '📁' : '📂';
+  }
+}
+
+/**
  * Toggle expanded state for a month
- * PATCHED: Accepts optional containerId to support Stats view
- * @param {string} month - YYYY-MM
+ * @param {string} month       - YYYY-MM
  * @param {string} containerId - Optional (default: 'expenses-list')
  */
 export function toggleExpenseMonth(month, containerId = 'expenses-list') {
@@ -328,25 +417,17 @@ export function toggleExpenseMonth(month, containerId = 'expenses-list') {
     state.expandedExpenseMonths.add(month);
   }
 
-  // Context-aware re-render
   if (containerId === 'expenses-stats-list') {
-    // Refresh Stats View (uses stored data)
-    if (window.refreshExpenseStats) {
-      window.refreshExpenseStats();
-    }
+    if (window.refreshExpenseStats) window.refreshExpenseStats();
   } else {
-    // Refresh Main View
     const container = document.getElementById('expenses-list');
-    if (container && state.expensesData) {
-      renderExpensesList(state.expensesData);
-    }
+    if (container && state.expensesData) renderExpensesList(state.expensesData);
   }
 }
 
 /**
  * Toggle expanded state for a day
- * PATCHED: Accepts optional containerId to support Stats view
- * @param {string} day - YYYY-MM-DD
+ * @param {string} day         - YYYY-MM-DD
  * @param {string} containerId - Optional (default: 'expenses-list')
  */
 export function toggleExpenseDay(day, containerId = 'expenses-list') {
@@ -358,22 +439,17 @@ export function toggleExpenseDay(day, containerId = 'expenses-list') {
     state.expandedExpenseDays.add(day);
   }
 
-  // Context-aware re-render
   if (containerId === 'expenses-stats-list') {
-    if (window.refreshExpenseStats) {
-      window.refreshExpenseStats();
-    }
+    if (window.refreshExpenseStats) window.refreshExpenseStats();
   } else {
     const container = document.getElementById('expenses-list');
-    if (container && state.expensesData) {
-      renderExpensesList(state.expensesData);
-    }
+    if (container && state.expensesData) renderExpensesList(state.expensesData);
   }
 }
 
 /**
  * Render a summary total card
- * @param {number} total - Total amount
+ * @param {number} total       - Total amount
  * @param {string} containerId - Target DOM ID
  */
 export function renderStatsTotal(total, containerId) {
