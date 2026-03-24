@@ -2,6 +2,7 @@
 // ORCHESTRATOR FOR INCOME TAB
 // UPDATED: Main list now uses collapsible month groups
 
+import { requireAdmin } from './readonly-guard.js';
 import { state } from './state.js';
 import { loadDashboard } from './dashboard.js';
 
@@ -264,6 +265,7 @@ export function toggleIncomeStats() {
 // ── SAVE HANDLERS ──
 
 async function handleSaveIncome() {
+    if (!requireAdmin()) return;
     const formData = getIncomeFormData();
     if (!formData) return;
     try {
@@ -283,6 +285,7 @@ async function handleSaveIncome() {
 }
 
 async function handleSaveCompensation() {
+    if (!requireAdmin()) return;
     const formData = getCompensationFormData();
     if (!formData) return;
     try {
@@ -304,6 +307,7 @@ async function handleSaveCompensation() {
 // ── DELETE HANDLERS ──
 
 async function handleDeleteIncome(id) {
+    if (!requireAdmin()) return;
     if (!confirm('Delete this income entry?')) return;
     try {
         await deleteIncomeData(id);
@@ -317,6 +321,7 @@ async function handleDeleteIncome(id) {
 }
 
 async function handleDeleteCompensation(id) {
+    if (!requireAdmin()) return;
     if (!confirm('Delete this compensation entry?')) return;
     try {
         await deleteCompensationData(id);

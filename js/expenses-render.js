@@ -7,6 +7,7 @@
 // FIXED: Edit button on touch screens — replaced inline onclick with event delegation
 
 import { state } from './state.js';
+import { requireAdmin } from './readonly-guard.js';
 
 // ── EVENT DELEGATION SETUP ──
 // Called once after the expenses-list container is populated.
@@ -160,6 +161,7 @@ export function renderExpensesList(list) {
                     </div>
                     <div class="flex items-center gap-2">
                       <div class="font-medium text-emerald-400">−${amount}</div>
+                      ${!window.isGuest() ? `
                       <button data-edit-id="${exp.id}"
                               class="text-zinc-400 hover:text-white text-base transition px-1 touch-manipulation"
                               title="Edit"
@@ -168,6 +170,7 @@ export function renderExpensesList(list) {
                               class="text-red-400 hover:text-red-300 text-base transition px-1 touch-manipulation"
                               title="Delete"
                               style="min-width:32px;min-height:32px;">🗑</button>
+                      ` : ''}
                     </div>
                   </div>
                 `;

@@ -568,6 +568,47 @@ window.addEventListener('DOMContentLoaded', () => {
     if (hidden) _applyDashVisibility(true);
 });
 
+
+function _applyGuestUI() {
+    // Called from bootApp (app.js) after role is known.
+    // Hides all write-action buttons for guest users.
+    if (!window.isGuest || !window.isGuest()) return;
+
+    // Planner: hide FAB
+    const fab = document.querySelector('#screen-planner button[onclick="showAddEventModal()"]');
+    if (fab) fab.classList.add('hidden');
+
+    // Expenses: hide + Expense button
+    const expBtn = document.querySelector('#screen-expenses button[onclick="showAddExpenseModal()"]');
+    if (expBtn) expBtn.classList.add('hidden');
+
+    // Income: hide + Income and + Compensation buttons
+    const incBtn  = document.querySelector('#screen-income button[onclick="showAddIncomeModal()"]');
+    const compBtn = document.querySelector('#screen-income button[onclick="showAddCompensationModal()"]');
+    if (incBtn)  incBtn.classList.add('hidden');
+    if (compBtn) compBtn.classList.add('hidden');
+
+    // More: hide Clear all data, Snapshot header button, snapshot card
+    const clearBtn = document.querySelector('button[onclick="clearAllData()"]');
+    if (clearBtn) clearBtn.closest('.grid')?.classList.add('hidden');
+    const snapHeaderBtn = document.querySelector('header button[onclick="takeSnapshot()"]');
+    if (snapHeaderBtn) snapHeaderBtn.classList.add('hidden');
+    const snapCard = document.querySelector('#screen-more div[onclick="takeSnapshot()"]');
+    if (snapCard) snapCard.classList.add('hidden');
+
+    // More: hide notif retry button
+    const retryBtn = document.getElementById('notif-retry-btn');
+    if (retryBtn) retryBtn.classList.add('hidden');
+
+    // More: hide housekeeping manage button
+    const hkContainer = document.getElementById('housekeeping-container');
+    if (hkContainer) {
+        const manageBtn = hkContainer.querySelector('button[onclick="window.showHousekeepingModal()"]');
+        if (manageBtn) manageBtn.classList.add('hidden');
+    }
+}
+window._applyGuestUI = _applyGuestUI;
+
 function toggleExpenseStatsView() {
     const list = document.getElementById('expenses-list');
     const wrapper = document.getElementById('expenses-stats-wrapper');

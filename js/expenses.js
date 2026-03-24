@@ -5,6 +5,7 @@
 // UPDATED: Exposed toggleStatsCategoryDrilldown to window
 // FIXED: closeExpenseModal defined locally so Cancel/× always resets modal mode to Add
 
+import { requireAdmin } from './readonly-guard.js';
 import { state } from './state.js';
 import { api } from './api.js';
 import { hideModal } from './utils.js';
@@ -147,6 +148,7 @@ function editExpense(id) {
 // ── SAVE / UPDATE ──
 
 async function handleSaveExpense() {
+    if (!requireAdmin()) return;
     const formData = getExpenseFormData();
     if (!formData) return;
 
@@ -175,6 +177,7 @@ async function handleSaveExpense() {
 // ── DELETE ──
 
 async function handleDeleteExpense(id) {
+    if (!requireAdmin()) return;
     if (!confirm('Delete this expense?')) return;
     try {
         await deleteExpenseData(id);

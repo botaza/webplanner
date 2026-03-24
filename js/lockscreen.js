@@ -1,18 +1,40 @@
 // js/lockscreen.js
+// UPDATED: Two-password system
+//   admin  → 'phoenix'   → full access + FCM token registration
+//   guest  → 'апельсин'  → view-only, no FCM token
 
-const APP_PASSWORD = 'phoenix';
+const PASSWORDS = {
+    phoenix:    'admin',
+    'апельсин': 'guest'
+};
 
-function isUnlocked() {
-    return localStorage.getItem('planner_unlocked') === '1';
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+export function isUnlocked() {
+    return !!localStorage.getItem('planner_role');
 }
 
-function showLockScreen() {
+export function getRole() {
+    return localStorage.getItem('planner_role') || null; // 'admin' | 'guest' | null
+}
+
+export function isAdmin() {
+    return getRole() === 'admin';
+}
+
+export function isGuest() {
+    return getRole() === 'guest';
+}
+
+// ── Lock Screen UI ────────────────────────────────────────────────────────────
+
+export function showLockScreen() {
     document.body.insertAdjacentHTML('beforeend', `
         <div id="lock-screen"
              style="position:fixed;inset:0;background:#09090b;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:32px;">
             <div style="width:56px;height:56px;background:#22c55e;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#fff;">P</div>
             <div style="font-size:22px;font-weight:600;color:#f4f4f5;">Planner</div>
-            <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap-12px;">
+            <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:12px;">
                 <input id="lock-input"
                        type="password"
                        placeholder="Enter password"
@@ -31,11 +53,17 @@ function showLockScreen() {
     setTimeout(() => document.getElementById('lock-input')?.focus(), 100);
 }
 
-function attemptUnlock() {
+// ── Unlock Logic ──────────────────────────────────────────────────────────────
+
+export function attemptUnlock() {
     const input = document.getElementById('lock-input');
     if (!input) return;
-    if (input.value === APP_PASSWORD) {
-        localStorage.setItem('planner_unlocked', '1');
+
+    const entered = input.value;
+    const role    = PASSWORDS[entered] || null;
+
+    if (role) {
+        localStorage.setItem('planner_role', role);
         document.getElementById('lock-screen')?.remove();
         window.bootApp();
     } else {
@@ -51,16 +79,23 @@ function attemptUnlock() {
     }
 }
 
-// Keep global access for inline usage if needed
+// ── Logout (clears role so lock screen reappears on next visit) ───────────────
+
+export function lockApp() {
+    localStorage.removeItem('planner_role');
+    // Also keep legacy key clean
+    localStorage.removeItem('planner_unlocked');
+    location.reload();
+}
+
+// ── Global exposure ───────────────────────────────────────────────────────────
+
 Object.assign(window, {
     isUnlocked,
+    getRole,
+    isAdmin,
+    isGuest,
     showLockScreen,
-    attemptUnlock
+    attemptUnlock,
+    lockApp
 });
-
-// ✅ ES module exports (required for import)
-export {
-    isUnlocked,
-    showLockScreen,
-    attemptUnlock
-};

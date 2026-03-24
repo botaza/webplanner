@@ -4,6 +4,7 @@
 // Right side: ✏️ (edit), 🗑 (delete)
 
 import { state } from './state.js';
+import { isGuest } from './lockscreen.js';
 import { nowAsDatetimeString, currentMonthKey } from './date-utils.js';
 import { getOpenGroups, setGroupOpen } from './planner-filter.js';
 
@@ -125,6 +126,7 @@ function renderPlanner(list) {
       </div>
      </div>
      
+     ${!isGuest() ? `
      <!-- Left action group: Repeat and Toggle -->
      <div class="flex gap-1 items-center mr-2">
       <button class="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-emerald-400 text-lg" 
@@ -146,6 +148,7 @@ function renderPlanner(list) {
               onclick="event.stopPropagation(); deleteEvent('${ev.id}')" 
               title="Delete">🗑</button>
      </div>
+     ` : ''}
     `;
     dBody.appendChild(card);
    });

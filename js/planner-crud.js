@@ -7,6 +7,7 @@
 // PATCHED 5: Fixed recurrence date calculation to start AFTER original date
 // PATCHED 6: markComplete sets hashtag to #completed and saves original_hashtag; markIncomplete restores it
 
+import { requireAdmin } from './readonly-guard.js';
 import { state } from './state.js';
 import { api } from './api.js';
 import { hideModal } from './utils.js';
@@ -101,6 +102,7 @@ function showAddEventModal() {
 }
 
 async function saveEvent() {
+ if (!requireAdmin()) return;
  const dt = document.getElementById('event-dt').value;
  if (!dt) { alert("Please select date and time"); return; }
  const recurrence = document.getElementById('event-recurrence').value;
@@ -219,6 +221,7 @@ async function editEvent(id) {
 }
 
 async function updateEvent(id) {
+ if (!requireAdmin()) return;
  const dt = document.getElementById('event-dt').value;
  if (!dt) return alert("Date & time required");
 
@@ -259,6 +262,7 @@ async function updateEvent(id) {
 }
 
 async function deleteEvent(id) {
+ if (!requireAdmin()) return;
  if (!confirm('Delete this event?')) return;
  await api('delete_event', {id});
  loadPlanner();
@@ -267,6 +271,7 @@ async function deleteEvent(id) {
 
 // PATCHED 6: markComplete sets hashtag to #completed and saves original_hashtag
 async function markComplete(id, completed = true) {
+ if (!requireAdmin()) return;
  const ev = state.eventsData.find(e => e.id == id);
  if (!ev) return;
 
@@ -344,6 +349,7 @@ function updateRepeatPreview(ev) {
 }
 
 async function confirmRepeatEvent() {
+ if (!requireAdmin()) return;
  const modal = document.getElementById('modal-repeat-event');
  const eventId = modal.dataset.eventId;
  const ev = state.eventsData.find(e => e.id == eventId);

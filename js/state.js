@@ -13,5 +13,7 @@ export const state = {
     expandedExpenseMonths: new Set(),
     expandedExpenseDays: new Set(),
     // Track expanded state for stats category drilldown accordions
-    expandedStatsCategories: new Set()
+    expandedStatsCategories: new Set(),
+    // Current user role: 'admin' | 'guest' | null
+    role: null
 };
