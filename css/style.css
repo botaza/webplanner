@@ -19,9 +19,9 @@ input[type="date"] {
 .hashtag-chip,
 .tool-btn,
 .category-btn {
-    background: #27272a;
-    border: 1px solid #3f3f46;
-    color: #d4d4d4;
+    background: #0a0a0a;
+    border: 1px solid #262626;
+    color: #e5e5e5;
     padding: 10px 12px;
     border-radius: 9999px;
     font-size: 14px;
@@ -35,15 +35,15 @@ input[type="date"] {
 .hashtag-chip:hover,
 .tool-btn:hover,
 .category-btn:hover {
-    background: #3a3a40;
+    background: #171717;
 }
 
 .hashtag-chip.active,
 .tool-btn.active,
 .category-btn.active {
-    background: #22c55e22;
-    border-color: #22c55e;
-    color: #22c55e;
+    background: #60a5fa22;
+    border-color: #60a5fa;
+    color: #60a5fa;
 }
 
 .hashtag-row,
@@ -85,7 +85,7 @@ textarea {
 .modal-sheet > div {
     width: 100%;
     max-width: 40rem;
-    background: #18181b;
+    background: #050505;
     border-radius: 1.5rem 1.5rem 0 0;
     max-height: 90vh;
     display: flex;
@@ -123,7 +123,7 @@ textarea {
 #modal-income .flex.gap-3.mt-8 {
     position: sticky;
     bottom: 0;
-    background: #18181b;
+    background: #050505;
     padding-top: 12px;
     margin-top: 12px;
     padding-bottom: env(safe-area-inset-bottom, 12px);
@@ -144,9 +144,9 @@ nav.fixed.bottom-0 {
 
 /* ── Stats View Buttons ──────────────────────────────────────────────────── */
 .stats-view-btn {
-    background: #27272a;
-    border: 1px solid #3f3f46;
-    color: #d4d4d4;
+    background: #0a0a0a;
+    border: 1px solid #262626;
+    color: #e5e5e5;
     padding: 8px 16px;
     border-radius: 9999px;
     font-size: 13px;
@@ -157,13 +157,13 @@ nav.fixed.bottom-0 {
 }
 
 .stats-view-btn:hover {
-    background: #3a3a40;
+    background: #171717;
 }
 
 .stats-view-btn.active {
-    background: #22c55e22;
-    border-color: #22c55e;
-    color: #22c55e;
+    background: #60a5fa22;
+    border-color: #60a5fa;
+    color: #60a5fa;
 }
 
 /* ── Expandable Expenses List ────────────────────────────────────────────── */
@@ -173,7 +173,7 @@ nav.fixed.bottom-0 {
 }
 
 #expenses-list > div > div[class*="bg-zinc-900 rounded-3xl p-4 mb-3"]:hover {
-    background-color: #27272a;
+    background-color: #171717;
 }
 
 /* Day header styling */
@@ -182,7 +182,7 @@ nav.fixed.bottom-0 {
 }
 
 #expenses-list > div > div[id^="month-content-"] > div > div[class*="bg-zinc-900/50 rounded-3xl p-3"]:hover {
-    background-color: #27272a50;
+    background-color: #17171750;
 }
 
 /* Smooth expand/collapse animation */
@@ -223,7 +223,7 @@ nav.fixed.bottom-0 {
 }
 
 #housekeeping-container > div:hover {
-    background-color: #27272a;
+    background-color: #171717;
 }
 
 /* ── Loading Spinner ─────────────────────────────────────────────────────── */
@@ -244,16 +244,16 @@ nav.fixed.bottom-0 {
 }
 
 ::-webkit-scrollbar-track {
-    background: #18181b;
+    background: #050505;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #3f3f46;
+    background: #262626;
     border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #52525b;
+    background: #404040;
 }
 
 /* ── Focus States for Accessibility ──────────────────────────────────────── */
@@ -261,7 +261,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-    outline: 2px solid #22c55e;
+    outline: 2px solid #60a5fa;
     outline-offset: 2px;
 }
 
@@ -296,15 +296,15 @@ textarea:focus-visible {
 }
 
 #planner-list .w-8.h-8:active {
-    background-color: rgba(34, 197, 94, 0.1);
+    background-color: rgba(96, 165, 250, 0.1);
     transform: scale(0.95);
 }
 
 /* Hover states (for non-touch devices) */
 @media (hover: hover) {
     #planner-list .w-8.h-8:hover.text-emerald-400 {
-        color: #22c55e;
-        background-color: rgba(34, 197, 94, 0.1);
+        color: #60a5fa;
+        background-color: rgba(96, 165, 250, 0.1);
     }
     
     #planner-list .w-8.h-8:hover.text-white {
@@ -348,19 +348,19 @@ textarea:focus-visible {
 /* ── #completed chip — distinct "archive" appearance ─────────────────────── */
 /* Resting state: muted amber tone to signal "this is different" */
 #planner-hashtag-filter .hashtag-chip[data-tag="#completed"] {
-    border-color: #78716c;
-    color: #a8a29e;
+    border-color: #525252;
+    color: #a3a3a3;
 }
 
 #planner-hashtag-filter .hashtag-chip[data-tag="#completed"]:hover {
-    background: #292524;
-    border-color: #a8a29e;
-    color: #d6d3d1;
+    background: #171717;
+    border-color: #a3a3a3;
+    color: #e5e5e5;
 }
 
 /* Active state: amber instead of green — clearly an "archive" view */
 #planner-hashtag-filter .hashtag-chip[data-tag="#completed"].active {
-    background: #78716c22;
-    border-color: #d97706;
-    color: #fbbf24;
+    background: #52525222;
+    border-color: #93c5fd;
+    color: #bfdbfe;
 }

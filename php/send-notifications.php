@@ -377,7 +377,7 @@ if (isWithinTimeWindow(8, 0)) {
         foreach ($buckets as $horizon => $evs) {
             if (empty($evs)) continue;
             usort($evs, fn($a, $b) => strtotime($a['dt']) - strtotime($b['dt']));
-            $lines[] = "📆 Within {$horizon} days:";
+            $lines[] = "📆 In {$horizon} days:";
             foreach ($evs as $e) {
                 $lines[] = '  • ' . date('D d M', strtotime($e['dt'])) . ' ' . formatEventLine($e);
             }
