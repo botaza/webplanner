@@ -56,12 +56,12 @@ firebase.initializeApp(firebaseConfig);
 <!-- HEADER -->
 <header class="bg-zinc-900 border-b border-zinc-800 px-4 py-3 flex items-center justify-between fixed top-0 left-0 right-0 z-50">
 <div class="flex items-center gap-3">
-<div class="w-8 h-8 bg-emerald-500 rounded-xl flex items-center justify-center text-white font-bold text-xl">P</div>
+<div class="w-8 h-8 bg-blue-500 rounded-xl flex items-center justify-center text-white font-bold text-xl">P</div>
 <h1 class="text-2xl font-semibold tracking-tight">Planner</h1>
 </div>
 <button onclick="takeSnapshot()"
 class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium flex items-center gap-2">
-<span class="text-emerald-400">📸</span>
+<span class="text-blue-400">📸</span>
 <span>Snapshot</span>
 </button>
 </header>
@@ -80,13 +80,13 @@ class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium f
 <div class="grid grid-cols-2 gap-4 mb-8">
 <div onclick="switchScreen('screen-expenses')"
 class="card bg-zinc-900 rounded-3xl p-5 cursor-pointer">
-<div class="text-emerald-400 text-sm font-medium">EXPENSES</div>
+<div class="text-blue-400 text-sm font-medium">EXPENSES</div>
 <div id="dash-exp-total" class="text-3xl font-semibold mt-2 leading-tight">0</div>
 <div class="text-xs text-zinc-500 mt-1">this month</div>
 </div>
 <div onclick="switchScreen('screen-income')"
 class="card bg-zinc-900 rounded-3xl p-5 cursor-pointer">
-<div class="text-emerald-400 text-sm font-medium">INCOME</div>
+<div class="text-blue-400 text-sm font-medium">INCOME</div>
 <div id="dash-inc-total" class="text-3xl font-semibold mt-2 leading-tight">0</div>
 <div id="dash-adj-label" class="text-xs text-zinc-500 mt-1">this month</div>
 </div>
@@ -95,7 +95,7 @@ class="card bg-zinc-900 rounded-3xl p-5 cursor-pointer">
 <div class="flex justify-between items-center mb-3">
 <div class="font-medium text-lg">Upcoming</div>
 <button onclick="switchScreen('screen-planner')"
-class="text-emerald-400 text-sm font-medium">All →</button>
+class="text-blue-400 text-sm font-medium">All →</button>
 </div>
 <div id="upcoming-list" class="space-y-3"></div>
 </div>
@@ -108,12 +108,12 @@ class="text-emerald-400 text-sm font-medium">All →</button>
 <input id="planner-filter"
 onkeyup="filterPlanner()"
 placeholder="Filter hashtag or text..."
-class="bg-zinc-900 border border-zinc-700 focus:border-emerald-500 rounded-3xl px-5 py-3 w-full text-base">
+class="bg-zinc-900 border border-zinc-700 focus:border-blue-500 rounded-3xl px-5 py-3 w-full text-base">
 </div>
 <div class="hashtag-row mb-6" id="planner-hashtag-filter"></div>
 <div id="planner-list" class="space-y-3"></div>
 <button onclick="showAddEventModal()"
-class="fixed bottom-24 right-4 w-14 h-14 bg-emerald-500 hover:bg-emerald-600 rounded-3xl shadow-2xl flex items-center justify-center text-3xl leading-none z-40">
+class="fixed bottom-24 right-4 w-14 h-14 bg-blue-500 hover:bg-blue-600 rounded-3xl shadow-2xl flex items-center justify-center text-3xl leading-none z-40">
 +
 </button>
 </div>
@@ -122,7 +122,7 @@ class="fixed bottom-24 right-4 w-14 h-14 bg-emerald-500 hover:bg-emerald-600 rou
 <div id="screen-expenses" class="screen hidden">
 <div class="flex gap-3 mb-4">
 <button onclick="showAddExpenseModal()"
-class="flex-1 bg-emerald-500 hover:bg-emerald-600 py-4 rounded-3xl text-lg font-medium">+ Expense</button>
+class="flex-1 bg-blue-500 hover:bg-blue-600 py-4 rounded-3xl text-lg font-medium">+ Expense</button>
 <button onclick="toggleExpenseStatsView()"
 class="flex-1 bg-zinc-800 hover:bg-zinc-700 py-4 rounded-3xl text-lg font-medium">📊 Stats</button>
 </div>
@@ -186,7 +186,7 @@ Close Stats
     <!-- Top action bar -->
     <div class="flex gap-2 mb-4">
         <button onclick="showAddIncomeModal()"
-                class="flex-1 bg-emerald-500 hover:bg-emerald-600 py-4 rounded-3xl text-base font-medium">
+                class="flex-1 bg-blue-500 hover:bg-blue-600 py-4 rounded-3xl text-base font-medium">
             + Income
         </button>
         <button onclick="showAddCompensationModal()"
@@ -234,7 +234,7 @@ Close Stats
 <div id="notif-status" class="text-sm text-zinc-400">Checking...</div>
 <button onclick="retryNotifications()"
 id="notif-retry-btn"
-class="hidden mt-3 w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-2xl text-sm font-medium">
+class="hidden mt-3 w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-2xl text-sm font-medium">
 Retry
 </button>
 </div>
@@ -284,7 +284,7 @@ class="nav-item flex flex-col items-center py-3">
 <span>Home</span>
 </button>
 <button onclick="switchScreen('screen-planner')"
-class="nav-item active flex flex-col items-center py-3 text-emerald-400">
+class="nav-item active flex flex-col items-center py-3 text-blue-400">
 <span class="text-2xl mb-0.5">📅</span>
 <span>Planner</span>
 </button>
@@ -323,25 +323,25 @@ class="nav-item flex flex-col items-center py-3">
 <div class="overflow-y-auto flex-1 px-6 py-4 space-y-4" style="-webkit-overflow-scrolling: touch; overscroll-behavior: contain;">
 <div>
 <label class="text-xs text-zinc-400 block mb-1">Date &amp; Time</label>
-<input id="event-dt" type="datetime-local" onchange="updateOccurrencePreview()" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+<input id="event-dt" type="datetime-local" onchange="updateOccurrencePreview()" class="w-full bg-zinc-800 border border-zinc-700 focus:border-blue-500 rounded-2xl px-5 py-4 text-base">
 </div>
 <div>
 <label class="text-xs text-zinc-400 block mb-1">Description</label>
-<input id="event-desc" type="text" placeholder="Meeting with client" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+<input id="event-desc" type="text" placeholder="Meeting with client" class="w-full bg-zinc-800 border border-zinc-700 focus:border-blue-500 rounded-2xl px-5 py-4 text-base">
 </div>
 <div>
 <label class="text-xs text-zinc-400 block mb-1">Hashtag</label>
-<input id="event-hashtag" type="text" placeholder="#pers" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+<input id="event-hashtag" type="text" placeholder="#pers" class="w-full bg-zinc-800 border border-zinc-700 focus:border-blue-500 rounded-2xl px-5 py-4 text-base">
 <div class="hashtag-row mt-2" id="hashtag-suggestions"></div>
 </div>
 <div>
 <label class="text-xs text-zinc-400 block mb-1">Place</label>
-<input id="event-place" type="text" placeholder="Office" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+<input id="event-place" type="text" placeholder="Office" class="w-full bg-zinc-800 border border-zinc-700 focus:border-blue-500 rounded-2xl px-5 py-4 text-base">
 <div class="hashtag-row mt-2" id="place-suggestions"></div>
 </div>
 <div>
 <label class="text-xs text-zinc-400 block mb-1">Duration (min)</label>
-<input id="event-duration" type="text" inputmode="numeric" placeholder="60" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+<input id="event-duration" type="text" inputmode="numeric" placeholder="60" class="w-full bg-zinc-800 border border-zinc-700 focus:border-blue-500 rounded-2xl px-5 py-4 text-base">
 <div class="hashtag-row mt-2" id="duration-suggestions"></div>
 </div>
 <div>
@@ -356,13 +356,13 @@ class="nav-item flex flex-col items-center py-3">
 </div>
 <div id="recurrence-occurrences-section" class="hidden">
 <label class="text-xs text-zinc-400 block mb-1">Number of occurrences <span class="text-zinc-500">(including first)</span></label>
-<input id="event-occurrences" type="number" min="2" max="100" placeholder="10" oninput="updateOccurrencePreview()" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+<input id="event-occurrences" type="number" min="2" max="100" placeholder="10" oninput="updateOccurrencePreview()" class="w-full bg-zinc-800 border border-zinc-700 focus:border-blue-500 rounded-2xl px-5 py-4 text-base">
 <div id="occurrence-preview" class="mt-3 space-y-1"></div>
 </div>
 </div>
 <div class="px-6 py-4 border-t border-zinc-800 flex gap-3 shrink-0">
 <button onclick="hideModal('modal-event')" class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
-<button onclick="saveEvent()" class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Save Event</button>
+<button onclick="saveEvent()" class="flex-1 py-4 bg-blue-500 rounded-3xl text-lg font-medium">Save Event</button>
 </div>
 </div>
 </div>
@@ -396,7 +396,7 @@ class="nav-item flex flex-col items-center py-3">
 </div>
 <div class="px-6 py-4 border-t border-zinc-800 flex gap-3">
 <button onclick="hideModal('modal-repeat-event')" class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
-<button onclick="window.confirmRepeatEvent()" class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Create Series</button>
+<button onclick="window.confirmRepeatEvent()" class="flex-1 py-4 bg-blue-500 rounded-3xl text-lg font-medium">Create Series</button>
 </div>
 </div>
 </div>
@@ -437,7 +437,7 @@ class="nav-item flex flex-col items-center py-3">
 <div class="px-6 py-4 border-t border-zinc-800 flex gap-3 shrink-0">
 <button onclick="closeExpenseModal()" class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
 <!-- PATCHED: id="exp-save-btn" added so JS can swap "Save Expense" ↔ "Update Expense" -->
-<button id="exp-save-btn" onclick="saveExpense()" class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Save Expense</button>
+<button id="exp-save-btn" onclick="saveExpense()" class="flex-1 py-4 bg-blue-500 rounded-3xl text-lg font-medium">Save Expense</button>
 </div>
 </div>
 </div>
@@ -480,7 +480,7 @@ class="nav-item flex flex-col items-center py-3">
             <button onclick="closeIncomeModal()"
                     class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
             <button onclick="saveIncome()"
-                    class="flex-1 py-4 bg-emerald-500 hover:bg-emerald-600 rounded-3xl text-lg font-medium">Save Income</button>
+                    class="flex-1 py-4 bg-blue-500 hover:bg-blue-600 rounded-3xl text-lg font-medium">Save Income</button>
         </div>
     </div>
 </div>

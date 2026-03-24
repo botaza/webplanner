@@ -101,17 +101,17 @@ export function renderExpensesList(list) {
            onclick="window.toggleExpenseMonth('${month}')">
         <div class="flex justify-between items-center">
           <div class="flex items-center gap-3">
-            <div class="text-emerald-500 text-lg">
+            <div class="text-blue-500 text-lg">
               ${isMonthExpanded ? '📂' : '📁'}
             </div>
             <div>
               <div class="font-semibold text-zinc-200">
-                ${monthLabel}${isCurrentMonth ? ' <span class="text-xs text-emerald-500">(Current)</span>' : ''}
+                ${monthLabel}${isCurrentMonth ? ' <span class="text-xs text-blue-500">(Current)</span>' : ''}
               </div>
               <div class="text-xs text-zinc-500">${count} expense${count !== 1 ? 's' : ''}</div>
             </div>
           </div>
-          <div class="text-emerald-400 font-semibold">
+          <div class="text-blue-400 font-semibold">
             −${monthTotal}
           </div>
         </div>
@@ -132,13 +132,13 @@ export function renderExpensesList(list) {
                  onclick="window.toggleExpenseDay('${day}')">
               <div class="flex justify-between items-center">
                 <div class="flex items-center gap-3">
-                  <div class="text-emerald-500 text-base">
+                  <div class="text-blue-500 text-base">
                     ${isDayExpanded ? '📂' : '📁'}
                   </div>
                   <div class="text-sm text-zinc-300">${dayLabel}</div>
                   <div class="text-xs text-zinc-500">(${dayCount})</div>
                 </div>
-                <div class="text-emerald-400 text-sm font-medium">
+                <div class="text-blue-400 text-sm font-medium">
                   −${dayTotal}
                 </div>
               </div>
@@ -159,7 +159,7 @@ export function renderExpensesList(list) {
                       <div class="text-zinc-300">${tool}${category}${desc}</div>
                     </div>
                     <div class="flex items-center gap-2">
-                      <div class="font-medium text-emerald-400">−${amount}</div>
+                      <div class="font-medium text-blue-400">−${amount}</div>
                       <button data-edit-id="${exp.id}"
                               class="text-zinc-400 hover:text-white text-base transition px-1 touch-manipulation"
                               title="Edit"
@@ -248,7 +248,7 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
            onclick="window.toggleExpenseMonth('${month}', '${containerId}')">
         <div class="flex justify-between items-center">
           <div class="flex items-center gap-3">
-            <div class="text-emerald-500 text-lg">
+            <div class="text-blue-500 text-lg">
               ${isMonthExpanded ? '📂' : '📁'}
             </div>
             <div>
@@ -256,7 +256,7 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
               <div class="text-xs text-zinc-500">${count} expense${count !== 1 ? 's' : ''}</div>
             </div>
           </div>
-          <div class="text-emerald-400 font-semibold">
+          <div class="text-blue-400 font-semibold">
             −${monthTotal}
           </div>
         </div>
@@ -277,13 +277,13 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
                  onclick="window.toggleExpenseDay('${day}', '${containerId}')">
               <div class="flex justify-between items-center">
                 <div class="flex items-center gap-3">
-                  <div class="text-emerald-500 text-base">
+                  <div class="text-blue-500 text-base">
                     ${isDayExpanded ? '📂' : '📁'}
                   </div>
                   <div class="text-sm text-zinc-300">${dayLabel}</div>
                   <div class="text-xs text-zinc-500">(${dayCount})</div>
                 </div>
-                <div class="text-emerald-400 text-sm font-medium">
+                <div class="text-blue-400 text-sm font-medium">
                   −${dayTotal}
                 </div>
               </div>
@@ -303,7 +303,7 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
                     <div class="flex-1">
                       <div class="text-zinc-300">${tool}${category}${desc}</div>
                     </div>
-                    <div class="font-medium text-emerald-400">−${amount}</div>
+                    <div class="font-medium text-blue-400">−${amount}</div>
                   </div>
                 `;
               }).join('')}
@@ -367,7 +367,7 @@ export function renderCategoryDrilldown(container, groupsData, allExpenses) {
             <span class="text-zinc-400 text-xs">${exp.date || '—'}</span>
             <span class="text-zinc-300 ml-2">${tool}${desc}</span>
           </div>
-          <div class="font-medium text-emerald-400 shrink-0 ml-3 pointer-events-none">−${amount}</div>
+          <div class="font-medium text-blue-400 shrink-0 ml-3 pointer-events-none">−${amount}</div>
         </div>
       `;
     }).join('');
@@ -382,7 +382,7 @@ export function renderCategoryDrilldown(container, groupsData, allExpenses) {
             <span class="font-medium text-zinc-200">${label}</span>
             <span class="text-xs text-zinc-500">${count} entr${count !== 1 ? 'ies' : 'y'}</span>
           </div>
-          <span class="text-emerald-400 font-semibold pointer-events-none">−${total}</span>
+          <span class="text-blue-400 font-semibold pointer-events-none">−${total}</span>
         </button>
         <div id="stats-cat-${safeKey}" class="px-4 pt-1 pb-2 ${isOpen ? '' : 'hidden'}">
           ${rows}
@@ -495,7 +495,7 @@ export function renderStatsTotal(total, containerId) {
   container.innerHTML = `
     <div class="bg-zinc-900 rounded-3xl p-5 mb-4 text-center">
       <div class="text-xs text-zinc-500 uppercase tracking-wide">Total</div>
-      <div class="text-3xl font-semibold text-emerald-400 mt-1">−${formatted}</div>
+      <div class="text-3xl font-semibold text-blue-400 mt-1">−${formatted}</div>
     </div>
   `;
 }

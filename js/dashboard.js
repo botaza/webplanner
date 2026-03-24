@@ -97,7 +97,7 @@ export async function loadDashboard() {
                             <div class="flex-1 min-w-0">
                                 <div class="font-medium">${e.desc}</div>
                                 <div class="text-xs text-zinc-500 mt-0.5 flex flex-wrap gap-1 items-center">
-                                    <span class="text-emerald-400 font-medium">🕐 ${timeStr}</span>
+                                    <span class="text-blue-400 font-medium">🕐 ${timeStr}</span>
                                     ${e.hashtag ? `<span class="bg-zinc-800 px-2 py-0.5 rounded-xl">${e.hashtag}</span>` : ''}
                                     ${e.place   ? `<span>📍 ${e.place}</span>`                                           : ''}
                                     ${e.duration ? `<span>⏱ ${e.duration} min</span>`                                    : ''}
