@@ -43,7 +43,7 @@ function renderPlanner(list) {
 
   const mHeader = document.createElement('div');
   mHeader.className = 'flex items-center justify-between px-1 py-2 cursor-pointer select-none mt-1';
-  mHeader.innerHTML = `<div class="font-semibold">${mLabel} <span class="text-zinc-500">(${totalEvents})</span>${isCurrentM ? '<span class="text-blue-400 text-xs ml-1">now</span>' : ''}</div><div id="mchev-${monthKey}">${mIsOpen ? '▼' : '▶'}</div>`;
+  mHeader.innerHTML = `<div class="font-semibold">${mLabel} <span class="text-zinc-500">(${totalEvents})</span>${isCurrentM ? '<span class="text-emerald-400 text-xs ml-1">now</span>' : ''}</div><div id="mchev-${monthKey}">${mIsOpen ? '▼' : '▶'}</div>`;
   mHeader.onclick = () => {
    const body = document.getElementById('mgroup-' + monthKey);
    const chev = document.getElementById('mchev-' + monthKey);
@@ -76,7 +76,7 @@ function renderPlanner(list) {
 
    const dHeader = document.createElement('div');
    dHeader.className = 'flex items-center justify-between px-2 py-1.5 cursor-pointer select-none';
-   dHeader.innerHTML = `<div class="font-medium">${dLabel} <span class="text-zinc-500 text-sm">${dayEvents.length} event${dayEvents.length !== 1 ? 's' : ''}</span>${isToday ? '<span class="text-blue-400 text-xs ml-1">today</span>' : ''}</div><div id="dchev-${dayKey}">${dIsOpen ? '▾' : '▸'}</div>`;
+   dHeader.innerHTML = `<div class="font-medium">${dLabel} <span class="text-zinc-500 text-sm">${dayEvents.length} event${dayEvents.length !== 1 ? 's' : ''}</span>${isToday ? '<span class="text-emerald-400 text-xs ml-1">today</span>' : ''}</div><div id="dchev-${dayKey}">${dIsOpen ? '▾' : '▸'}</div>`;
    dHeader.onclick = (e) => {
     e.stopPropagation();
     const body = document.getElementById('dgroup-' + dayKey);
@@ -100,12 +100,12 @@ function renderPlanner(list) {
     
     // Visual indicator for completed events (strikethrough + opacity)
     const completedClass = ev.completed ? 'line-through opacity-50' : '';
-    const completedBadge = ev.completed ? '<span class="text-xs text-blue-400 ml-2">✓ done</span>' : '';
+    const completedBadge = ev.completed ? '<span class="text-xs text-emerald-400 ml-2">✓ done</span>' : '';
     
     // Toggle button based on completion status
     const toggleBtn = ev.completed 
-     ? '<button class="text-xs text-zinc-400 hover:text-blue-400" onclick="event.stopPropagation(); markIncomplete(\'' + ev.id + '\')">↺ reset</button>'
-     : '<button class="text-xs text-zinc-400 hover:text-blue-400" onclick="event.stopPropagation(); markComplete(\'' + ev.id + '\')">✓ done</button>';
+     ? '<button class="text-xs text-zinc-400 hover:text-emerald-400" onclick="event.stopPropagation(); markIncomplete(\'' + ev.id + '\')">↺ reset</button>'
+     : '<button class="text-xs text-zinc-400 hover:text-emerald-400" onclick="event.stopPropagation(); markComplete(\'' + ev.id + '\')">✓ done</button>';
 
     // Create the event card with icons split to left/right edges
     const card = document.createElement('div');
@@ -127,10 +127,10 @@ function renderPlanner(list) {
      
      <!-- Left action group: Repeat and Toggle -->
      <div class="flex gap-1 items-center mr-2">
-      <button class="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-blue-400 text-lg" 
+      <button class="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-emerald-400 text-lg" 
               onclick="event.stopPropagation(); showRepeatEventModal('${ev.id}')" 
               title="Create recurring series">🔄</button>
-      <button class="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-blue-400 text-lg" 
+      <button class="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-emerald-400 text-lg" 
               onclick="event.stopPropagation(); ${ev.completed ? 'markIncomplete' : 'markComplete'}('${ev.id}')" 
               title="${ev.completed ? 'Mark not done' : 'Mark done'}">
         ${ev.completed ? '↺' : '✓'}
