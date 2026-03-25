@@ -106,20 +106,20 @@ class="text-emerald-400 text-sm font-medium">All →</button>
 
 <!-- PLANNER -->
 <div id="screen-planner" class="screen hidden">
-<div class="flex justify-between items-center mb-4">
-<input id="planner-filter"
-onkeyup="filterPlanner()"
-placeholder="Filter hashtag or text..."
-class="bg-zinc-900 border border-zinc-700 focus:border-emerald-500 rounded-3xl px-5 py-3 w-full text-base">
-</div>
-<div class="hashtag-row mb-6" id="planner-hashtag-filter"></div>
-<div id="planner-list" class="space-y-3"></div>
+    <div class="flex justify-between items-center mb-4">
+        <input id="planner-filter"
+               onkeyup="filterPlanner()"
+               placeholder="Filter hashtag or text..."
+               class="bg-zinc-900 border border-zinc-700 focus:border-emerald-500 rounded-3xl px-5 py-3 w-full text-base">
+    </div>
+    <div class="hashtag-row mb-6" id="planner-hashtag-filter"></div>
+    <div id="planner-list" class="space-y-3"></div>
 
-<!-- Centered Add Event FAB (moved to middle bottom) -->
-<button onclick="showAddEventModal()"
-        class="fixed bottom-24 left-1/2 -translate-x-1/2 w-16 h-16 bg-emerald-500 hover:bg-emerald-600 rounded-3xl shadow-2xl flex items-center justify-center text-4xl leading-none z-40 active:scale-95 transition-transform">
-    +
-</button>
+    <!-- Centered Floating Add Event Button -->
+    <button onclick="showAddEventModal()"
+            class="fixed bottom-24 left-1/2 -translate-x-1/2 w-16 h-16 bg-emerald-500 hover:bg-emerald-600 rounded-3xl shadow-2xl flex items-center justify-center text-4xl leading-none z-40 active:scale-95 transition-transform">
+        +
+    </button>
 </div>
 
 <!-- EXPENSES -->
@@ -574,21 +574,17 @@ window.addEventListener('DOMContentLoaded', () => {
 function _applyGuestUI() {
     if (!window.isGuest || !window.isGuest()) return;
 
-    // Planner: hide FAB
     const fab = document.querySelector('#screen-planner button[onclick="showAddEventModal()"]');
     if (fab) fab.classList.add('hidden');
 
-    // Expenses: hide + Expense button
     const expBtn = document.querySelector('#screen-expenses button[onclick="showAddExpenseModal()"]');
     if (expBtn) expBtn.classList.add('hidden');
 
-    // Income: hide + Income and + Compensation buttons
     const incBtn  = document.querySelector('#screen-income button[onclick="showAddIncomeModal()"]');
     const compBtn = document.querySelector('#screen-income button[onclick="showAddCompensationModal()"]');
     if (incBtn)  incBtn.classList.add('hidden');
     if (compBtn) compBtn.classList.add('hidden');
 
-    // More: hide Clear all data, Snapshot header button, snapshot card
     const clearBtn = document.querySelector('button[onclick="clearAllData()"]');
     if (clearBtn) clearBtn.closest('.grid')?.classList.add('hidden');
     const snapHeaderBtn = document.querySelector('header button[onclick="takeSnapshot()"]');
@@ -596,11 +592,9 @@ function _applyGuestUI() {
     const snapCard = document.querySelector('#screen-more div[onclick="takeSnapshot()"]');
     if (snapCard) snapCard.classList.add('hidden');
 
-    // More: hide notif retry button
     const retryBtn = document.getElementById('notif-retry-btn');
     if (retryBtn) retryBtn.classList.add('hidden');
 
-    // More: hide housekeeping manage button
     const hkContainer = document.getElementById('housekeeping-container');
     if (hkContainer) {
         const manageBtn = hkContainer.querySelector('button[onclick="window.showHousekeepingModal()"]');
