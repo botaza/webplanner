@@ -9,6 +9,7 @@
 
 import { state } from './state.js';
 import { requireAdmin } from './readonly-guard.js';
+import { isDemo } from './lockscreen.js';
 
 // ── HELPERS ──
 
@@ -129,13 +130,15 @@ export function renderExpensesList(list) {
     const monthLabel      = formatMonthLabel(month);
     const isCurrentMonth  = month === currentMonth;
 
-    // Month header — show both numbers if future > 0
-    const adjNote = mFuture > 0
-        ? `<div class="text-right">
-               <div class="text-emerald-400 font-semibold">−${mTotal.toLocaleString('ru-RU')}</div>
-               <div class="text-xs text-zinc-400">adj −${mAdj.toLocaleString('ru-RU')}</div>
-           </div>`
-        : `<div class="text-emerald-400 font-semibold">−${mTotal.toLocaleString('ru-RU')}</div>`;
+    // Month header — show both numbers if future > 0; hide all in demo mode
+    const adjNote = isDemo()
+        ? ``
+        : mFuture > 0
+            ? `<div class="text-right">
+                   <div class="text-emerald-400 font-semibold">−${mTotal.toLocaleString('ru-RU')}</div>
+                   <div class="text-xs text-zinc-400">adj −${mAdj.toLocaleString('ru-RU')}</div>
+               </div>`
+            : `<div class="text-emerald-400 font-semibold">−${mTotal.toLocaleString('ru-RU')}</div>`;
 
     // Group by Day within month
     const groupedByDay = {};
@@ -193,7 +196,7 @@ export function renderExpensesList(list) {
                   <div class="text-xs text-zinc-500">(${dayCount})</div>
                 </div>
                 <div class="text-emerald-400 text-sm font-medium">
-                  −${dayTotal}
+                  ${isDemo() ? '' : `−${dayTotal}`}
                 </div>
               </div>
             </div>
@@ -214,8 +217,8 @@ export function renderExpensesList(list) {
                       <div class="text-zinc-300 ${isFuture ? 'opacity-60' : ''}">${tool}${category}${desc}</div>
                     </div>
                     <div class="flex items-center gap-2">
-                      <div class="font-medium ${isFuture ? 'text-zinc-500' : 'text-emerald-400'}">−${amount}</div>
-                      ${!window.isGuest() ? `
+                      <div class="font-medium ${isFuture ? 'text-zinc-500' : 'text-emerald-400'}">${isDemo() ? '' : `−${amount}`}</div>
+                      ${(!window.isGuest() && !window.isDemo()) ? `
                       <button data-edit-id="${exp.id}"
                               class="text-zinc-400 hover:text-white text-base transition px-1 touch-manipulation"
                               title="Edit"
@@ -317,7 +320,7 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
             </div>
           </div>
           <div class="text-emerald-400 font-semibold">
-            −${monthTotal}
+            ${isDemo() ? '' : `−${monthTotal}`}
           </div>
         </div>
       </div>
@@ -343,7 +346,7 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
                   <div class="text-xs text-zinc-500">(${dayCount})</div>
                 </div>
                 <div class="text-emerald-400 text-sm font-medium">
-                  −${dayTotal}
+                  ${isDemo() ? '' : `−${dayTotal}`}
                 </div>
               </div>
             </div>
@@ -362,7 +365,7 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
                     <div class="flex-1">
                       <div class="text-zinc-300">${tool}${category}${desc}</div>
                     </div>
-                    <div class="font-medium text-emerald-400">−${amount}</div>
+                    <div class="font-medium text-emerald-400">${isDemo() ? '' : `−${amount}`}</div>
                   </div>
                 `;
               }).join('')}
@@ -553,6 +556,7 @@ export function toggleExpenseDay(day, containerId = 'expenses-list') {
 export function renderStatsTotal(total, containerId, future = 0) {
   const container = document.getElementById(containerId);
   if (!container) return;
+  if (isDemo()) { container.innerHTML = ''; return; }
   container.innerHTML = totalBannerHTML(total, future, total - future);
 }
 

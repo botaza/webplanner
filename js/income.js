@@ -5,6 +5,7 @@
 import { requireAdmin } from './readonly-guard.js';
 import { state } from './state.js';
 import { loadDashboard } from './dashboard.js';
+import { isDemo } from './lockscreen.js';
 
 import {
     initIncomeUI,
@@ -121,7 +122,7 @@ function _renderList() {
     const totalComp = compEntries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
     const totalAdj  = totalInc - totalComp;
 
-    const banner = `
+    const banner = isDemo() ? '' : `
         <div class="grid grid-cols-3 gap-3 mb-5">
             <div class="bg-zinc-900 rounded-2xl p-3 text-center">
                 <div class="text-xs text-zinc-500 mb-1">Income</div>
@@ -183,9 +184,9 @@ function _renderList() {
                         ${e.desc ? `<div class="text-zinc-400 text-xs mt-0.5">${e.desc}</div>` : ''}
                     </div>
                     <div class="flex items-center gap-3 shrink-0 ml-3">
-                        <span class="${color} font-semibold">${sign}${parseFloat(e.amount).toLocaleString('ru-RU')}</span>
-                        <button onclick="window.${delFn}"
-                                class="text-zinc-600 hover:text-red-400 text-lg transition">🗑</button>
+                        <span class="${color} font-semibold">${isDemo() ? '' : `${sign}${parseFloat(e.amount).toLocaleString('ru-RU')}`}</span>
+                        ${!isDemo() ? `<button onclick="window.${delFn}"
+                                class="text-zinc-600 hover:text-red-400 text-lg transition">🗑</button>` : ''}
                     </div>
                 </div>`;
         }).join('');
@@ -205,8 +206,8 @@ function _renderList() {
                         </div>
                     </div>
                     <div class="text-right">
-                        <div class="${adjColor} font-semibold">${adjSign}${monthAdj.toLocaleString('ru-RU')}</div>
-                        ${monthComp > 0
+                        <div class="${adjColor} font-semibold">${isDemo() ? '' : `${adjSign}${monthAdj.toLocaleString('ru-RU')}`}</div>
+                        ${(!isDemo() && monthComp > 0)
                             ? `<div class="text-xs text-zinc-500">+${monthInc.toLocaleString('ru-RU')} − ${monthComp.toLocaleString('ru-RU')}</div>`
                             : ''}
                     </div>

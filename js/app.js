@@ -3,7 +3,7 @@
 // UPDATED: Skip FCM token registration for guest role
 
 import { state } from './state.js';
-import { isUnlocked, showLockScreen, getRole, isGuest } from './lockscreen.js';
+import { isUnlocked, showLockScreen, getRole, isGuest, isDemo } from './lockscreen.js';
 import { api } from './api.js';
 import { switchScreen } from './utils.js';
 import { loadPlanner } from './planner-crud.js';
@@ -26,7 +26,7 @@ async function bootApp() {
     // FCM: only register / request token for admin users
     if (typeof firebase !== 'undefined') {
         state.messaging = firebase.messaging();
-        if (!isGuest()) {
+        if (!isGuest() && !isDemo()) {
             await enableNotifications();
         }
         updateNotifStatus();
@@ -40,7 +40,11 @@ async function bootApp() {
     // Show a subtle guest-mode banner so the user knows they're in view-only mode
     if (isGuest()) {
         _showGuestBanner();
-        // Hide write buttons declared in index.html
+        if (typeof window._applyGuestUI === "function") window._applyGuestUI();
+    }
+
+    if (isDemo()) {
+        _showDemoBanner();
         if (typeof window._applyGuestUI === "function") window._applyGuestUI();
     }
 
@@ -64,6 +68,26 @@ function _showGuestBanner() {
         'letter-spacing:0.3px'
     ].join(';');
     banner.textContent = '👁 View-only mode';
+    document.body.prepend(banner);
+}
+
+function _showDemoBanner() {
+    const banner = document.createElement('div');
+    banner.id = 'demo-banner';
+    banner.style.cssText = [
+        'position:fixed',
+        'top:0',
+        'left:0',
+        'right:0',
+        'background:#1d4ed8',
+        'color:#fff',
+        'text-align:center',
+        'font-size:13px',
+        'padding:6px 12px',
+        'z-index:500',
+        'letter-spacing:0.3px'
+    ].join(';');
+    banner.textContent = '🔵 Demo mode — amounts hidden';
     document.body.prepend(banner);
 }
 
