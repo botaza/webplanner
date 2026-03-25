@@ -7,7 +7,6 @@
 import { state } from './state.js';
 import { api } from './api.js';
 import { currentMonthKey } from './date-utils.js';
-import { isDemo } from './lockscreen.js';
 
 /**
  * Load dashboard data and update UI
@@ -57,15 +56,15 @@ export async function loadDashboard() {
             return 'text-xl';
         }
 
-        const expStr    = isDemo() ? '••••' : `−${expTotal.toLocaleString('ru-RU')}`;
-        const expAdjStr = isDemo() ? '••••' : `−${expAdjusted.toLocaleString('ru-RU')}`;
+        const expStr    = `−${expTotal.toLocaleString('ru-RU')}`;
+        const expAdjStr = `−${expAdjusted.toLocaleString('ru-RU')}`;
 
         if (expEl) {
             expEl.textContent = expStr;
             expEl.className   = `${_dashFontClass(expStr)} font-semibold mt-2 leading-tight`;
         }
 
-        if (expFuture > 0 && !isDemo()) {
+        if (expFuture > 0) {
             // Show adjusted row below the main number
             if (expAdjEl) {
                 expAdjEl.textContent = expAdjStr;
@@ -85,7 +84,7 @@ export async function loadDashboard() {
         const incEl    = document.getElementById('dash-inc-total');
         const adjEl    = document.getElementById('dash-adj-label');
 
-        const incStr  = isDemo() ? '••••' : (() => {
+        const incStr  = (() => {
             const sign = adjIncTotal >= 0 ? '+' : '−';
             return `${sign}${Math.abs(adjIncTotal).toLocaleString('ru-RU')}`;
         })();

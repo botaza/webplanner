@@ -572,7 +572,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 function _applyGuestUI() {
-    if (!window.isGuest || (!window.isGuest() && !window.isDemo())) return;
+    if (!window.isGuest || !window.isGuest()) return;
 
     const fab = document.querySelector('#screen-planner button[onclick="showAddEventModal()"]');
     if (fab) fab.classList.add('hidden');

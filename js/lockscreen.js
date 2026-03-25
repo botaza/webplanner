@@ -5,8 +5,7 @@
 
 const PASSWORDS = {
     phoenix:    'admin',
-    'апельсин': 'guest',
-    'demo':     'demo'
+    'апельсин': 'guest'
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -25,10 +24,6 @@ export function isAdmin() {
 
 export function isGuest() {
     return getRole() === 'guest';
-}
-
-export function isDemo() {
-    return getRole() === 'demo';
 }
 
 // ── Lock Screen UI ────────────────────────────────────────────────────────────
@@ -100,7 +95,6 @@ Object.assign(window, {
     getRole,
     isAdmin,
     isGuest,
-    isDemo,
     showLockScreen,
     attemptUnlock,
     lockApp

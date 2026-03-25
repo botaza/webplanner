@@ -5,7 +5,6 @@
 // FIXED: Monthly view now shows Total + Adjusted banner (when future expenses exist)
 
 import { state } from './state.js';
-import { isDemo } from './lockscreen.js';
 import {
     getExpensesByCategory,
     getExpensesByTool,
@@ -309,7 +308,7 @@ async function _renderMonthlyView(container) {
                         ${exp.desc ? `<div class="text-zinc-400 text-xs mt-0.5">${exp.desc}</div>` : ''}
                     </div>
                     <div class="font-medium ${isFuture ? 'text-zinc-500' : 'text-emerald-400'}">
-                        ${isDemo() ? '' : `−${amount}`}
+                        −${amount}
                     </div>
                 </div>`;
         }).join('');
@@ -329,12 +328,10 @@ async function _renderMonthlyView(container) {
                         </div>
                     </div>
                     <div class="text-right">
-                        <div class="${adjColor} font-semibold">${isDemo() ? '' : `${adjSign}${adjTotal.toLocaleString('ru-RU')}`}</div>
-                        ${!isDemo() && future > 0
+                        <div class="${adjColor} font-semibold">${adjSign}${adjTotal.toLocaleString('ru-RU')}</div>
+                        ${future > 0 
                             ? `<div class="text-xs text-zinc-500">total −${total.toLocaleString('ru-RU')} (excl. 🔮 ${future.toLocaleString('ru-RU')})</div>`
-                            : !isDemo()
-                                ? `<div class="text-xs text-zinc-500">−${total.toLocaleString('ru-RU')}</div>`
-                                : ''}
+                            : `<div class="text-xs text-zinc-500">−${total.toLocaleString('ru-RU')}</div>`}
                     </div>
                 </div>
             </div>
