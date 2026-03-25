@@ -2,6 +2,7 @@
 // STATS ORCHESTRATION
 // Manages view switching and data aggregation for stats screens
 // FIXED: Monthly view now correctly respects the selected date range
+// FIXED: Monthly view now shows Total + Adjusted banner (when future expenses exist)
 
 import { state } from './state.js';
 import {
@@ -176,13 +177,10 @@ export async function renderStatsContainer() {
     try {
         if (currentStatsView === 'pie-categories') {
             await _renderCategoriesView(container);
-
         } else if (currentStatsView === 'pie-tools') {
             await _renderToolsView(container);
-
         } else if (currentStatsView === 'list-monthly') {
-            await _renderMonthlyView(container);          // ← Now calls fixed function
-
+            await _renderMonthlyView(container);   // ← Fixed version with banner
         } else if (currentStatsView === 'filtered-limit') {
             const data   = await getExpensesByLimit(currentStatsStartDate, currentStatsEndDate, currentLimit);
             const future = _futureFromList(data);
@@ -197,7 +195,6 @@ export async function renderStatsContainer() {
             renderStatsTotal(total, 'expenses-stats-total', future);
             renderStatsList(data, 'expenses-stats-list');
         }
-
     } catch (err) {
         console.error('[expenses-stats] Failed to load stats:', err);
         container.innerHTML = `
@@ -242,9 +239,8 @@ async function _renderToolsView(container) {
     renderStatsTotal(data.total, 'expenses-stats-total', future);
 }
 
-// ── PRIVATE: MONTHLY VIEW (FIXED) ──
+// ── PRIVATE: MONTHLY VIEW (NOW WITH TOTAL + ADJUSTED BANNER) ──
 async function _renderMonthlyView(container) {
-    // This is the important fix — respect the selected date range
     const filteredExpenses = (state.expensesData || []).filter(exp => {
         if (!exp.date) return false;
         if (currentStatsStartDate && exp.date < currentStatsStartDate) return false;
@@ -260,6 +256,11 @@ async function _renderMonthlyView(container) {
             </div>`;
         return;
     }
+
+    // Overall banner for the selected period
+    const periodTotal   = filteredExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+    const periodFuture  = filteredExpenses.filter(e => e.category === 'future')
+                                          .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
 
     const grouped = {};
     filteredExpenses.forEach(exp => {
@@ -339,7 +340,16 @@ async function _renderMonthlyView(container) {
             </div>`;
     }).join('');
 
-    container.innerHTML = monthBlocks;
+    // Final HTML: banner first, then months
+    container.innerHTML = `
+        <div id="expenses-stats-total"></div>
+        <div class="bg-zinc-900 rounded-3xl p-5">
+            ${monthBlocks}
+        </div>
+    `;
+
+    // Render the overall Total + Adjusted banner
+    renderStatsTotal(periodTotal, 'expenses-stats-total', periodFuture);
 }
 
 // ── MONTH PICKER ──
