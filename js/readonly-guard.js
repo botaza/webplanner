@@ -12,15 +12,15 @@
 //       // ... rest of save logic
 //   }
 
-import { isGuest } from './lockscreen.js';
+import { isGuest, isDemo } from './lockscreen.js';
 
 /**
  * Check whether the current user has write permission.
- * Shows a toast and returns false if they are a guest.
+ * Shows a toast and returns false if they are a guest or demo.
  * @returns {boolean} true = proceed, false = blocked
  */
 export function requireAdmin() {
-    if (!isGuest()) return true;
+    if (!isGuest() && !isDemo()) return true;
     _showReadonlyToast();
     return false;
 }
