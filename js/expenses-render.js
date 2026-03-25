@@ -99,9 +99,6 @@ export function renderExpensesList(list) {
     return;
   }
 
-  // Overall totals banner
-  const overall = calcTotals(list);
-
   // Sort by date descending
   const sorted = [...list].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
@@ -241,8 +238,7 @@ export function renderExpensesList(list) {
     return monthHeader + monthContent;
   }).join('');
 
-  container.innerHTML = totalBannerHTML(overall.total, overall.future, overall.adjusted)
-                      + `<div class="pb-20">${html}</div>`;
+  container.innerHTML = `<div class="pb-20">${html}</div>`;
 
   // Attach delegated pointer listener for edit buttons (touch-safe)
   _attachExpensesListDelegation(container);
