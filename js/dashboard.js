@@ -2,6 +2,7 @@
 // DASHBOARD LOGIC
 // Loads and displays dashboard totals for expenses, income, and upcoming events
 // UPDATED: Income card now shows adjusted total (income − compensation)
+// UPDATED: Expense card now shows total and adjusted (total − future) when future > 0
 
 import { state } from './state.js';
 import { api } from './api.js';
@@ -22,10 +23,13 @@ export async function loadDashboard() {
             api('get_compensations')
         ]);
 
-        // Monthly expense total
-        const expTotal = (exps || [])
-            .filter(e => e.date && e.date.startsWith(monthKey))
+        // Monthly expense totals
+        const monthExps   = (exps || []).filter(e => e.date && e.date.startsWith(monthKey));
+        const expTotal    = monthExps.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+        const expFuture   = monthExps
+            .filter(e => e.category === 'future')
             .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+        const expAdjusted = expTotal - expFuture;
 
         // Monthly income total
         const incTotal = (incs || [])
@@ -38,15 +42,12 @@ export async function loadDashboard() {
             .reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
 
         // Adjusted income = income − compensation
-        const adjTotal = incTotal - compTotal;
+        const adjIncTotal = incTotal - compTotal;
 
-        // Update dashboard cards
-        const expEl  = document.getElementById('dash-exp-total');
-        const incEl  = document.getElementById('dash-inc-total');
-        const adjEl  = document.getElementById('dash-adj-label');
-
-        const expStr = `−${expTotal.toLocaleString('ru-RU')}`;
-        const incStr = (() => { const sign = adjTotal >= 0 ? '+' : '−'; return `${sign}${Math.abs(adjTotal).toLocaleString('ru-RU')}`; })();
+        // ── Expense card ──
+        const expEl    = document.getElementById('dash-exp-total');
+        const expAdjEl = document.getElementById('dash-exp-adjusted');
+        const expAdjLabelEl = document.getElementById('dash-exp-adj-label');
 
         function _dashFontClass(str) {
             const len = str.replace(/[^0-9]/g, '').length;
@@ -55,18 +56,45 @@ export async function loadDashboard() {
             return 'text-xl';
         }
 
+        const expStr    = `−${expTotal.toLocaleString('ru-RU')}`;
+        const expAdjStr = `−${expAdjusted.toLocaleString('ru-RU')}`;
+
         if (expEl) {
             expEl.textContent = expStr;
-            expEl.className = `${_dashFontClass(expStr)} font-semibold mt-2 leading-tight`;
+            expEl.className   = `${_dashFontClass(expStr)} font-semibold mt-2 leading-tight`;
         }
+
+        if (expFuture > 0) {
+            // Show adjusted row below the main number
+            if (expAdjEl) {
+                expAdjEl.textContent = expAdjStr;
+                expAdjEl.className   = `text-sm font-medium text-zinc-400 mt-0.5 leading-tight`;
+                expAdjEl.classList.remove('hidden');
+            }
+            if (expAdjLabelEl) {
+                expAdjLabelEl.textContent = `adj excl. 🔮 ${expFuture.toLocaleString('ru-RU')}`;
+                expAdjLabelEl.classList.remove('hidden');
+            }
+        } else {
+            if (expAdjEl)      expAdjEl.classList.add('hidden');
+            if (expAdjLabelEl) expAdjLabelEl.classList.add('hidden');
+        }
+
+        // ── Income card ──
+        const incEl    = document.getElementById('dash-inc-total');
+        const adjEl    = document.getElementById('dash-adj-label');
+
+        const incStr  = (() => {
+            const sign = adjIncTotal >= 0 ? '+' : '−';
+            return `${sign}${Math.abs(adjIncTotal).toLocaleString('ru-RU')}`;
+        })();
 
         if (incEl) {
             incEl.textContent = incStr;
-            const incColor = adjTotal >= 0 ? 'text-zinc-200' : 'text-red-400';
-            incEl.className = `${_dashFontClass(incStr)} font-semibold mt-2 leading-tight ${incColor}`;
+            const incColor    = adjIncTotal >= 0 ? 'text-zinc-200' : 'text-red-400';
+            incEl.className   = `${_dashFontClass(incStr)} font-semibold mt-2 leading-tight ${incColor}`;
         }
 
-        // Show small label clarifying it's adjusted if there are compensations
         if (adjEl) {
             adjEl.textContent = compTotal > 0 ? 'adjusted this month' : 'this month';
         }
@@ -76,15 +104,14 @@ export async function loadDashboard() {
             if (typeof _applyDashVisibility === 'function') _applyDashVisibility(true);
         }
 
-        // Load upcoming events
-        const evs     = await api('get_events') || [];
-        const nowStr  = new Date().toISOString().slice(0, 16).replace('T', ' ');
+        // ── Upcoming events ──
+        const evs      = await api('get_events') || [];
+        const nowStr   = new Date().toISOString().slice(0, 16).replace('T', ' ');
         const upcoming = evs
             .filter(e => (e.dt || '') > nowStr && !e.completed)
             .sort((a, b) => (a.dt > b.dt ? 1 : -1))
             .slice(0, 5);
 
-        // Render upcoming events list
         const upcomingEl = document.getElementById('upcoming-list');
         if (upcomingEl) {
             upcomingEl.innerHTML = upcoming.length
@@ -98,9 +125,9 @@ export async function loadDashboard() {
                                 <div class="font-medium">${e.desc}</div>
                                 <div class="text-xs text-zinc-500 mt-0.5 flex flex-wrap gap-1 items-center">
                                     <span class="text-emerald-400 font-medium">🕐 ${timeStr}</span>
-                                    ${e.hashtag ? `<span class="bg-zinc-800 px-2 py-0.5 rounded-xl">${e.hashtag}</span>` : ''}
-                                    ${e.place   ? `<span>📍 ${e.place}</span>`                                           : ''}
-                                    ${e.duration ? `<span>⏱ ${e.duration} min</span>`                                    : ''}
+                                    ${e.hashtag  ? `<span class="bg-zinc-800 px-2 py-0.5 rounded-xl">${e.hashtag}</span>` : ''}
+                                    ${e.place    ? `<span>📍 ${e.place}</span>`                                            : ''}
+                                    ${e.duration ? `<span>⏱ ${e.duration} min</span>`                                     : ''}
                                 </div>
                             </div>
                             <div class="text-zinc-400 text-right shrink-0 ml-3 text-xs">

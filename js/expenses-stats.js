@@ -2,6 +2,7 @@
 // STATS ORCHESTRATION
 // Manages view switching and data aggregation for stats screens
 // UPDATED: pie-categories view now renders collapsible entry drilldown per category
+// UPDATED: all views pass future-category sum to renderStatsTotal for adjusted display
 
 import { state } from './state.js';
 import {
@@ -176,6 +177,32 @@ function renderStatsControls() {
     }
 }
 
+// ── PRIVATE HELPERS ──
+
+/**
+ * Calculate the future-category sum from a groups object
+ * (used after fetching aggregated data from the backend)
+ * @param {Object} groups - { category: { label, amount, count } }
+ * @returns {number}
+ */
+function _futureFromGroups(groups) {
+    return parseFloat(groups?.future?.amount || 0);
+}
+
+/**
+ * Calculate the future-category sum from a flat expense array
+ * (used when working with raw lists)
+ * @param {Array} list
+ * @returns {number}
+ */
+function _futureFromList(list) {
+    return (list || [])
+        .filter(e => e.category === 'future')
+        .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+}
+
+// ── MAIN RENDER ──
+
 /**
  * Main render function for stats container
  */
@@ -184,7 +211,6 @@ export async function renderStatsContainer() {
     if (!container) return;
 
     // Reset category drilldown expanded state when re-rendering
-    // so accordion state is fresh for the new date range
     state.expandedStatsCategories = new Set();
 
     // Show loading spinner
@@ -199,32 +225,32 @@ export async function renderStatsContainer() {
             await _renderCategoriesView(container);
 
         } else if (currentStatsView === 'pie-tools') {
-            const data = await getExpensesByTool(currentStatsStartDate, currentStatsEndDate);
-            renderPieChart(container, data, 'tool');
-            renderStatsTotal(data.total, 'expenses-stats-total');
+            await _renderToolsView(container);
 
         } else if (currentStatsView === 'list-monthly') {
-            const data  = getExpensesForMonth(currentStatsMonth);
+            const data   = getExpensesForMonth(currentStatsMonth);
+            const future = _futureFromList(data);
+            const total  = data.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
             container.innerHTML = `
                 <div id="expenses-stats-total"></div>
                 <div class="bg-zinc-900 rounded-3xl p-5">
                     <div id="expenses-stats-list"></div>
                 </div>
             `;
-            const total = data.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
-            renderStatsTotal(total, 'expenses-stats-total');
+            renderStatsTotal(total, 'expenses-stats-total', future);
             renderStatsList(data, 'expenses-stats-list');
 
         } else if (currentStatsView === 'filtered-limit') {
-            const data  = await getExpensesByLimit(currentStatsStartDate, currentStatsEndDate, currentLimit);
+            const data   = await getExpensesByLimit(currentStatsStartDate, currentStatsEndDate, currentLimit);
+            const future = _futureFromList(data);
+            const total  = data.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
             container.innerHTML = `
                 <div id="expenses-stats-total"></div>
                 <div class="bg-zinc-900 rounded-3xl p-5">
                     <div id="expenses-stats-list"></div>
                 </div>
             `;
-            const total = data.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
-            renderStatsTotal(total, 'expenses-stats-total');
+            renderStatsTotal(total, 'expenses-stats-total', future);
             renderStatsList(data, 'expenses-stats-list');
         }
 
@@ -245,15 +271,14 @@ export async function renderStatsContainer() {
  * @param {HTMLElement} container
  */
 async function _renderCategoriesView(container) {
-    // 1. Fetch aggregated data
-    const data = await getExpensesByCategory(currentStatsStartDate, currentStatsEndDate);
+    const data   = await getExpensesByCategory(currentStatsStartDate, currentStatsEndDate);
+    const future = _futureFromGroups(data.groups);
 
-    // 2. Render the pie chart into the container (replaces loading spinner)
+    // Render the pie chart (replaces loading spinner)
     renderPieChart(container, data, 'category');
-    renderStatsTotal(data.total, 'expenses-stats-total');
+    renderStatsTotal(data.total, 'expenses-stats-total', future);
 
-    // 3. Get the flat list of expenses for the same period so the drilldown
-    //    can show individual entries — filter from in-memory state for speed.
+    // Get flat list for drilldown
     const periodExpenses = (state.expensesData || []).filter(exp => {
         if (!exp.date) return false;
         if (currentStatsStartDate && exp.date < currentStatsStartDate) return false;
@@ -261,8 +286,31 @@ async function _renderCategoriesView(container) {
         return true;
     });
 
-    // 4. Append drilldown section below the chart
     renderCategoryDrilldown(container, data, periodExpenses);
+}
+
+// ── PRIVATE: TOOLS VIEW ──
+
+/**
+ * Render pie chart for tools with total + adjusted banner.
+ * Future amount is pulled from the period's expense list since
+ * tool-grouped data doesn't carry category info.
+ * @param {HTMLElement} container
+ */
+async function _renderToolsView(container) {
+    const data = await getExpensesByTool(currentStatsStartDate, currentStatsEndDate);
+
+    // Derive future sum from in-memory state filtered to the same period
+    const periodExpenses = (state.expensesData || []).filter(exp => {
+        if (!exp.date) return false;
+        if (currentStatsStartDate && exp.date < currentStatsStartDate) return false;
+        if (currentStatsEndDate   && exp.date > currentStatsEndDate)   return false;
+        return true;
+    });
+    const future = _futureFromList(periodExpenses);
+
+    renderPieChart(container, data, 'tool');
+    renderStatsTotal(data.total, 'expenses-stats-total', future);
 }
 
 // ── MONTH PICKER ──
@@ -271,8 +319,8 @@ async function _renderCategoriesView(container) {
  * Open month picker (simple prompt)
  */
 export function showStatsMonthPicker() {
-    const months = getExpenseMonths();
-    const hint   = months.length ? '\nAvailable: ' + months.join(', ') : '';
+    const months  = getExpenseMonths();
+    const hint    = months.length ? '\nAvailable: ' + months.join(', ') : '';
     const selected = prompt(`Select month (YYYY-MM):${hint}`, currentStatsMonth);
     if (selected && /^\d{4}-\d{2}$/.test(selected)) {
         setStatsMonth(selected);

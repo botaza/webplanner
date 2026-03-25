@@ -2,6 +2,7 @@
 // UI MANIPULATION FOR EXPENSES
 // Handles modal visibility, button rendering, and form data gathering
 // UPDATED: Added populateExpenseForm to pre-fill modal for editing
+// UPDATED: Added 'future' category (🔮) for earmarked future expenses
 
 import { state } from './state.js';
 import { hideModal } from './utils.js';
@@ -37,6 +38,7 @@ export const EXPENSE_CATEGORIES = [
     {emoji: "📦", name: "other"},
     {emoji: "🏋️", name: "gym"},
     {emoji: "💳", name: "loans"},
+    {emoji: "🔮", name: "future"},
 ];
 
 // ── MODAL CONTROL ──

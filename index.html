@@ -82,6 +82,9 @@ class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium f
 class="card bg-zinc-900 rounded-3xl p-5 cursor-pointer">
 <div class="text-emerald-400 text-sm font-medium">EXPENSES</div>
 <div id="dash-exp-total" class="text-3xl font-semibold mt-2 leading-tight">0</div>
+<!-- PATCHED: adjusted line shown by JS when future expenses exist -->
+<div id="dash-exp-adjusted" class="hidden text-sm font-medium text-zinc-400 mt-0.5 leading-tight"></div>
+<div id="dash-exp-adj-label" class="hidden text-xs text-zinc-600 mt-0.5"></div>
 <div class="text-xs text-zinc-500 mt-1">this month</div>
 </div>
 <div onclick="switchScreen('screen-income')"
@@ -405,7 +408,6 @@ class="nav-item flex flex-col items-center py-3">
 <div id="modal-expense" class="hidden fixed inset-0 bg-black/80 flex items-end z-[100]">
 <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto max-h-[90vh] overflow-hidden flex flex-col">
 <div class="flex justify-between items-center px-6 pt-5 pb-3 border-b border-zinc-800 shrink-0">
-    <!-- PATCHED: id="exp-modal-title" added so JS can swap "New Expense" ↔ "Edit Expense" -->
     <div id="exp-modal-title" class="text-xl font-semibold">New Expense</div>
     <button onclick="closeExpenseModal()" class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
 </div>
@@ -436,7 +438,6 @@ class="nav-item flex flex-col items-center py-3">
 </div>
 <div class="px-6 py-4 border-t border-zinc-800 flex gap-3 shrink-0">
 <button onclick="closeExpenseModal()" class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
-<!-- PATCHED: id="exp-save-btn" added so JS can swap "Save Expense" ↔ "Update Expense" -->
 <button id="exp-save-btn" onclick="saveExpense()" class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Save Expense</button>
 </div>
 </div>
@@ -544,21 +545,24 @@ function toggleDashNumbers() {
 }
 
 function _applyDashVisibility(hide) {
-    const expEl  = document.getElementById('dash-exp-total');
-    const incEl  = document.getElementById('dash-inc-total');
-    const adjEl  = document.getElementById('dash-adj-label');
-    const btn    = document.getElementById('dash-visibility-btn');
-    const mask   = '••••';
+    const expEl    = document.getElementById('dash-exp-total');
+    const expAdjEl = document.getElementById('dash-exp-adjusted');
+    const incEl    = document.getElementById('dash-inc-total');
+    const adjEl    = document.getElementById('dash-adj-label');
+    const btn      = document.getElementById('dash-visibility-btn');
+    const mask     = '••••';
 
     if (hide) {
-        if (expEl) { expEl.dataset.real = expEl.textContent; expEl.dataset.realClass = expEl.className; expEl.textContent = mask; }
-        if (incEl) { incEl.dataset.real = incEl.textContent; incEl.dataset.realClass = incEl.className; incEl.textContent = mask; }
-        if (adjEl) { adjEl.dataset.real = adjEl.textContent; }
-        if (btn)   btn.textContent = '🙈';
+        if (expEl)    { expEl.dataset.real = expEl.textContent; expEl.dataset.realClass = expEl.className; expEl.textContent = mask; }
+        if (expAdjEl && !expAdjEl.classList.contains('hidden')) { expAdjEl.dataset.real = expAdjEl.textContent; expAdjEl.textContent = mask; }
+        if (incEl)    { incEl.dataset.real = incEl.textContent; incEl.dataset.realClass = incEl.className; incEl.textContent = mask; }
+        if (adjEl)    { adjEl.dataset.real = adjEl.textContent; }
+        if (btn)      btn.textContent = '🙈';
     } else {
-        if (expEl && expEl.dataset.real) { expEl.textContent = expEl.dataset.real; if (expEl.dataset.realClass) expEl.className = expEl.dataset.realClass; }
-        if (incEl && incEl.dataset.real) { incEl.textContent = incEl.dataset.real; if (incEl.dataset.realClass) incEl.className = incEl.dataset.realClass; }
-        if (btn)   btn.textContent = '👁';
+        if (expEl && expEl.dataset.real)       { expEl.textContent = expEl.dataset.real; if (expEl.dataset.realClass) expEl.className = expEl.dataset.realClass; }
+        if (expAdjEl && expAdjEl.dataset.real) { expAdjEl.textContent = expAdjEl.dataset.real; }
+        if (incEl && incEl.dataset.real)       { incEl.textContent = incEl.dataset.real; if (incEl.dataset.realClass) incEl.className = incEl.dataset.realClass; }
+        if (btn) btn.textContent = '👁';
     }
 }
 
@@ -570,8 +574,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
 
 function _applyGuestUI() {
-    // Called from bootApp (app.js) after role is known.
-    // Hides all write-action buttons for guest users.
     if (!window.isGuest || !window.isGuest()) return;
 
     // Planner: hide FAB

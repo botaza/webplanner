@@ -5,9 +5,60 @@
 // UPDATED: Edit button added to main list expense cards
 // UPDATED: renderCategoryDrilldown added for stats categories view
 // FIXED: Edit button on touch screens — replaced inline onclick with event delegation
+// UPDATED: Main list and stats show both total and adjusted (total − future) amounts
 
 import { state } from './state.js';
 import { requireAdmin } from './readonly-guard.js';
+
+// ── HELPERS ──
+
+/**
+ * Calculate adjusted total by subtracting 'future' category expenses
+ * @param {Array} list - Array of expense objects
+ * @returns {{ total: number, future: number, adjusted: number }}
+ */
+function calcTotals(list) {
+    const total   = list.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+    const future  = list.filter(e => e.category === 'future')
+                        .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+    return { total, future, adjusted: total - future };
+}
+
+/**
+ * Render a two-number total banner: Total and Adjusted (total − future).
+ * If there are no future expenses, shows just the single total cleanly.
+ * @param {number} total    - full total
+ * @param {number} future   - future-category sum
+ * @param {number} adjusted - total − future
+ * @returns {string} HTML string
+ */
+function totalBannerHTML(total, future, adjusted) {
+    const fmtTotal    = total.toLocaleString('ru-RU');
+    const fmtAdjusted = adjusted.toLocaleString('ru-RU');
+
+    if (future === 0) {
+        // No future expenses — single clean card
+        return `
+            <div class="bg-zinc-900 rounded-3xl p-5 mb-4 text-center">
+                <div class="text-xs text-zinc-500 uppercase tracking-wide">Total</div>
+                <div class="text-3xl font-semibold text-emerald-400 mt-1">−${fmtTotal}</div>
+            </div>`;
+    }
+
+    const fmtFuture = future.toLocaleString('ru-RU');
+    return `
+        <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="bg-zinc-900 rounded-3xl p-4 text-center">
+                <div class="text-xs text-zinc-500 uppercase tracking-wide mb-1">Total</div>
+                <div class="text-2xl font-semibold text-emerald-400">−${fmtTotal}</div>
+            </div>
+            <div class="bg-zinc-900 rounded-3xl p-4 text-center">
+                <div class="text-xs text-zinc-500 uppercase tracking-wide mb-1">Adjusted</div>
+                <div class="text-2xl font-semibold text-zinc-200">−${fmtAdjusted}</div>
+                <div class="text-xs text-zinc-600 mt-0.5">excl. 🔮 ${fmtFuture}</div>
+            </div>
+        </div>`;
+}
 
 // ── EVENT DELEGATION SETUP ──
 // Called once after the expenses-list container is populated.
@@ -32,6 +83,7 @@ function _attachExpensesListDelegation(container) {
 /**
  * Render the main expenses list with expandable month/day groups
  * Current month pinned at top, rest sort from most recent to older
+ * Shows total + adjusted (excl. future) banner per month
  * @param {Array} list - Array of expense objects
  */
 export function renderExpensesList(list) {
@@ -46,6 +98,9 @@ export function renderExpensesList(list) {
       </div>`;
     return;
   }
+
+  // Overall totals banner
+  const overall = calcTotals(list);
 
   // Sort by date descending
   const sorted = [...list].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
@@ -66,25 +121,28 @@ export function renderExpensesList(list) {
   if (groupedByMonth[currentMonth]) months.push(currentMonth);
   allMonths.forEach(m => { if (m !== currentMonth) months.push(m); });
 
-  // Calculate totals for each month
-  const monthTotals = {};
-  months.forEach(m => {
-    monthTotals[m] = groupedByMonth[m].reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
-  });
-
   if (!state.expandedExpenseMonths) state.expandedExpenseMonths = new Set();
   if (!state.expandedExpenseDays)   state.expandedExpenseDays   = new Set();
 
   const html = months.map(month => {
+    const monthList       = groupedByMonth[month];
+    const { total: mTotal, future: mFuture, adjusted: mAdj } = calcTotals(monthList);
     const isMonthExpanded = state.expandedExpenseMonths.has(month);
-    const monthTotal      = monthTotals[month].toLocaleString('ru-RU');
-    const count           = groupedByMonth[month].length;
+    const count           = monthList.length;
     const monthLabel      = formatMonthLabel(month);
     const isCurrentMonth  = month === currentMonth;
 
+    // Month header — show both numbers if future > 0
+    const adjNote = mFuture > 0
+        ? `<div class="text-right">
+               <div class="text-emerald-400 font-semibold">−${mTotal.toLocaleString('ru-RU')}</div>
+               <div class="text-xs text-zinc-400">adj −${mAdj.toLocaleString('ru-RU')}</div>
+           </div>`
+        : `<div class="text-emerald-400 font-semibold">−${mTotal.toLocaleString('ru-RU')}</div>`;
+
     // Group by Day within month
     const groupedByDay = {};
-    groupedByMonth[month].forEach(exp => {
+    monthList.forEach(exp => {
       const day = exp.date || 'unknown';
       if (!groupedByDay[day]) groupedByDay[day] = [];
       groupedByDay[day].push(exp);
@@ -112,9 +170,7 @@ export function renderExpensesList(list) {
               <div class="text-xs text-zinc-500">${count} expense${count !== 1 ? 's' : ''}</div>
             </div>
           </div>
-          <div class="text-emerald-400 font-semibold">
-            −${monthTotal}
-          </div>
+          ${adjNote}
         </div>
       </div>
     `;
@@ -154,13 +210,14 @@ export function renderExpensesList(list) {
                 const tool     = exp.tool     || '?';
                 const category = exp.category ? ` • ${exp.category}` : '';
                 const desc     = exp.desc     ? ` • ${exp.desc}`     : '';
+                const isFuture = exp.category === 'future';
                 return `
                   <div class="bg-zinc-900/30 rounded-xl p-3 flex justify-between items-center text-sm">
                     <div class="flex-1">
-                      <div class="text-zinc-300">${tool}${category}${desc}</div>
+                      <div class="text-zinc-300 ${isFuture ? 'opacity-60' : ''}">${tool}${category}${desc}</div>
                     </div>
                     <div class="flex items-center gap-2">
-                      <div class="font-medium text-emerald-400">−${amount}</div>
+                      <div class="font-medium ${isFuture ? 'text-zinc-500' : 'text-emerald-400'}">−${amount}</div>
                       ${!window.isGuest() ? `
                       <button data-edit-id="${exp.id}"
                               class="text-zinc-400 hover:text-white text-base transition px-1 touch-manipulation"
@@ -184,7 +241,8 @@ export function renderExpensesList(list) {
     return monthHeader + monthContent;
   }).join('');
 
-  container.innerHTML = `<div class="pb-20">${html}</div>`;
+  container.innerHTML = totalBannerHTML(overall.total, overall.future, overall.adjusted)
+                      + `<div class="pb-20">${html}</div>`;
 
   // Attach delegated pointer listener for edit buttons (touch-safe)
   _attachExpensesListDelegation(container);
@@ -192,6 +250,7 @@ export function renderExpensesList(list) {
 
 /**
  * Render a specific stats list (e.g. for monthly view or filtered view)
+ * Shows total + adjusted banner above the list
  * @param {Array} list - Array of expense objects
  * @param {string} containerId - Target DOM ID (e.g., 'expenses-stats-list')
  */
@@ -210,6 +269,8 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
       </div>`;
     return;
   }
+
+  const { total, future, adjusted } = calcTotals(list);
 
   const sorted = [...list].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   const groupedByMonth = {};
@@ -237,7 +298,7 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
     const groupedByDay = {};
     groupedByMonth[month].forEach(exp => {
       const day = exp.date || 'unknown';
-      if (!groupedByDay[day]) groupedByDay[day] = [];
+      if (!groupedByDay[day]) groupedByDay[day] = []
       groupedByDay[day].push(exp);
     });
     const days = Object.keys(groupedByDay).sort().reverse();
@@ -281,8 +342,7 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
               <div class="flex justify-between items-center">
                 <div class="flex items-center gap-3">
                   <div class="text-emerald-500 text-base">
-                    ${isDayExpanded ? '📂' : '📁'}
-                  </div>
+                    ${isDayExpanded ? '📂' : '📁'}</div>
                   <div class="text-sm text-zinc-300">${dayLabel}</div>
                   <div class="text-xs text-zinc-500">(${dayCount})</div>
                 </div>
@@ -319,7 +379,8 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
     return monthHeader + monthContent;
   }).join('');
 
-  container.innerHTML = `<div class="pb-20">${html}</div>`;
+  container.innerHTML = totalBannerHTML(total, future, adjusted)
+                      + `<div class="pb-20">${html}</div>`;
 }
 
 /**
@@ -487,20 +548,16 @@ export function toggleExpenseDay(day, containerId = 'expenses-list') {
 }
 
 /**
- * Render a summary total card
- * @param {number} total       - Total amount
- * @param {string} containerId - Target DOM ID
+ * Render a summary total card — now shows both total and adjusted if future > 0.
+ * Used by expenses-stats.js for the pie-categories and pie-tools views.
+ * @param {number} total        - Total amount
+ * @param {string} containerId  - Target DOM ID
+ * @param {number} [future=0]   - Future-category sum (optional)
  */
-export function renderStatsTotal(total, containerId) {
+export function renderStatsTotal(total, containerId, future = 0) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  const formatted = parseFloat(total || 0).toLocaleString('ru-RU');
-  container.innerHTML = `
-    <div class="bg-zinc-900 rounded-3xl p-5 mb-4 text-center">
-      <div class="text-xs text-zinc-500 uppercase tracking-wide">Total</div>
-      <div class="text-3xl font-semibold text-emerald-400 mt-1">−${formatted}</div>
-    </div>
-  `;
+  container.innerHTML = totalBannerHTML(total, future, total - future);
 }
 
 /**
