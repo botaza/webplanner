@@ -87,9 +87,25 @@ function updateOccurrencePreview() {
     const count = parseInt(document.getElementById('event-occurrences').value) || 0;
     const dt = document.getElementById('event-dt').value;
     const preview = document.getElementById('occurrence-preview');
-    
+
+    // ── Day-of-week indicator ────────────────────────────────────────────────
+    const dowEl = document.getElementById('event-dow-display');
+    if (dowEl) {
+        if (dt) {
+            const dateObj = new Date(dt);
+            const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+            const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            dowEl.className = 'mt-2 px-1';
+            dowEl.innerHTML = `<span class="event-dow-chip">${dayName}<span class="event-dow-date">${dateStr}</span></span>`;
+        } else {
+            dowEl.className = 'hidden mt-2 px-1';
+            dowEl.innerHTML = '';
+        }
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     if (!preview) return;
-    
+
     if (!dt || rec === 'none' || count < 1) {
         preview.innerHTML = '';
         return;
@@ -124,6 +140,7 @@ function resetEventModalToCreateMode() {
     document.querySelectorAll('#duration-suggestions .hashtag-chip').forEach(c => c.classList.remove('active'));
     const modalTitle = document.querySelector('#modal-event .text-xl.font-semibold');
     if (modalTitle) modalTitle.textContent = 'New Event';
+    updateOccurrencePreview(); // refresh DOW chip for pre-filled date
 }
 
 function showAddEventModal() {
@@ -196,6 +213,7 @@ async function editEvent(id) {
     document.getElementById('event-hashtag').value = ev.original_hashtag || ev.hashtag || '';
     document.getElementById('event-place').value = ev.place || '';
     document.getElementById('event-duration').value = ev.duration || '';
+    updateOccurrencePreview(); // refresh DOW chip for loaded date
     
     const recurrenceSelect = document.getElementById('event-recurrence');
     if (recurrenceSelect) {
