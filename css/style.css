@@ -345,6 +345,31 @@ textarea:focus-visible {
     }
 }
 
+/* ── Event modal: date shortcut chips ───────────────────────────────────── */
+.date-shortcut-chip {
+    background: #27272a;
+    border: 1px solid #3f3f46;
+    color: #a1a1aa;
+    padding: 6px 12px;
+    border-radius: 9999px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.date-shortcut-chip:hover {
+    background: #3a3a40;
+    color: #d4d4d4;
+}
+
+.date-shortcut-chip.active {
+    background: #22c55e22;
+    border-color: #22c55e;
+    color: #22c55e;
+}
+
 /* ── Event modal: day-of-week chip ───────────────────────────────────────── */
 .event-dow-chip {
     display: inline-flex;

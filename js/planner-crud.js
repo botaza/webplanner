@@ -15,28 +15,67 @@ import { renderHashtagSuggestions, renderPlaceSuggestions, renderDurationSuggest
 import { renderPlannerHashtagFilter, applyPlannerFilter } from './planner-filter.js';
 
 // ==================== DOW POLLING ====================
-let _dowPollInterval = null;
+// ==================== DATE/TIME SPLIT INPUT HELPERS ====================
 
-function startDowPolling() {
-    stopDowPolling();
-    _dowPollInterval = setInterval(updateOccurrencePreview, 300);
-
-    // Auto-stop when the modal is hidden (covers Cancel, × and save paths)
-    const modal = document.getElementById('modal-event');
-    if (modal && !modal._dowObserver) {
-        const observer = new MutationObserver(() => {
-            if (modal.classList.contains('hidden')) stopDowPolling();
-        });
-        observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
-        modal._dowObserver = observer; // attach once, reuse across opens
-    }
+function getEventDt() {
+    const d = document.getElementById('event-date')?.value || '';
+    const t = document.getElementById('event-time')?.value || '';
+    if (!d) return '';
+    return d + 'T' + (t || '00:00');
 }
 
-function stopDowPolling() {
-    if (_dowPollInterval) {
-        clearInterval(_dowPollInterval);
-        _dowPollInterval = null;
+function setEventDt(val) {
+    if (!val) return;
+    const norm = val.replace(' ', 'T').slice(0, 16);
+    const [datePart, timePart] = norm.split('T');
+    const dateEl = document.getElementById('event-date');
+    const timeEl = document.getElementById('event-time');
+    if (dateEl) dateEl.value = datePart || '';
+    if (timeEl) timeEl.value = timePart || '00:00';
+}
+
+function onEventDateChange() {
+    updateOccurrencePreview();
+}
+
+function renderDateShortcuts() {
+    const container = document.getElementById('event-date-shortcuts');
+    if (!container) return;
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    const today = new Date(now);
+    const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
+    const in2 = new Date(now); in2.setDate(now.getDate() + 2);
+    const weekdays = [];
+    let probe = new Date(now);
+    probe.setDate(probe.getDate() + 1);
+    while (weekdays.length < 5) {
+        const dow = probe.getDay();
+        if (dow >= 1 && dow <= 5) weekdays.push(new Date(probe));
+        probe.setDate(probe.getDate() + 1);
+        if (probe - now > 14 * 86400000) break;
     }
+    const shortcuts = [
+        { label: 'Today',    date: fmt(today) },
+        { label: 'Tomorrow', date: fmt(tomorrow) },
+        { label: '+2d',      date: fmt(in2) },
+        ...weekdays.map(d => ({
+            label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+            date: fmt(d)
+        }))
+    ];
+    container.innerHTML = shortcuts.map(s =>
+        `<button type="button" class="date-shortcut-chip" onclick="applyDateShortcut('${s.date}')">${s.label}</button>`
+    ).join('');
+}
+
+function applyDateShortcut(dateStr) {
+    const dateEl = document.getElementById('event-date');
+    if (dateEl) dateEl.value = dateStr;
+    document.querySelectorAll('#event-date-shortcuts .date-shortcut-chip')
+        .forEach(c => c.classList.toggle('active', c.getAttribute('onclick').includes(dateStr)));
+    updateOccurrencePreview();
 }
 
 // ==================== CONFIG ====================
@@ -110,7 +149,7 @@ function getRecurrenceDates(startDt, recurrence, count, skipFirst = false) {
 function updateOccurrencePreview() {
     const rec = document.getElementById('event-recurrence').value;
     const count = parseInt(document.getElementById('event-occurrences').value) || 0;
-    const dt = document.getElementById('event-dt').value;
+    const dt = getEventDt();
     const preview = document.getElementById('occurrence-preview');
 
     // ── Day-of-week indicator ────────────────────────────────────────────────
@@ -152,7 +191,8 @@ function resetEventModalToCreateMode() {
         saveBtn.onclick = saveEvent;
         saveBtn.textContent = "Save Event";
     }
-    document.getElementById('event-dt').value = nowDatetimeLocal();
+    setEventDt(nowDatetimeLocal());
+    renderDateShortcuts();
     document.getElementById('event-desc').value = '';
     document.getElementById('event-hashtag').value = '';
     document.getElementById('event-place').value = '';
@@ -175,13 +215,12 @@ function showAddEventModal() {
     renderHashtagSuggestions();
     renderPlaceSuggestions();
     renderDurationSuggestions();
-    startDowPolling();
 }
 
 async function saveEvent() {
     if (!requireAdmin()) return;
     
-    const dt = document.getElementById('event-dt').value;
+    const dt = getEventDt();
     if (!dt) { alert("Please select date and time"); return; }
     
     const recurrence = document.getElementById('event-recurrence').value;
@@ -234,7 +273,8 @@ async function editEvent(id) {
     const modalTitle = document.querySelector('#modal-event .text-xl.font-semibold');
     if (modalTitle) modalTitle.textContent = 'Edit Event';
     
-    document.getElementById('event-dt').value = ev.dt.replace(' ', 'T');
+    setEventDt(ev.dt);
+    renderDateShortcuts();
     document.getElementById('event-desc').value = ev.desc || '';
     document.getElementById('event-hashtag').value = ev.original_hashtag || ev.hashtag || '';
     document.getElementById('event-place').value = ev.place || '';
@@ -266,7 +306,6 @@ async function editEvent(id) {
     renderHashtagSuggestions();
     renderPlaceSuggestions();
     renderDurationSuggestions();
-    startDowPolling();
     
     const displayHashtag = ev.original_hashtag || ev.hashtag || '';
     
@@ -292,7 +331,7 @@ async function editEvent(id) {
 async function updateEvent(id) {
     if (!requireAdmin()) return;
     
-    const dt = document.getElementById('event-dt').value;
+    const dt = getEventDt();
     if (!dt) return alert("Date & time required");
     
     const ev = state.eventsData.find(e => e.id == id);
@@ -515,6 +554,9 @@ document.addEventListener('DOMContentLoaded', () => {
 Object.assign(window, {
     onRecurrenceChange,
     updateOccurrencePreview,
+    onEventDateChange,
+    applyDateShortcut,
+    renderDateShortcuts,
     showAddEventModal,
     saveEvent,
     editEvent,
