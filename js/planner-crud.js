@@ -14,6 +14,31 @@ import { nowDatetimeLocal } from './date-utils.js';
 import { renderHashtagSuggestions, renderPlaceSuggestions, renderDurationSuggestions } from './suggestions.js';
 import { renderPlannerHashtagFilter, applyPlannerFilter } from './planner-filter.js';
 
+// ==================== DOW POLLING ====================
+let _dowPollInterval = null;
+
+function startDowPolling() {
+    stopDowPolling();
+    _dowPollInterval = setInterval(updateOccurrencePreview, 300);
+
+    // Auto-stop when the modal is hidden (covers Cancel, × and save paths)
+    const modal = document.getElementById('modal-event');
+    if (modal && !modal._dowObserver) {
+        const observer = new MutationObserver(() => {
+            if (modal.classList.contains('hidden')) stopDowPolling();
+        });
+        observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
+        modal._dowObserver = observer; // attach once, reuse across opens
+    }
+}
+
+function stopDowPolling() {
+    if (_dowPollInterval) {
+        clearInterval(_dowPollInterval);
+        _dowPollInterval = null;
+    }
+}
+
 // ==================== CONFIG ====================
 // PATCHED: All defaults set to 1
 const RECURRENCE_DEFAULTS = {
@@ -150,6 +175,7 @@ function showAddEventModal() {
     renderHashtagSuggestions();
     renderPlaceSuggestions();
     renderDurationSuggestions();
+    startDowPolling();
 }
 
 async function saveEvent() {
@@ -240,6 +266,7 @@ async function editEvent(id) {
     renderHashtagSuggestions();
     renderPlaceSuggestions();
     renderDurationSuggestions();
+    startDowPolling();
     
     const displayHashtag = ev.original_hashtag || ev.hashtag || '';
     
