@@ -562,7 +562,7 @@ firebase.initializeApp(firebaseConfig);
     </div>
     <div class="p-6 overflow-y-auto flex-1 space-y-5" style="-webkit-overflow-scrolling: touch;">
       
-      <!-- Item Name (NEW - REQUIRED) -->
+      <!-- Item Name (REQUIRED) -->
       <div>
         <label class="text-xs text-zinc-400 block mb-1">Item Name <span class="text-red-400">*</span></label>
         <input id="shop-name" type="text" placeholder="e.g., Milk, Bread, Eggs" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
@@ -650,6 +650,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 function _applyGuestUI() {
   if (!window.isGuest || !window.isGuest()) return;
+  // Hide Add buttons for OTHER modules (Planner, Expenses, Income)
   const fab = document.querySelector('#screen-planner button[onclick="showAddEventModal()"]');
   if (fab) fab.classList.add('hidden');
   const expBtn = document.querySelector('#screen-expenses button[onclick="showAddExpenseModal()"]');
@@ -658,8 +659,11 @@ function _applyGuestUI() {
   const compBtn = document.querySelector('#screen-income button[onclick="showAddCompensationModal()"]');
   if (incBtn)  incBtn.classList.add('hidden');
   if (compBtn) compBtn.classList.add('hidden');
-  const shopBtn = document.querySelector('#screen-shopping button[onclick="showAddShoppingItem()"]');
-  if (shopBtn) shopBtn.classList.add('hidden');
+  
+  // NOTE: Shopping Add button is NOT hidden for guests (guests can add/edit shopping)
+  // Only delete buttons are hidden via JS rendering in shopping-render.js
+  
+  // Hide destructive/admin actions
   const clearBtn = document.querySelector('button[onclick="clearAllData()"]');
   if (clearBtn) clearBtn.closest('.grid')?.classList.add('hidden');
   const snapHeaderBtn = document.querySelector('header button[onclick="takeSnapshot()"]');
