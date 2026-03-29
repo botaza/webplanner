@@ -1,7 +1,8 @@
 <?php
 // php/api.php
-// UPDATED: Added Shopping List CRUD endpoints (get_shopping, add_shopping, update_shopping, delete_shopping)
-// UPDATED: Added 'shopping' to $files array for auto-initialization
+// UPDATED: Added Shopping List CRUD endpoints
+// UPDATED: Added is_wishlist field support for shopping items
+// UPDATED: Date field is now optional for shopping items
 
 header('Content-Type: application/json');
 $dataDir = __DIR__ . '/../data';
@@ -15,7 +16,7 @@ $files = [
     'expenses'      => $dataDir . '/expenses.json',
     'income'        => $dataDir . '/income.json',
     'compensations' => $dataDir . '/compensations.json',
-    'shopping'      => $dataDir . '/shopping.json'  // NEW: Shopping list
+    'shopping'      => $dataDir . '/shopping.json'
 ];
 
 function read($f) {
@@ -346,7 +347,7 @@ if ($action === 'get_compensations_aggregated') {
     exit;
 }
 
-// ── Shopping List ── (NEW SECTION)
+// ── Shopping List ──
 if ($action === 'get_shopping') {
     $data = read($files['shopping']);
     // Sort by priority descending (highest first), then by date_purchase ascending
@@ -364,12 +365,13 @@ if ($action === 'add_shopping') {
     $data = read($files['shopping']);
     $data[] = [
         'id' => time() . rand(10000, 99999),
-        'name' => $_POST['name'] ?? '',  // NEW: Item name (required)
+        'name' => $_POST['name'] ?? '',
         'quantity' => (int)($_POST['quantity'] ?? 0),
         'place' => $_POST['place'] ?? '',
-        'date_purchase' => $_POST['date_purchase'] ?? '',
+        'date_purchase' => $_POST['date_purchase'] ?? '',  // Now optional (empty string if not set)
         'comment' => $_POST['comment'] ?? '',
         'priority' => (int)($_POST['priority'] ?? 5),
+        'is_wishlist' => isset($_POST['is_wishlist']) && $_POST['is_wishlist'] === 'true',  // NEW: Wishlist flag
         'created_at' => date('Y-m-d H:i:s')
     ];
     write($files['shopping'], $data);
@@ -382,12 +384,13 @@ if ($action === 'update_shopping') {
     $updated = false;
     foreach ($data as &$item) {
         if ($item['id'] == $_POST['id']) {
-            if (isset($_POST['name']))       $item['name']       = $_POST['name'];
-            if (isset($_POST['quantity']))   $item['quantity']   = (int)$_POST['quantity'];
-            if (isset($_POST['place']))      $item['place']      = $_POST['place'];
+            if (isset($_POST['name']))         $item['name']         = $_POST['name'];
+            if (isset($_POST['quantity']))     $item['quantity']     = (int)$_POST['quantity'];
+            if (isset($_POST['place']))        $item['place']        = $_POST['place'];
             if (isset($_POST['date_purchase'])) $item['date_purchase'] = $_POST['date_purchase'];
-            if (isset($_POST['comment']))    $item['comment']    = $_POST['comment'];
-            if (isset($_POST['priority']))   $item['priority']   = (int)$_POST['priority'];
+            if (isset($_POST['comment']))      $item['comment']      = $_POST['comment'];
+            if (isset($_POST['priority']))     $item['priority']     = (int)$_POST['priority'];
+            if (isset($_POST['is_wishlist']))  $item['is_wishlist']  = $_POST['is_wishlist'] === 'true';  // NEW
             $updated = true;
             break;
         }

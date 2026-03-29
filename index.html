@@ -586,16 +586,28 @@ firebase.initializeApp(firebaseConfig);
         </div>
       </div>
       
+      <!-- Wishlist Checkbox -->
+      <div class="flex items-center gap-3">
+        <input type="checkbox" id="shop-wishlist" class="w-5 h-5 rounded bg-zinc-800 border-zinc-600 text-emerald-500 focus:ring-emerald-500">
+        <label for="shop-wishlist" class="text-sm text-zinc-300">🎁 Wishlist item</label>
+      </div>
+      
+      <!-- Has Date Checkbox -->
+      <div class="flex items-center gap-3">
+        <input type="checkbox" id="shop-has-date" class="w-5 h-5 rounded bg-zinc-800 border-zinc-600 text-emerald-500 focus:ring-emerald-500" onchange="toggleShopDateField()">
+        <label for="shop-has-date" class="text-sm text-zinc-300">📅 Set target date</label>
+      </div>
+      
+      <!-- Date of Purchase (Conditional) -->
+      <div id="shop-date-container" class="hidden">
+        <label class="text-xs text-zinc-400 block mb-1">Target Date</label>
+        <input id="shop-date" type="date" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+      </div>
+      
       <!-- Place -->
       <div>
         <label class="text-xs text-zinc-400 block mb-1">Place</label>
         <input id="shop-place" type="text" placeholder="Store name / location" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
-      </div>
-      
-      <!-- Date of Purchase -->
-      <div>
-        <label class="text-xs text-zinc-400 block mb-1">Target Date</label>
-        <input id="shop-date" type="date" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
       </div>
       
       <!-- Comment -->
@@ -691,6 +703,19 @@ function toggleExpenseStatsView() {
     wrapper.classList.add('hidden');
   }
 }
+// Shopping modal: toggle date field visibility
+function toggleShopDateField() {
+  const hasDate = document.getElementById('shop-has-date');
+  const dateContainer = document.getElementById('shop-date-container');
+  if (hasDate && dateContainer) {
+    if (hasDate.checked) {
+      dateContainer.classList.remove('hidden');
+    } else {
+      dateContainer.classList.add('hidden');
+    }
+  }
+}
+window.toggleShopDateField = toggleShopDateField;
 </script>
 </body>
 </html>

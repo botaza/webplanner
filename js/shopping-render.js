@@ -1,6 +1,6 @@
 // js/shopping-render.js
 // RENDERING LOGIC FOR SHOPPING LIST
-// FIXED: Edit button now has onclick handler to open edit modal
+// UPDATED: Added wishlist tag display, fixed expand/collapse, fixed edit button onclick
 import { state } from './state.js';
 import { isGuest } from './lockscreen.js';
 import { getPriorityGroups } from './shopping-crud.js';
@@ -74,14 +74,16 @@ function renderShoppingItem(item, borderColor) {
   const qty = item.quantity ?? 0;
   const prio = item.priority ?? 5;
   const date = item.date_purchase ? new Date(item.date_purchase).toLocaleDateString('ru-RU') : '—';
+  const isWishlist = !!item.is_wishlist;
   
   return `
     <div class="bg-zinc-900 rounded-2xl p-4 border-l-4 ${borderColor} card">
       <div class="flex justify-between items-start gap-3">
         <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2 mb-1">
+          <div class="flex items-center gap-2 mb-1 flex-wrap">
             <span class="text-xs text-zinc-500">#${item.id.slice(-4)}</span>
             <span class="text-xs bg-zinc-800 px-2 py-0.5 rounded-full">P${prio}</span>
+            ${isWishlist ? `<span class="text-xs bg-amber-900/40 text-amber-400 px-2 py-0.5 rounded-full">🎁 Wishlist</span>` : ''}
           </div>
           <div class="text-sm text-zinc-300 mb-2">
             <span class="font-medium">${qty}×</span>
