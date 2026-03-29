@@ -1,5 +1,6 @@
 // js/shopping.js
 // ORCHESTRATOR FOR SHOPPING MODULE
+// UPDATED: Guests CAN create and edit shopping items, but CANNOT delete
 import { requireAdmin } from './readonly-guard.js';
 import { state } from './state.js';
 import { loadDashboard } from './dashboard.js';
@@ -56,7 +57,10 @@ export function editShoppingItem(id) {
   showShoppingModal('edit', item);
 }
 
+// ── SAVE / UPDATE ──
+// UPDATED: Guests CAN save shopping items (create and edit)
 export async function handleSaveShopping() {
+  // REMOVED: requireAdmin() check - guests can now save shopping items
   const formData = getShoppingFormData();
   if (!formData) return;
   
@@ -80,8 +84,10 @@ export async function handleSaveShopping() {
   }
 }
 
+// ── DELETE ──
+// KEPT: Guests CANNOT delete shopping items
 export async function handleDeleteShopping(id) {
-  if (!requireAdmin()) return; // Guests cannot delete
+  if (!requireAdmin()) return; // Guests blocked from deleting
   if (!confirm('Delete this shopping item?')) return;
   try {
     await deleteShoppingData(id);
@@ -94,7 +100,6 @@ export async function handleDeleteShopping(id) {
 }
 
 // ── EXPAND/COLLAPSE WRAPPERS ──
-// These ensure the state is updated AND the list re-renders
 export function handleExpandAllPriorities() {
   if (!state.expandedShoppingPriority) state.expandedShoppingPriority = new Set();
   [1,2,3,4,5,6,7,8,9,10].forEach(p => state.expandedShoppingPriority.add(String(p)));
@@ -118,7 +123,6 @@ export function handleTogglePriority(priority) {
 }
 
 // ── GLOBAL EXPOSURE ──
-// Expose all functions to window for HTML onclick handlers
 Object.assign(window, {
   showAddShoppingItem,
   editShoppingItem,
