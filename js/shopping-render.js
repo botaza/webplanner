@@ -3,9 +3,18 @@
 // UPDATED: Added wishlist tag display, fixed expand/collapse, fixed edit button onclick
 // UPDATED: Added comment1 and comment2 display
 // UPDATED: Added search/filter functionality
+// UPDATED: Quantity display now supports decimal values (0.1, 0.25, 0.5, etc.)
 import { state } from './state.js';
 import { isGuest } from './lockscreen.js';
 import { getPriorityGroups } from './shopping-crud.js';
+
+// Format quantity for display (remove unnecessary decimals)
+function formatQuantity(val) {
+  const num = parseFloat(val);
+  if (isNaN(num)) return '0';
+  // Show up to 2 decimal places, but trim trailing zeros
+  return num.toFixed(2).replace(/\.00$/, '').replace(/\.0$/, '').replace(/\.(\d)0$/, '.$1');
+}
 
 export function renderShoppingList(list, containerId = 'shopping-list') {
   const container = document.getElementById(containerId);
@@ -73,7 +82,7 @@ export function renderShoppingList(list, containerId = 'shopping-list') {
 }
 
 function renderShoppingItem(item, borderColor) {
-  const qty = item.quantity ?? 0;
+  const qty = formatQuantity(item.quantity ?? 0);
   const prio = item.priority ?? 5;
   const date = item.date_purchase ? new Date(item.date_purchase).toLocaleDateString('ru-RU') : '—';
   const isWishlist = !!item.is_wishlist;

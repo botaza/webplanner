@@ -1,6 +1,7 @@
 // js/shopping-ui.js
 // UI HELPERS FOR SHOPPING MODULE
 // UPDATED: Added wishlist checkbox, optional date field, and two separate comment fields
+// UPDATED: Quantity slider now supports decimal values (0.1, 0.25, 0.5, 0.75, etc.)
 import { state } from './state.js';
 import { hideModal } from './utils.js';
 import { todayString } from './date-utils.js';
@@ -31,7 +32,10 @@ export function showShoppingModal(mode = 'add', item = null) {
   
   if (mode === 'edit' && item) {
     if (nameEl) nameEl.value = item.name ?? '';
-    if (qtySlider) { qtySlider.value = item.quantity ?? 0; if (qtyVal) qtyVal.textContent = item.quantity ?? 0; }
+    if (qtySlider) { 
+      qtySlider.value = item.quantity ?? 0; 
+      if (qtyVal) qtyVal.textContent = formatQuantity(item.quantity ?? 0); 
+    }
     if (prioSlider) { prioSlider.value = item.priority ?? 5; if (prioVal) prioVal.textContent = item.priority ?? 5; }
     if (wishlistCheckbox) wishlistCheckbox.checked = !!item.is_wishlist;
     if (hasDateCheckbox) {
@@ -49,7 +53,10 @@ export function showShoppingModal(mode = 'add', item = null) {
     if (comment2El) comment2El.value = item.comment2 ?? '';
   } else {
     if (nameEl) nameEl.value = '';
-    if (qtySlider) { qtySlider.value = 1; if (qtyVal) qtyVal.textContent = '1'; }
+    if (qtySlider) { 
+      qtySlider.value = 1; 
+      if (qtyVal) qtyVal.textContent = '1'; 
+    }
     if (prioSlider) { prioSlider.value = 5; if (prioVal) prioVal.textContent = '5'; }
     if (wishlistCheckbox) wishlistCheckbox.checked = false;
     if (hasDateCheckbox) {
@@ -91,16 +98,26 @@ function attachSliderListeners() {
   const prioVal = document.getElementById('shop-priority-value');
   
   if (qtySlider && qtyVal) {
-    qtySlider.oninput = () => { qtyVal.textContent = qtySlider.value; };
+    qtySlider.oninput = () => { 
+      qtyVal.textContent = formatQuantity(qtySlider.value); 
+    };
   }
   if (prioSlider && prioVal) {
     prioSlider.oninput = () => { prioVal.textContent = prioSlider.value; };
   }
 }
 
+// Format quantity for display (remove unnecessary decimals)
+function formatQuantity(val) {
+  const num = parseFloat(val);
+  if (isNaN(num)) return '0';
+  // Show up to 2 decimal places, but trim trailing zeros
+  return num.toFixed(2).replace(/\.00$/, '').replace(/\.0$/, '').replace(/\.(\d)0$/, '.$1');
+}
+
 export function getShoppingFormData() {
   const name = document.getElementById('shop-name')?.value.trim() || '';
-  const qty = parseInt(document.getElementById('shop-quantity')?.value) || 0;
+  const qty = parseFloat(document.getElementById('shop-quantity')?.value) || 0;
   const prio = parseInt(document.getElementById('shop-priority')?.value) || 5;
   const isWishlist = document.getElementById('shop-wishlist')?.checked || false;
   const hasDate = document.getElementById('shop-has-date')?.checked || false;

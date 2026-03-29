@@ -588,12 +588,21 @@ firebase.initializeApp(firebaseConfig);
         <input id="shop-name" type="text" placeholder="e.g., Milk, Bread, Eggs" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
       </div>
       
-      <!-- Quantity Slider -->
+      <!-- Quantity Slider (UPDATED: Supports 0.1, 0.25, 0.5, 0.75 increments) -->
       <div>
-        <label class="text-xs text-zinc-400 block mb-1">Quantity</label>
+        <label class="text-xs text-zinc-400 block mb-1">Quantity <span class="text-zinc-600">(0.1 increments)</span></label>
         <div class="flex items-center gap-4">
-          <input type="range" id="shop-quantity" min="0" max="99" value="1" class="shopping-slider flex-1">
+          <input type="range" id="shop-quantity" min="0" max="99" value="1" step="0.25" class="shopping-slider flex-1">
           <span id="shop-quantity-value" class="shopping-slider-value">1</span>
+        </div>
+        <div class="flex gap-2 mt-2 flex-wrap">
+          <button type="button" onclick="setShopQuantity(0.1)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">0.1</button>
+          <button type="button" onclick="setShopQuantity(0.25)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">0.25</button>
+          <button type="button" onclick="setShopQuantity(0.5)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">0.5</button>
+          <button type="button" onclick="setShopQuantity(0.75)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">0.75</button>
+          <button type="button" onclick="setShopQuantity(1)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">1</button>
+          <button type="button" onclick="setShopQuantity(2)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">2</button>
+          <button type="button" onclick="setShopQuantity(5)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">5</button>
         </div>
       </div>
       
@@ -742,6 +751,16 @@ function toggleShopDateField() {
   }
 }
 window.toggleShopDateField = toggleShopDateField;
+// Shopping quantity quick-set buttons
+function setShopQuantity(val) {
+  const slider = document.getElementById('shop-quantity');
+  const display = document.getElementById('shop-quantity-value');
+  if (slider && display) {
+    slider.value = val;
+    display.textContent = parseFloat(val).toFixed(2).replace(/\.00$/, '').replace(/\.0$/, '').replace(/\.(\d)0$/, '.$1');
+  }
+}
+window.setShopQuantity = setShopQuantity;
 </script>
 </body>
 </html>

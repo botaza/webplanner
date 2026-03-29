@@ -2,6 +2,7 @@
 // ORCHESTRATOR FOR SHOPPING MODULE
 // UPDATED: Guests CAN create and edit shopping items, but CANNOT delete
 // UPDATED: Supports is_wishlist field, optional date_purchase, comment1, and comment2 fields
+// UPDATED: Quantity now supports decimal values (0.1, 0.25, 0.5, 0.75, etc.)
 // UPDATED: Added filterShoppingList to global exposure for search bar
 import { requireAdmin } from './readonly-guard.js';
 import { state } from './state.js';
