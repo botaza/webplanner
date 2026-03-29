@@ -75,3 +75,24 @@ export async function deleteGuestbookMessage(id) {
     return false;
   }
 }
+
+/**
+ * Delete an entire guestbook (admin only; 'general' cannot be deleted)
+ */
+export async function deleteGuestbook(key) {
+  try {
+    const res = await api('delete_guestbook', { book: key });
+    if (res.success) {
+      await loadGuestbooksData();
+      // Fall back to 'general' if we just deleted the active book
+      if (state.currentGuestbookKey === key) {
+        state.currentGuestbookKey = 'general';
+      }
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.error('[guestbook-crud] Failed to delete guestbook:', err);
+    return false;
+  }
+}

@@ -1,3 +1,4 @@
+
 <?php
 // php/api.php
 // UPDATED: Added full multi-guestbook support
@@ -485,6 +486,23 @@ if ($action === 'delete_guestbook_message') {
     exit;
 }
 
+if ($action === 'delete_guestbook') {
+    $data = read($files['guestbooks']);
+    $book = trim($_POST['book'] ?? '');
+    if (!$book || $book === 'general') {
+        echo json_encode(['error' => 'Cannot delete the general guestbook']);
+        exit;
+    }
+    if (!isset($data[$book])) {
+        echo json_encode(['error' => 'Guestbook not found']);
+        exit;
+    }
+    unset($data[$book]);
+    write($files['guestbooks'], $data);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 // ── System ──
 if ($action === 'snapshot') {
     $ts = date('Ymd_His');
@@ -545,3 +563,4 @@ if ($action === 'clear_notifications') {
 
 echo json_encode(['error' => 'unknown action']);
 ?>
+

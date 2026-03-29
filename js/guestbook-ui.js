@@ -1,16 +1,19 @@
 // js/guestbook-ui.js
 // UI HELPERS FOR GUESTBOOK MODULE
 // Handles username prompt, emoji picker, modal interactions, and input handling
+// UPDATED: Username prompt fires when Chat tab is opened (not on first boot)
+// UPDATED: deleteCurrentGuestbook() added for chip × button
 
 import { state } from './state.js';
 import { hideModal } from './utils.js';
-import { addGuestbookMessage, createGuestbook } from './guestbook-crud.js';
+import { addGuestbookMessage, createGuestbook, deleteGuestbook } from './guestbook-crud.js';
 import { renderGuestbookChips, renderGuestbookMessages } from './guestbook-render.js';
 
 const EMOJI_LIST = ['👍', '❤️', '😂', '🎉', '😮', '🙏', '🔥', '👏', '😢', '😍', '🚀', '🍀'];
 
 /**
- * Show username setup if not set
+ * Prompt for a username if one is not yet set.
+ * Called lazily when the Chat tab is opened — NOT during app boot.
  */
 export function ensureUsername() {
   if (!state.guestbookUsername || state.guestbookUsername === 'Guest') {
@@ -63,7 +66,7 @@ export async function sendGuestbookMessage() {
   if (success) {
     input.value = '';
     // Reload and render
-    await loadGuestbook();   // This will be defined in guestbook.js
+    await loadGuestbook();   // defined in guestbook.js
   } else {
     alert('Failed to send message. Please try again.');
   }
@@ -86,6 +89,41 @@ export async function createNewGuestbook() {
 }
 
 /**
+ * Delete the currently active guestbook (admin only; 'general' is protected).
+ * @param {string} key - The guestbook key to delete
+ */
+export async function deleteCurrentGuestbook(key) {
+  if (key === 'general') {
+    alert('The General guestbook cannot be deleted.');
+    return;
+  }
+  if (!confirm(`Delete the "${key}" guestbook and all its messages? This cannot be undone.`)) return;
+
+  const success = await deleteGuestbook(key);
+  if (success) {
+    renderGuestbookChips();
+    renderGuestbookMessages();
+  } else {
+    alert('Failed to delete guestbook.');
+  }
+}
+
+/**
+ * Delete a single message (admin only)
+ * @param {string} id - Message ID
+ */
+export async function deleteMessage(id) {
+  if (!confirm('Delete this message?')) return;
+  const { deleteGuestbookMessage } = await import('./guestbook-crud.js');
+  const success = await deleteGuestbookMessage(id);
+  if (success) {
+    await loadGuestbook();
+  } else {
+    alert('Failed to delete message.');
+  }
+}
+
+/**
  * Switch to another guestbook
  */
 export function switchGuestbook(key) {
@@ -95,22 +133,24 @@ export function switchGuestbook(key) {
 }
 
 /**
- * Initialize UI elements for guestbook
+ * Initialize UI elements for guestbook.
+ * NOTE: ensureUsername() is intentionally NOT called here —
+ * it fires in loadGuestbook() so the prompt appears when the
+ * Chat tab is first opened, not during app boot.
  */
 export function initGuestbookUI() {
-  ensureUsername();
   renderEmojiPicker();
 
   // Show emoji picker when input is focused
   const input = document.getElementById('guestbook-input');
   const picker = document.getElementById('guestbook-emoji-picker');
-  
+
   if (input && picker) {
     input.addEventListener('focus', () => {
       picker.classList.remove('hidden');
     });
-    
-    // Hide picker when clicking outside (simple version)
+
+    // Hide picker when clicking outside
     document.addEventListener('click', (e) => {
       if (!input.contains(e.target) && !picker.contains(e.target)) {
         picker.classList.add('hidden');
@@ -125,6 +165,8 @@ export function initGuestbookUI() {
 Object.assign(window, {
   sendGuestbookMessage,
   createNewGuestbook,
+  deleteCurrentGuestbook,
+  deleteMessage,
   switchGuestbook,
   insertEmoji,
   initGuestbookUI

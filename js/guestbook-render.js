@@ -1,14 +1,28 @@
 // js/guestbook-render.js
 // RENDERING LOGIC FOR GUESTBOOK MODULE
 // Handles multi-guestbook chips, infinite scroll chat display, and date grouping
+// UPDATED: UTC+10 time display; delete-guestbook button on non-general chips (admin only)
 
 import { state } from './state.js';
+import { isGuest } from './lockscreen.js';
 
 let currentPage = 1;
 const MESSAGES_PER_PAGE = 30;
 
+const UTC_OFFSET_MS = 10 * 60 * 60 * 1000;
+
 /**
- * Render the top chips for switching between guestbooks
+ * Convert a stored UTC datetime string to a UTC+10 Date object
+ */
+function toUTC10(dt) {
+  // dt stored as 'YYYY-MM-DD HH:MM:SS' (server local) or ISO string
+  const base = new Date(dt.includes('T') ? dt : dt.replace(' ', 'T') + 'Z');
+  return new Date(base.getTime() + UTC_OFFSET_MS);
+}
+
+/**
+ * Render the top chips for switching between guestbooks.
+ * Non-general chips get a small × delete button for admins.
  */
 export function renderGuestbookChips() {
   const container = document.getElementById('guestbook-chips');
@@ -18,13 +32,17 @@ export function renderGuestbookChips() {
 
   Object.keys(state.guestbooksData).forEach(key => {
     const isActive = key === state.currentGuestbookKey;
-    const displayName = key === 'general' ? 'General' : 
+    const displayName = key === 'general' ? 'General' :
                        key.charAt(0).toUpperCase() + key.slice(1);
-    
+    const canDelete = !isGuest() && key !== 'general';
+
     html += `
-      <div class="guestbook-chip ${isActive ? 'active' : ''}" 
-           onclick="window.switchGuestbook('${key}')">
-        ${displayName}
+      <div class="guestbook-chip ${isActive ? 'active' : ''} flex items-center gap-1"
+           style="display:inline-flex">
+        <span onclick="window.switchGuestbook('${key}')" style="cursor:pointer">${displayName}</span>
+        ${canDelete ? `<span onclick="window.deleteCurrentGuestbook('${key}')"
+              style="cursor:pointer;opacity:0.6;font-size:0.75rem;line-height:1;padding-left:2px"
+              title="Delete this guestbook">×</span>` : ''}
       </div>`;
   });
 
@@ -45,7 +63,7 @@ export function renderGuestbookMessages(messages = null) {
   if (!container) return;
 
   const data = messages || state.guestbooksData[state.currentGuestbookKey] || [];
-  
+
   // Sort newest first
   const sorted = [...data].sort((a, b) => new Date(b.dt) - new Date(a.dt));
 
@@ -53,8 +71,8 @@ export function renderGuestbookMessages(messages = null) {
   let currentDate = '';
 
   sorted.forEach(msg => {
-    const msgDate = new Date(msg.dt).toISOString().split('T')[0];
-    
+    const msgDate = toUTC10(msg.dt).toISOString().split('T')[0];
+
     if (msgDate !== currentDate) {
       currentDate = msgDate;
       const dateLabel = getDateLabel(msg.dt);
@@ -65,7 +83,8 @@ export function renderGuestbookMessages(messages = null) {
     }
 
     const isMine = msg.username === state.guestbookUsername;
-    
+    const canDelete = !isGuest();
+
     html += `
       <div class="message ${isMine ? 'mine' : ''}">
         <div class="bubble">
@@ -75,6 +94,8 @@ export function renderGuestbookMessages(messages = null) {
         <div class="meta">
           <span>${msg.username}</span>
           <span>${formatTime(msg.dt)}</span>
+          ${canDelete ? `<span onclick="window.deleteMessage('${msg.id}')"
+                style="cursor:pointer;opacity:0.5;margin-left:4px" title="Delete message">🗑</span>` : ''}
         </div>
       </div>`;
   });
@@ -84,32 +105,34 @@ export function renderGuestbookMessages(messages = null) {
   }
 
   container.innerHTML = html;
-  
+
   // Scroll to bottom (newest messages)
   container.scrollTop = container.scrollHeight;
 }
 
 /**
- * Simple helper to format relative date labels
+ * Simple helper to format relative date labels using UTC+10
  */
 function getDateLabel(dt) {
-  const date = new Date(dt);
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
+  const date = toUTC10(dt);
+  const nowLocal = new Date(Date.now() + UTC_OFFSET_MS);
 
-  const dateStr = date.toISOString().split('T')[0];
-  const todayStr = today.toISOString().split('T')[0];
+  const dateStr      = date.toISOString().split('T')[0];
+  const todayStr     = nowLocal.toISOString().split('T')[0];
+  const yesterday    = new Date(nowLocal.getTime() - 86400000);
   const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-  if (dateStr === todayStr) return 'Today';
+  if (dateStr === todayStr)     return 'Today';
   if (dateStr === yesterdayStr) return 'Yesterday';
-  
+
   return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
+/**
+ * Format message time as UTC+10
+ */
 function formatTime(dt) {
-  const date = new Date(dt);
+  const date = toUTC10(dt);
   return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
