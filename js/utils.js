@@ -1,42 +1,65 @@
 // js/utils.js
-// UPDATED: Added shopping module support to switchScreen
+// UPDATED: Added guestbook support to switchScreen + new guestbook functions
+
 import { state } from './state.js';
 import { api } from './api.js';
 import { loadPlanner } from './planner-crud.js';
 import { loadExpenses } from './expenses.js';
 import { loadIncome } from './income.js';
-import { loadShopping } from './shopping.js';  // NEW: Import shopping loader
+import { loadShopping } from './shopping.js';
 import { loadDashboard } from './dashboard.js';
 import { updateNotifStatus } from './fcm-client.js';
 import { loadNotifications } from './notification-history.js';
-import { saveEvent } from './planner-crud.js';
+import { loadGuestbook } from './guestbook.js';   // NEW
 
 export function switchScreen(screenId) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(screenId).classList.add('active');
+  const screen = document.getElementById(screenId);
+  if (screen) screen.classList.add('active');
+
+  // Update active nav item
   document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
   
-  // UPDATED: Added 'shopping' to the nav index array (now 7 items)
-  const idx = ['dashboard','planner','expenses','income','shopping','notifications','more']
-    .indexOf(screenId.split('-')[1]);
-  if (idx >= 0) document.querySelectorAll('.nav-item')[idx].classList.add('active');
+  const screenName = screenId.replace('screen-', '');
+  const navItems = document.querySelectorAll('.nav-item');
+  const idxMap = {
+    'dashboard': 0,
+    'planner': 1,
+    'expenses': 2,
+    'income': 3,
+    'shopping': 4,
+    'notifications': 5,
+    'more': 6,
+    'guestbook': 7
+  };
   
+  const idx = idxMap[screenName];
+  if (idx !== undefined && navItems[idx]) {
+    navItems[idx].classList.add('active');
+  }
+
   state.currentScreen = screenId;
+
+  // Load data for the screen
   if (screenId === 'screen-planner') loadPlanner();
   if (screenId === 'screen-expenses') loadExpenses();
   if (screenId === 'screen-income') loadIncome();
-  if (screenId === 'screen-shopping') loadShopping();  // NEW: Load shopping data
+  if (screenId === 'screen-shopping') loadShopping();
   if (screenId === 'screen-dashboard') loadDashboard();
   if (screenId === 'screen-more') updateNotifStatus();
   if (screenId === 'screen-notifications') loadNotifications(1);
+  if (screenId === 'screen-guestbook') loadGuestbook();   // NEW
 }
 
 export function hideModal(id) {
   const modal = document.getElementById(id);
-  modal.classList.add('hidden');
-  modal.classList.remove('flex');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+  
+  // Reset event modal title and button if closing event modal
   if (id === 'modal-event') {
-    // Reset to create mode when hiding
     const saveBtn = document.querySelector('#modal-event .flex.gap-3 button:last-child');
     if (saveBtn) {
       saveBtn.onclick = saveEvent;
@@ -74,15 +97,10 @@ async function exportData() {
   URL.revokeObjectURL(url);
 }
 
-function showMonthPicker(type) {
-  alert("Month stats coming soon...");
-}
-
 Object.assign(window, {
   switchScreen,
   hideModal,
   takeSnapshot,
   clearAllData,
-  exportData,
-  showMonthPicker
+  exportData
 });

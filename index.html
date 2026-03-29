@@ -52,6 +52,7 @@ firebase.initializeApp(firebaseConfig);
 </script>
 </head>
 <body class="bg-zinc-950 text-zinc-200 min-h-screen pb-20">
+
 <!-- HEADER -->
 <header class="bg-zinc-900 border-b border-zinc-800 px-4 py-3 flex items-center justify-between fixed top-0 left-0 right-0 z-50">
   <div class="flex items-center gap-3">
@@ -113,7 +114,6 @@ firebase.initializeApp(firebaseConfig);
   </div>
   <div class="hashtag-row mb-6" id="planner-hashtag-filter"></div>
   <div id="planner-list" class="space-y-3"></div>
-  <!-- Centered Floating Add Event Button -->
   <button onclick="showAddEventModal()"
     class="fixed bottom-24 left-1/2 -translate-x-1/2 w-16 h-16 bg-emerald-500 hover:bg-emerald-600 rounded-3xl shadow-2xl flex items-center justify-center text-4xl leading-none z-40 active:scale-95 transition-transform">
     +
@@ -129,10 +129,8 @@ firebase.initializeApp(firebaseConfig);
       class="flex-1 bg-zinc-800 hover:bg-zinc-700 py-4 rounded-3xl text-lg font-medium">📊 Stats</button>
   </div>
   <div id="expenses-list" class="space-y-3"></div>
-  <!-- Stats Container (Hidden by Default) -->
   <div id="expenses-stats-wrapper" class="hidden mt-6">
     <div id="expenses-stats-controls" class="mb-4 space-y-3">
-      <!-- View Type Selector -->
       <div class="flex gap-2 overflow-x-auto pb-2">
         <button class="stats-view-btn active" data-view="pie-categories" onclick="window.setStatsView('pie-categories')">
           🥧 Categories
@@ -147,7 +145,6 @@ firebase.initializeApp(firebaseConfig);
           🔍 Above Limit
         </button>
       </div>
-      <!-- Date Range Selector -->
       <div class="bg-zinc-900 rounded-2xl p-3 space-y-2">
         <div class="text-xs text-zinc-500 font-medium">Date Range</div>
         <div class="flex gap-2">
@@ -170,7 +167,6 @@ firebase.initializeApp(firebaseConfig);
           <span>Reset to Current Month</span>
         </button>
       </div>
-      <!-- Filter Controls (For Limit View - Injected by JS) -->
       <div id="expenses-filter-controls"></div>
     </div>
     <div id="expenses-stats-total"></div>
@@ -184,7 +180,6 @@ firebase.initializeApp(firebaseConfig);
 
 <!-- INCOME -->
 <div id="screen-income" class="screen hidden">
-  <!-- Top action bar -->
   <div class="flex gap-2 mb-4">
     <button onclick="showAddIncomeModal()"
       class="flex-1 bg-emerald-500 hover:bg-emerald-600 py-4 rounded-3xl text-base font-medium">
@@ -200,10 +195,8 @@ firebase.initializeApp(firebaseConfig);
       Stats
     </button>
   </div>
-  <!-- Stats panel (hidden by default, toggled by JS) -->
   <div id="income-stats-panel" class="hidden mb-4">
     <div class="bg-zinc-900 rounded-3xl p-4">
-      <!-- Stats tab buttons -->
       <div class="flex gap-2 mb-4">
         <button class="income-stats-view-btn stats-view-btn active"
           data-view="tools"
@@ -216,11 +209,9 @@ firebase.initializeApp(firebaseConfig);
           Monthly
         </button>
       </div>
-      <!-- Stats content rendered by income-stats.js -->
       <div id="income-stats-container"></div>
     </div>
   </div>
-  <!-- Combined income + compensation list -->
   <div id="income-list"></div>
 </div>
 
@@ -233,29 +224,27 @@ firebase.initializeApp(firebaseConfig);
       <button onclick="window.collapseAllShoppingPriorities()" class="text-xs text-zinc-400 hover:text-emerald-400">Collapse all</button>
     </div>
   </div>
-  
-  <!-- Search Bar -->
+ 
   <div class="mb-4">
     <div class="relative">
-      <input 
-        type="text" 
-        id="shop-search" 
-        placeholder="🔍 Search items, places, notes..." 
+      <input
+        type="text"
+        id="shop-search"
+        placeholder="🔍 Search items, places, notes..."
         class="w-full bg-zinc-900 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-3 pl-12 text-base"
         oninput="window.filterShoppingList()">
       <span class="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">🔍</span>
-      <button 
-        onclick="document.getElementById('shop-search').value=''; window.filterShoppingList()" 
+      <button
+        onclick="document.getElementById('shop-search').value=''; window.filterShoppingList()"
         class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 text-sm px-2 py-1">
         Clear
       </button>
     </div>
     <div id="shop-search-count" class="text-xs text-zinc-500 mt-2 hidden"></div>
   </div>
-  
+ 
   <div id="shopping-list" class="space-y-2"></div>
-  
-  <!-- Floating Add Button -->
+ 
   <button onclick="showAddShoppingItem()"
     class="fixed bottom-24 left-1/2 -translate-x-1/2 w-16 h-16 bg-emerald-500 hover:bg-emerald-600 rounded-3xl shadow-2xl flex items-center justify-center text-4xl leading-none z-40 active:scale-95 transition-transform">
     +
@@ -309,45 +298,67 @@ firebase.initializeApp(firebaseConfig);
   <div id="notifications-pagination" class="flex justify-center gap-3 mt-4"></div>
 </div>
 
+<!-- GUESTBOOK SCREEN -->
+<div id="screen-guestbook" class="screen hidden">
+  <div class="flex justify-between items-center mb-3">
+    <div class="font-medium text-lg">Guestbook</div>
+    <button onclick="window.createNewGuestbook()" class="text-emerald-400 text-sm font-medium flex items-center gap-1">+ New</button>
+  </div>
+
+  <!-- Multi-guestbook chips -->
+  <div id="guestbook-chips" class="guestbook-chips"></div>
+
+  <!-- Chat container with infinite scroll -->
+  <div id="guestbook-chat-container" class="guestbook-chat-container bg-zinc-900 rounded-3xl p-4"></div>
+
+  <!-- New message input -->
+  <div class="fixed bottom-20 left-4 right-4 bg-zinc-900 rounded-3xl p-3 flex gap-3 items-end border border-zinc-700 z-50">
+    <input id="guestbook-input" type="text" placeholder="Write a message..." 
+           class="flex-1 bg-transparent outline-none text-base" 
+           onkeypress="if(event.key === 'Enter') window.sendGuestbookMessage()">
+    <button onclick="window.sendGuestbookMessage()" class="bg-emerald-500 text-white px-6 py-3 rounded-2xl font-medium">Send</button>
+  </div>
+
+  <!-- Emoji picker -->
+  <div id="guestbook-emoji-picker" class="emoji-picker hidden"></div>
+</div>
+
 </main>
 
-<!-- BOTTOM NAV -->
+<!-- BOTTOM NAV - 8 TABS -->
 <nav class="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 z-50">
-  <div class="max-w-xl mx-auto grid grid-cols-7 text-[9px] font-medium">
-    <button onclick="switchScreen('screen-dashboard')"
-      class="nav-item flex flex-col items-center py-3">
+  <div class="max-w-xl mx-auto grid grid-cols-8 text-[9px] font-medium">
+    <button onclick="switchScreen('screen-dashboard')" class="nav-item flex flex-col items-center py-3">
       <span class="text-2xl mb-0.5">🏠</span>
       <span>Home</span>
     </button>
-    <button onclick="switchScreen('screen-planner')"
-      class="nav-item flex flex-col items-center py-3">
+    <button onclick="switchScreen('screen-planner')" class="nav-item flex flex-col items-center py-3">
       <span class="text-2xl mb-0.5">📅</span>
       <span>Planner</span>
     </button>
-    <button onclick="switchScreen('screen-expenses')"
-      class="nav-item flex flex-col items-center py-3">
+    <button onclick="switchScreen('screen-expenses')" class="nav-item flex flex-col items-center py-3">
       <span class="text-2xl mb-0.5">💸</span>
       <span>Expense</span>
     </button>
-    <button onclick="switchScreen('screen-income')"
-      class="nav-item flex flex-col items-center py-3">
+    <button onclick="switchScreen('screen-income')" class="nav-item flex flex-col items-center py-3">
       <span class="text-2xl mb-0.5">💰</span>
       <span>Income</span>
     </button>
-    <button onclick="switchScreen('screen-shopping')"
-      class="nav-item flex flex-col items-center py-3">
+    <button onclick="switchScreen('screen-shopping')" class="nav-item flex flex-col items-center py-3">
       <span class="text-2xl mb-0.5">🛒</span>
       <span>Shop</span>
     </button>
-    <button onclick="switchScreen('screen-notifications')"
-      class="nav-item flex flex-col items-center py-3">
+    <button onclick="switchScreen('screen-notifications')" class="nav-item flex flex-col items-center py-3">
       <span class="text-2xl mb-0.5">🔔</span>
       <span>Notifs</span>
     </button>
-    <button onclick="switchScreen('screen-more')"
-      class="nav-item flex flex-col items-center py-3">
+    <button onclick="switchScreen('screen-more')" class="nav-item flex flex-col items-center py-3">
       <span class="text-2xl mb-0.5">⋯</span>
       <span>More</span>
+    </button>
+    <button onclick="switchScreen('screen-guestbook')" class="nav-item flex flex-col items-center py-3">
+      <span class="text-2xl mb-0.5">💬</span>
+      <span>Chat</span>
     </button>
   </div>
 </nav>
@@ -489,40 +500,32 @@ firebase.initializeApp(firebaseConfig);
   <div>
     <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-zinc-800 shrink-0">
       <div class="text-xl font-semibold">New Income</div>
-      <button onclick="closeIncomeModal()"
-        class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
+      <button onclick="closeIncomeModal()" class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
     </div>
     <div class="modal-body px-6 py-4 space-y-4">
       <div>
         <label class="text-xs text-zinc-400 block mb-1">Date</label>
-        <input id="inc-date" type="date"
-          class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+        <input id="inc-date" type="date" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
       </div>
       <div>
         <label class="text-xs text-zinc-400 block mb-1">Amount</label>
-        <input id="inc-amount" type="number" step="0.01" placeholder="0"
-          class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+        <input id="inc-amount" type="number" step="0.01" placeholder="0" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
       </div>
       <div>
         <label class="text-xs text-zinc-400 block mb-2">Tool</label>
         <div id="inc-tool-buttons" class="flex flex-wrap gap-2"></div>
         <div id="inc-tool-other-group" class="hidden mt-3">
-          <input id="inc-tool-other" type="text" placeholder="Specify tool…"
-            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-3 text-base">
+          <input id="inc-tool-other" type="text" placeholder="Specify tool…" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-3 text-base">
         </div>
       </div>
       <div>
         <label class="text-xs text-zinc-400 block mb-1">Description <span class="text-zinc-600">(optional)</span></label>
-        <input id="inc-desc" type="text" placeholder="Salary / Freelance / Project…"
-          class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+        <input id="inc-desc" type="text" placeholder="Salary / Freelance / Project…" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
       </div>
     </div>
-    <div class="flex gap-3 px-6 py-4 border-t border-zinc-800 shrink-0"
-      style="padding-bottom: max(1rem, env(safe-area-inset-bottom));">
-      <button onclick="closeIncomeModal()"
-        class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
-      <button onclick="saveIncome()"
-        class="flex-1 py-4 bg-emerald-500 hover:bg-emerald-600 rounded-3xl text-lg font-medium">Save Income</button>
+    <div class="flex gap-3 px-6 py-4 border-t border-zinc-800 shrink-0" style="padding-bottom: max(1rem, env(safe-area-inset-bottom));">
+      <button onclick="closeIncomeModal()" class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
+      <button onclick="saveIncome()" class="flex-1 py-4 bg-emerald-500 hover:bg-emerald-600 rounded-3xl text-lg font-medium">Save Income</button>
     </div>
   </div>
 </div>
@@ -535,40 +538,32 @@ firebase.initializeApp(firebaseConfig);
         <div class="text-xl font-semibold">New Compensation</div>
         <div class="text-xs text-zinc-500 mt-0.5">Will be deducted from total income</div>
       </div>
-      <button onclick="closeCompensationModal()"
-        class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
+      <button onclick="closeCompensationModal()" class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
     </div>
     <div class="modal-body px-6 py-4 space-y-4">
       <div>
         <label class="text-xs text-zinc-400 block mb-1">Date</label>
-        <input id="comp-date" type="date"
-          class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+        <input id="comp-date" type="date" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
       </div>
       <div>
         <label class="text-xs text-zinc-400 block mb-1">Amount</label>
-        <input id="comp-amount" type="number" step="0.01" placeholder="0"
-          class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+        <input id="comp-amount" type="number" step="0.01" placeholder="0" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
       </div>
       <div>
         <label class="text-xs text-zinc-400 block mb-2">Tool</label>
         <div id="comp-tool-buttons" class="flex flex-wrap gap-2"></div>
         <div id="comp-tool-other-group" class="hidden mt-3">
-          <input id="comp-tool-other" type="text" placeholder="Specify tool…"
-            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-3 text-base">
+          <input id="comp-tool-other" type="text" placeholder="Specify tool…" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-3 text-base">
         </div>
       </div>
       <div>
         <label class="text-xs text-zinc-400 block mb-1">Description <span class="text-zinc-600">(optional)</span></label>
-        <input id="comp-desc" type="text" placeholder="Tax / Fee / Deduction…"
-          class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+        <input id="comp-desc" type="text" placeholder="Tax / Fee / Deduction…" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
       </div>
     </div>
-    <div class="flex gap-3 px-6 py-4 border-t border-zinc-800 shrink-0"
-      style="padding-bottom: max(1rem, env(safe-area-inset-bottom));">
-      <button onclick="closeCompensationModal()"
-        class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
-      <button onclick="saveCompensation()"
-        class="flex-1 py-4 bg-amber-600 hover:bg-amber-500 rounded-3xl text-lg font-medium">Save Compensation</button>
+    <div class="flex gap-3 px-6 py-4 border-t border-zinc-800 shrink-0" style="padding-bottom: max(1rem, env(safe-area-inset-bottom));">
+      <button onclick="closeCompensationModal()" class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
+      <button onclick="saveCompensation()" class="flex-1 py-4 bg-amber-600 hover:bg-amber-500 rounded-3xl text-lg font-medium">Save Compensation</button>
     </div>
   </div>
 </div>
@@ -581,33 +576,18 @@ firebase.initializeApp(firebaseConfig);
       <button onclick="closeShoppingModal()" class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
     </div>
     <div class="p-6 overflow-y-auto flex-1 space-y-5" style="-webkit-overflow-scrolling: touch;">
-      
-      <!-- Item Name (REQUIRED) -->
       <div>
         <label class="text-xs text-zinc-400 block mb-1">Item Name <span class="text-red-400">*</span></label>
         <input id="shop-name" type="text" placeholder="e.g., Milk, Bread, Eggs" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
       </div>
-      
-      <!-- Quantity Slider with +/- Buttons (UPDATED) -->
       <div>
         <label class="text-xs text-zinc-400 block mb-1">Quantity</label>
         <div class="flex items-center gap-3">
-          <!-- Minus Button -->
-          <button type="button" onclick="adjustShopQuantity(-1)" 
-            class="w-12 h-12 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-2xl flex items-center justify-center text-2xl text-zinc-300 transition">
-            −
-          </button>
-          <!-- Slider -->
+          <button type="button" onclick="adjustShopQuantity(-1)" class="w-12 h-12 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-2xl flex items-center justify-center text-2xl text-zinc-300 transition">−</button>
           <input type="range" id="shop-quantity" min="0" max="99" value="1" step="1" class="shopping-slider flex-1" oninput="roundSliderValue()">
-          <!-- Value Display -->
           <span id="shop-quantity-value" class="shopping-slider-value w-12 text-center">1</span>
-          <!-- Plus Button -->
-          <button type="button" onclick="adjustShopQuantity(1)" 
-            class="w-12 h-12 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-2xl flex items-center justify-center text-2xl text-emerald-400 transition">
-            +
-          </button>
+          <button type="button" onclick="adjustShopQuantity(1)" class="w-12 h-12 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-2xl flex items-center justify-center text-2xl text-emerald-400 transition">+</button>
         </div>
-        <!-- Quick Decimal Buttons -->
         <div class="flex gap-2 mt-2 flex-wrap">
           <button type="button" onclick="setShopQuantity(0.1)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">0.1</button>
           <button type="button" onclick="setShopQuantity(0.25)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">0.25</button>
@@ -618,8 +598,6 @@ firebase.initializeApp(firebaseConfig);
           <button type="button" onclick="setShopQuantity(5)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">5</button>
         </div>
       </div>
-      
-      <!-- Priority Slider -->
       <div>
         <label class="text-xs text-zinc-400 block mb-1">Priority <span class="text-zinc-600">(1=low, 10=critical)</span></label>
         <div class="flex items-center gap-4">
@@ -627,43 +605,30 @@ firebase.initializeApp(firebaseConfig);
           <span id="shop-priority-value" class="shopping-slider-value">5</span>
         </div>
       </div>
-      
-      <!-- Wishlist Checkbox -->
       <div class="flex items-center gap-3">
         <input type="checkbox" id="shop-wishlist" class="w-5 h-5 rounded bg-zinc-800 border-zinc-600 text-emerald-500 focus:ring-emerald-500">
         <label for="shop-wishlist" class="text-sm text-zinc-300">🎁 Wishlist item</label>
       </div>
-      
-      <!-- Has Date Checkbox -->
       <div class="flex items-center gap-3">
         <input type="checkbox" id="shop-has-date" class="w-5 h-5 rounded bg-zinc-800 border-zinc-600 text-emerald-500 focus:ring-emerald-500" onchange="toggleShopDateField()">
         <label for="shop-has-date" class="text-sm text-zinc-300">📅 Set target date</label>
       </div>
-      
-      <!-- Date of Purchase (Conditional) -->
       <div id="shop-date-container" class="hidden">
         <label class="text-xs text-zinc-400 block mb-1">Target Date</label>
         <input id="shop-date" type="date" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
       </div>
-      
-      <!-- Place (OPTIONAL) -->
       <div>
         <label class="text-xs text-zinc-400 block mb-1">Place <span class="text-zinc-600">(optional)</span></label>
         <input id="shop-place" type="text" placeholder="Store name / location" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
       </div>
-      
-      <!-- Comment 1: Item Description (OPTIONAL) -->
       <div>
         <label class="text-xs text-zinc-400 block mb-1">Comment 1: Item Description <span class="text-zinc-600">(optional)</span></label>
         <textarea id="shop-comment1" rows="2" placeholder="Brand, size, color, etc." class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base resize-none"></textarea>
       </div>
-      
-      <!-- Comment 2: Additional Info (OPTIONAL) -->
       <div>
         <label class="text-xs text-zinc-400 block mb-1">Comment 2: Additional Info <span class="text-zinc-600">(optional)</span></label>
         <textarea id="shop-comment2" rows="2" placeholder="Notes, reminders, alternatives, etc." class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base resize-none"></textarea>
       </div>
-      
     </div>
     <div class="px-6 py-4 border-t border-zinc-800 flex gap-3 shrink-0">
       <button onclick="closeShoppingModal()" class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
@@ -675,7 +640,7 @@ firebase.initializeApp(firebaseConfig);
 <!-- App logic -->
 <script type="module" src="js/app.js"></script>
 
-<!-- Inline helpers for stats -->
+<!-- Inline helpers -->
 <script>
 function toggleDashNumbers() {
   const hidden = localStorage.getItem('dash_numbers_hidden') === '1';
@@ -684,46 +649,39 @@ function toggleDashNumbers() {
   _applyDashVisibility(nowHidden);
 }
 function _applyDashVisibility(hide) {
-  const expEl    = document.getElementById('dash-exp-total');
+  const expEl = document.getElementById('dash-exp-total');
   const expAdjEl = document.getElementById('dash-exp-adjusted');
-  const incEl    = document.getElementById('dash-inc-total');
-  const adjEl    = document.getElementById('dash-adj-label');
-  const btn      = document.getElementById('dash-visibility-btn');
-  const mask     = '••••';
+  const incEl = document.getElementById('dash-inc-total');
+  const adjEl = document.getElementById('dash-adj-label');
+  const btn = document.getElementById('dash-visibility-btn');
+  const mask = '••••';
   if (hide) {
-    if (expEl)    { expEl.dataset.real = expEl.textContent; expEl.dataset.realClass = expEl.className; expEl.textContent = mask; }
+    if (expEl) { expEl.dataset.real = expEl.textContent; expEl.dataset.realClass = expEl.className; expEl.textContent = mask; }
     if (expAdjEl && !expAdjEl.classList.contains('hidden')) { expAdjEl.dataset.real = expAdjEl.textContent; expAdjEl.textContent = mask; }
-    if (incEl)    { incEl.dataset.real = incEl.textContent; incEl.dataset.realClass = incEl.className; incEl.textContent = mask; }
-    if (adjEl)    { adjEl.dataset.real = adjEl.textContent; }
-    if (btn)      btn.textContent = '🙈';
+    if (incEl) { incEl.dataset.real = incEl.textContent; incEl.dataset.realClass = incEl.className; incEl.textContent = mask; }
+    if (adjEl) { adjEl.dataset.real = adjEl.textContent; }
+    if (btn) btn.textContent = '🙈';
   } else {
-    if (expEl && expEl.dataset.real)       { expEl.textContent = expEl.dataset.real; if (expEl.dataset.realClass) expEl.className = expEl.dataset.realClass; }
+    if (expEl && expEl.dataset.real) { expEl.textContent = expEl.dataset.real; if (expEl.dataset.realClass) expEl.className = expEl.dataset.realClass; }
     if (expAdjEl && expAdjEl.dataset.real) { expAdjEl.textContent = expAdjEl.dataset.real; }
-    if (incEl && incEl.dataset.real)       { incEl.textContent = incEl.dataset.real; if (incEl.dataset.realClass) incEl.className = incEl.dataset.realClass; }
+    if (incEl && incEl.dataset.real) { incEl.textContent = incEl.dataset.real; if (incEl.dataset.realClass) incEl.className = incEl.dataset.realClass; }
     if (btn) btn.textContent = '👁';
   }
 }
-// Apply on page load
 window.addEventListener('DOMContentLoaded', () => {
   const hidden = localStorage.getItem('dash_numbers_hidden') === '1';
   if (hidden) _applyDashVisibility(true);
 });
 function _applyGuestUI() {
   if (!window.isGuest || !window.isGuest()) return;
-  // Hide Add buttons for OTHER modules (Planner, Expenses, Income)
   const fab = document.querySelector('#screen-planner button[onclick="showAddEventModal()"]');
   if (fab) fab.classList.add('hidden');
   const expBtn = document.querySelector('#screen-expenses button[onclick="showAddExpenseModal()"]');
   if (expBtn) expBtn.classList.add('hidden');
-  const incBtn  = document.querySelector('#screen-income button[onclick="showAddIncomeModal()"]');
+  const incBtn = document.querySelector('#screen-income button[onclick="showAddIncomeModal()"]');
   const compBtn = document.querySelector('#screen-income button[onclick="showAddCompensationModal()"]');
-  if (incBtn)  incBtn.classList.add('hidden');
+  if (incBtn) incBtn.classList.add('hidden');
   if (compBtn) compBtn.classList.add('hidden');
-  
-  // NOTE: Shopping Add button is NOT hidden for guests (guests can add/edit shopping)
-  // Only delete buttons are hidden via JS rendering in shopping-render.js
-  
-  // Hide destructive/admin actions
   const clearBtn = document.querySelector('button[onclick="clearAllData()"]');
   if (clearBtn) clearBtn.closest('.grid')?.classList.add('hidden');
   const snapHeaderBtn = document.querySelector('header button[onclick="takeSnapshot()"]');
@@ -732,11 +690,6 @@ function _applyGuestUI() {
   if (snapCard) snapCard.classList.add('hidden');
   const retryBtn = document.getElementById('notif-retry-btn');
   if (retryBtn) retryBtn.classList.add('hidden');
-  const hkContainer = document.getElementById('housekeeping-container');
-  if (hkContainer) {
-    const manageBtn = hkContainer.querySelector('button[onclick="window.showHousekeepingModal()"]');
-    if (manageBtn) manageBtn.classList.add('hidden');
-  }
 }
 window._applyGuestUI = _applyGuestUI;
 function toggleExpenseStatsView() {
@@ -751,7 +704,6 @@ function toggleExpenseStatsView() {
     wrapper.classList.add('hidden');
   }
 }
-// Shopping modal: toggle date field visibility
 function toggleShopDateField() {
   const hasDate = document.getElementById('shop-has-date');
   const dateContainer = document.getElementById('shop-date-container');
@@ -764,7 +716,6 @@ function toggleShopDateField() {
   }
 }
 window.toggleShopDateField = toggleShopDateField;
-// Shopping quantity quick-set buttons
 function setShopQuantity(val) {
   const slider = document.getElementById('shop-quantity');
   const display = document.getElementById('shop-quantity-value');
@@ -773,7 +724,6 @@ function setShopQuantity(val) {
     display.textContent = parseFloat(val).toFixed(2).replace(/\.00$/, '').replace(/\.0$/, '').replace(/\.(\d)0$/, '.$1');
   }
 }
-// Round slider value to integer when dragging (prevents fractions from slider)
 function roundSliderValue() {
   const slider = document.getElementById('shop-quantity');
   const display = document.getElementById('shop-quantity-value');
@@ -783,14 +733,12 @@ function roundSliderValue() {
     display.textContent = rounded;
   }
 }
-// Adjust quantity by +/- 1 (for the +/- buttons)
 function adjustShopQuantity(delta) {
   const slider = document.getElementById('shop-quantity');
   const display = document.getElementById('shop-quantity-value');
   if (slider && display) {
     let current = parseFloat(slider.value) || 0;
     let newValue = current + delta;
-    // Clamp between 0 and 99
     if (newValue < 0) newValue = 0;
     if (newValue > 99) newValue = 99;
     slider.value = newValue;

@@ -1,7 +1,7 @@
 // js/state.js
 // GLOBAL APPLICATION STATE
 // Single source of truth for all reactive data in the Planner PWA
-// UPDATED: Added shopping module state fields
+// UPDATED: Added full multi-guestbook support
 
 export const state = {
   // Navigation
@@ -12,7 +12,11 @@ export const state = {
   expensesData: [],
   incomeData: [],
   compensationsData: [],
-  shoppingData: [],  // Shopping list items
+  shoppingData: [],
+  
+  // Guestbook - NEW
+  guestbooksData: {},           // Object: { "general": [messages], "family": [messages], ... }
+  currentGuestbookKey: 'general',
   
   // Firebase / Notifications
   messaging: null,
@@ -38,7 +42,7 @@ export const state = {
   expandedShoppingPriority: new Set(),
   
   // Shopping Module State
-  shoppingModalMode: 'add',  // 'add' or 'edit'
+  shoppingModalMode: 'add',
   editingShoppingId: null,
   
   // Income Module State
@@ -46,5 +50,8 @@ export const state = {
   selectedCompensationTool: null,
   
   // User Role (set by lockscreen.js)
-  role: null  // 'admin' | 'guest' | null
+  role: null,  // 'admin' | 'guest' | null
+  
+  // Guestbook username (persisted in localStorage)
+  guestbookUsername: localStorage.getItem('guestbook_username') || 'Guest'
 };

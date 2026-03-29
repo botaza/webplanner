@@ -1,8 +1,6 @@
 <?php
 // php/api.php
-// UPDATED: Added Shopping List CRUD endpoints
-// UPDATED: Added comment1, comment2, is_wishlist fields for shopping items
-// UPDATED: Date field is now optional for shopping items
+// UPDATED: Added full multi-guestbook support
 
 header('Content-Type: application/json');
 $dataDir = __DIR__ . '/../data';
@@ -16,7 +14,8 @@ $files = [
     'expenses'      => $dataDir . '/expenses.json',
     'income'        => $dataDir . '/income.json',
     'compensations' => $dataDir . '/compensations.json',
-    'shopping'      => $dataDir . '/shopping.json'
+    'shopping'      => $dataDir . '/shopping.json',
+    'guestbooks'    => $dataDir . '/guestbooks.json'
 ];
 
 function read($f) {
@@ -33,7 +32,15 @@ $action = $_POST['action'] ?? '';
 
 // ── System Init ──
 if ($action === 'init') {
-    foreach ($files as $f) if (!file_exists($f)) write($f, []);
+    foreach ($files as $key => $f) {
+        if (!file_exists($f)) {
+            if ($key === 'guestbooks') {
+                write($f, ['general' => []]);
+            } else {
+                write($f, []);
+            }
+        }
+    }
     echo json_encode(['success' => true]);
     exit;
 }
@@ -271,7 +278,6 @@ if ($action === 'delete_income') {
     exit;
 }
 
-// ── Income Aggregation ──
 if ($action === 'get_income_aggregated') {
     $data = read($files['income']);
     $start = $_POST['start_date'] ?? '';
@@ -323,7 +329,6 @@ if ($action === 'delete_compensation') {
     exit;
 }
 
-// ── Compensation Aggregation ──
 if ($action === 'get_compensations_aggregated') {
     $data  = read($files['compensations']);
     $start = $_POST['start_date'] ?? '';
@@ -350,7 +355,6 @@ if ($action === 'get_compensations_aggregated') {
 // ── Shopping List ──
 if ($action === 'get_shopping') {
     $data = read($files['shopping']);
-    // Sort by priority descending (highest first), then by date_purchase ascending
     usort($data, function($a, $b) {
         $prioA = (int)($a['priority'] ?? 0);
         $prioB = (int)($b['priority'] ?? 0);
@@ -368,11 +372,11 @@ if ($action === 'add_shopping') {
         'name' => $_POST['name'] ?? '',
         'quantity' => (int)($_POST['quantity'] ?? 0),
         'place' => $_POST['place'] ?? '',
-        'date_purchase' => $_POST['date_purchase'] ?? '',  // Now optional (empty string if not set)
-        'comment1' => $_POST['comment1'] ?? '',  // NEW: Item description
-        'comment2' => $_POST['comment2'] ?? '',  // NEW: Additional info
+        'date_purchase' => $_POST['date_purchase'] ?? '',
+        'comment1' => $_POST['comment1'] ?? '',
+        'comment2' => $_POST['comment2'] ?? '',
         'priority' => (int)($_POST['priority'] ?? 5),
-        'is_wishlist' => isset($_POST['is_wishlist']) && $_POST['is_wishlist'] === 'true',  // NEW: Wishlist flag
+        'is_wishlist' => isset($_POST['is_wishlist']) && $_POST['is_wishlist'] === 'true',
         'created_at' => date('Y-m-d H:i:s')
     ];
     write($files['shopping'], $data);
@@ -392,7 +396,7 @@ if ($action === 'update_shopping') {
             if (isset($_POST['comment1']))     $item['comment1']     = $_POST['comment1'];
             if (isset($_POST['comment2']))     $item['comment2']     = $_POST['comment2'];
             if (isset($_POST['priority']))     $item['priority']     = (int)$_POST['priority'];
-            if (isset($_POST['is_wishlist']))  $item['is_wishlist']  = $_POST['is_wishlist'] === 'true';  // NEW
+            if (isset($_POST['is_wishlist']))  $item['is_wishlist']  = $_POST['is_wishlist'] === 'true';
             $updated = true;
             break;
         }
@@ -401,7 +405,6 @@ if ($action === 'update_shopping') {
         echo json_encode(['error' => 'Shopping item not found']);
         exit;
     }
-    // Re-sort after update
     usort($data, function($a, $b) {
         $prioA = (int)($a['priority'] ?? 0);
         $prioB = (int)($b['priority'] ?? 0);
@@ -417,6 +420,67 @@ if ($action === 'delete_shopping') {
     $data = read($files['shopping']);
     $data = array_filter($data, fn($item) => $item['id'] != $_POST['id']);
     write($files['shopping'], array_values($data));
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// ── Guestbook Module ──
+if ($action === 'get_guestbooks') {
+    $data = read($files['guestbooks']);
+    if (empty($data)) $data = ['general' => []];
+    echo json_encode($data);
+    exit;
+}
+
+if ($action === 'add_guestbook_message') {
+    $data = read($files['guestbooks']);
+    $book = $_POST['book'] ?? 'general';
+    if (!isset($data[$book])) $data[$book] = [];
+
+    $data[$book][] = [
+        'id'       => time() . rand(10000, 99999),
+        'username' => $_POST['username'] ?? 'Guest',
+        'text'     => $_POST['text'] ?? '',
+        'emoji'    => $_POST['emoji'] ?? '',
+        'dt'       => date('Y-m-d H:i:s')
+    ];
+
+    if (count($data[$book]) > 2000) {
+        $data[$book] = array_slice($data[$book], -2000);
+    }
+
+    write($files['guestbooks'], $data);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+if ($action === 'create_guestbook') {
+    $data = read($files['guestbooks']);
+    $name = trim($_POST['name'] ?? '');
+    if (!$name) {
+        echo json_encode(['error' => 'Name required']);
+        exit;
+    }
+    $key = strtolower(preg_replace('/[^a-z0-9]+/', '-', $name));
+    if (isset($data[$key])) {
+        echo json_encode(['error' => 'Already exists']);
+        exit;
+    }
+    $data[$key] = [];
+    write($files['guestbooks'], $data);
+    echo json_encode(['success' => true, 'key' => $key, 'name' => $name]);
+    exit;
+}
+
+if ($action === 'delete_guestbook_message') {
+    $data = read($files['guestbooks']);
+    $book = $_POST['book'] ?? 'general';
+    $id   = $_POST['id'] ?? '';
+    if (isset($data[$book])) {
+        $data[$book] = array_filter($data[$book], fn($m) => $m['id'] != $id);
+        $data[$book] = array_values($data[$book]);
+        write($files['guestbooks'], $data);
+    }
     echo json_encode(['success' => true]);
     exit;
 }
