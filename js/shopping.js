@@ -2,6 +2,7 @@
 // ORCHESTRATOR FOR SHOPPING MODULE
 // UPDATED: Guests CAN create and edit shopping items, but CANNOT delete
 // UPDATED: Supports is_wishlist field, optional date_purchase, comment1, and comment2 fields
+// UPDATED: Added filterShoppingList to global exposure for search bar
 import { requireAdmin } from './readonly-guard.js';
 import { state } from './state.js';
 import { loadDashboard } from './dashboard.js';
@@ -21,7 +22,8 @@ import {
   renderShoppingList,
   toggleShoppingPriority,
   expandAllPriorities,
-  collapseAllPriorities
+  collapseAllPriorities,
+  filterShoppingList
 } from './shopping-render.js';
 
 let _editingId = null;
@@ -134,5 +136,6 @@ Object.assign(window, {
   toggleShoppingPriority: handleTogglePriority,
   expandAllShoppingPriorities: handleExpandAllPriorities,
   collapseAllShoppingPriorities: handleCollapseAllPriorities,
-  refreshShoppingList: loadShopping
+  refreshShoppingList: loadShopping,
+  filterShoppingList  // NEW: Expose filter function for search bar
 });

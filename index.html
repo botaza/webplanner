@@ -233,6 +233,26 @@ firebase.initializeApp(firebaseConfig);
       <button onclick="window.collapseAllShoppingPriorities()" class="text-xs text-zinc-400 hover:text-emerald-400">Collapse all</button>
     </div>
   </div>
+  
+  <!-- Search Bar -->
+  <div class="mb-4">
+    <div class="relative">
+      <input 
+        type="text" 
+        id="shop-search" 
+        placeholder="🔍 Search items, places, notes..." 
+        class="w-full bg-zinc-900 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-3 pl-12 text-base"
+        oninput="window.filterShoppingList()">
+      <span class="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">🔍</span>
+      <button 
+        onclick="document.getElementById('shop-search').value=''; window.filterShoppingList()" 
+        class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 text-sm px-2 py-1">
+        Clear
+      </button>
+    </div>
+    <div id="shop-search-count" class="text-xs text-zinc-500 mt-2 hidden"></div>
+  </div>
+  
   <div id="shopping-list" class="space-y-2"></div>
   
   <!-- Floating Add Button -->

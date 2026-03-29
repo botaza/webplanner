@@ -2,6 +2,7 @@
 // RENDERING LOGIC FOR SHOPPING LIST
 // UPDATED: Added wishlist tag display, fixed expand/collapse, fixed edit button onclick
 // UPDATED: Added comment1 and comment2 display
+// UPDATED: Added search/filter functionality
 import { state } from './state.js';
 import { isGuest } from './lockscreen.js';
 import { getPriorityGroups } from './shopping-crud.js';
@@ -146,9 +147,45 @@ export function collapseAllPriorities() {
   }
 }
 
+// ── SEARCH/FILTER FUNCTIONALITY ──
+export function filterShoppingList() {
+  const searchTerm = document.getElementById('shop-search')?.value.toLowerCase().trim() || '';
+  const countEl = document.getElementById('shop-search-count');
+  
+  if (!searchTerm) {
+    // Show all items
+    renderShoppingList(state.shoppingData);
+    if (countEl) countEl.classList.add('hidden');
+    return;
+  }
+  
+  // Filter items by name, place, comment1, comment2
+  const filtered = state.shoppingData.filter(item => {
+    const name = (item.name || '').toLowerCase();
+    const place = (item.place || '').toLowerCase();
+    const comment1 = (item.comment1 || '').toLowerCase();
+    const comment2 = (item.comment2 || '').toLowerCase();
+    
+    return name.includes(searchTerm) || 
+           place.includes(searchTerm) || 
+           comment1.includes(searchTerm) || 
+           comment2.includes(searchTerm);
+  });
+  
+  // Show count
+  if (countEl) {
+    countEl.textContent = `Found ${filtered.length} of ${state.shoppingData.length} items`;
+    countEl.classList.remove('hidden');
+  }
+  
+  // Render filtered list
+  renderShoppingList(filtered);
+}
+
 // ── EXPOSE TO WINDOW FOR HTML onclick HANDLERS ──
 Object.assign(window, {
   toggleShoppingPriority,
   expandAllPriorities,
-  collapseAllPriorities
+  collapseAllPriorities,
+  filterShoppingList  // NEW: Expose filter function
 });
