@@ -588,11 +588,11 @@ firebase.initializeApp(firebaseConfig);
         <input id="shop-name" type="text" placeholder="e.g., Milk, Bread, Eggs" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
       </div>
       
-      <!-- Quantity Slider (UPDATED: Supports 0.1, 0.25, 0.5, 0.75 increments) -->
+      <!-- Quantity Slider (FIXED: Integers only via slider, decimals via buttons) -->
       <div>
-        <label class="text-xs text-zinc-400 block mb-1">Quantity <span class="text-zinc-600">(0.1 increments)</span></label>
+        <label class="text-xs text-zinc-400 block mb-1">Quantity</label>
         <div class="flex items-center gap-4">
-          <input type="range" id="shop-quantity" min="0" max="99" value="1" step="0.25" class="shopping-slider flex-1">
+          <input type="range" id="shop-quantity" min="0" max="99" value="1" step="1" class="shopping-slider flex-1" oninput="roundSliderValue()">
           <span id="shop-quantity-value" class="shopping-slider-value">1</span>
         </div>
         <div class="flex gap-2 mt-2 flex-wrap">
@@ -760,7 +760,18 @@ function setShopQuantity(val) {
     display.textContent = parseFloat(val).toFixed(2).replace(/\.00$/, '').replace(/\.0$/, '').replace(/\.(\d)0$/, '.$1');
   }
 }
+// Round slider value to integer when dragging (prevents fractions from slider)
+function roundSliderValue() {
+  const slider = document.getElementById('shop-quantity');
+  const display = document.getElementById('shop-quantity-value');
+  if (slider && display) {
+    const rounded = Math.round(parseFloat(slider.value) || 0);
+    slider.value = rounded;
+    display.textContent = rounded;
+  }
+}
 window.setShopQuantity = setShopQuantity;
+window.roundSliderValue = roundSliderValue;
 </script>
 </body>
 </html>

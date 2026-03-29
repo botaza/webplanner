@@ -3,7 +3,7 @@
 // UPDATED: Added wishlist tag display, fixed expand/collapse, fixed edit button onclick
 // UPDATED: Added comment1 and comment2 display
 // UPDATED: Added search/filter functionality
-// UPDATED: Quantity display now supports decimal values (0.1, 0.25, 0.5, etc.)
+// UPDATED: Quantity display supports decimal values (0.1, 0.25, 0.5, etc.) via quick buttons
 import { state } from './state.js';
 import { isGuest } from './lockscreen.js';
 import { getPriorityGroups } from './shopping-crud.js';

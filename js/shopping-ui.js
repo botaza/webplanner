@@ -1,7 +1,8 @@
 // js/shopping-ui.js
 // UI HELPERS FOR SHOPPING MODULE
 // UPDATED: Added wishlist checkbox, optional date field, and two separate comment fields
-// UPDATED: Quantity slider now supports decimal values (0.1, 0.25, 0.5, 0.75, etc.)
+// UPDATED: Quantity slider uses step="1" for integers, quick buttons for decimals (0.1, 0.25, 0.5, 0.75)
+// UPDATED: Slider value is rounded to integer on input (decimals only via buttons)
 import { state } from './state.js';
 import { hideModal } from './utils.js';
 import { todayString } from './date-utils.js';
@@ -99,7 +100,10 @@ function attachSliderListeners() {
   
   if (qtySlider && qtyVal) {
     qtySlider.oninput = () => { 
-      qtyVal.textContent = formatQuantity(qtySlider.value); 
+      // Round to integer when slider is dragged
+      const rounded = Math.round(parseFloat(qtySlider.value) || 0);
+      qtySlider.value = rounded;
+      qtyVal.textContent = rounded;
     };
   }
   if (prioSlider && prioVal) {
