@@ -3,6 +3,7 @@
 // UPDATED: Added wishlist checkbox, optional date field, and two separate comment fields
 // UPDATED: Quantity slider uses step="1" for integers, quick buttons for decimals (0.1, 0.25, 0.5, 0.75)
 // UPDATED: Slider value is rounded to integer on input (decimals only via buttons)
+// UPDATED: Added +/- buttons for quantity adjustment
 import { state } from './state.js';
 import { hideModal } from './utils.js';
 import { todayString } from './date-utils.js';

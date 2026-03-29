@@ -3,6 +3,7 @@
 // UPDATED: Guests CAN create and edit shopping items, but CANNOT delete
 // UPDATED: Supports is_wishlist field, optional date_purchase, comment1, and comment2 fields
 // UPDATED: Quantity uses step="1" for slider (integers only), quick buttons for decimals (0.1, 0.25, 0.5, 0.75)
+// UPDATED: Added +/- buttons for quantity adjustment
 // UPDATED: Added filterShoppingList to global exposure for search bar
 import { requireAdmin } from './readonly-guard.js';
 import { state } from './state.js';
