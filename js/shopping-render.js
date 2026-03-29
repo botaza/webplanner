@@ -50,7 +50,7 @@ export function renderShoppingList(list, containerId = 'shopping-list') {
             <span class="font-medium text-zinc-200">${label}</span>
             <span class="text-xs text-zinc-500">(${items.length})</span>
           </div>
-          <span class="text-sm font-bold ${color.replace('border','text')}">P{pNum}</span>
+          <span class="text-sm font-bold ${color.replace('border','text')}">P${pNum}</span>
         </button>
         <div id="shopping-priority-${priority}" class="ml-2 mt-2 space-y-2 ${isOpen ? '' : 'hidden'}">
           ${items.map(item => renderShoppingItem(item, color)).join('')}
