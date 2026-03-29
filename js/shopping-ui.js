@@ -14,7 +14,8 @@ export function showShoppingModal(mode = 'add', item = null) {
   const titleEl = document.getElementById('shopping-modal-title');
   if (titleEl) titleEl.textContent = mode === 'edit' ? 'Edit Item' : 'New Shopping Item';
   
-  // Populate form
+  // Populate form fields
+  const nameEl = document.getElementById('shop-name');
   const qtySlider = document.getElementById('shop-quantity');
   const qtyVal = document.getElementById('shop-quantity-value');
   const prioSlider = document.getElementById('shop-priority');
@@ -24,12 +25,14 @@ export function showShoppingModal(mode = 'add', item = null) {
   const commentEl = document.getElementById('shop-comment');
   
   if (mode === 'edit' && item) {
+    if (nameEl) nameEl.value = item.name ?? '';
     if (qtySlider) { qtySlider.value = item.quantity ?? 0; if (qtyVal) qtyVal.textContent = item.quantity ?? 0; }
     if (prioSlider) { prioSlider.value = item.priority ?? 5; if (prioVal) prioVal.textContent = item.priority ?? 5; }
     if (placeEl) placeEl.value = item.place ?? '';
     if (dateEl) dateEl.value = item.date_purchase ?? todayString();
     if (commentEl) commentEl.value = item.comment ?? '';
   } else {
+    if (nameEl) nameEl.value = '';
     if (qtySlider) { qtySlider.value = 1; if (qtyVal) qtyVal.textContent = '1'; }
     if (prioSlider) { prioSlider.value = 5; if (prioVal) prioVal.textContent = '5'; }
     if (placeEl) placeEl.value = '';
@@ -46,6 +49,11 @@ export function showShoppingModal(mode = 'add', item = null) {
   
   // Attach slider listeners
   attachSliderListeners();
+  
+  // Focus name field for quick entry
+  if (nameEl && mode === 'add') {
+    setTimeout(() => nameEl.focus(), 100);
+  }
 }
 
 export function closeShoppingModal() {
@@ -69,18 +77,25 @@ function attachSliderListeners() {
 }
 
 export function getShoppingFormData() {
+  const name = document.getElementById('shop-name')?.value.trim() || '';
   const qty = parseInt(document.getElementById('shop-quantity')?.value) || 0;
   const prio = parseInt(document.getElementById('shop-priority')?.value) || 5;
   const place = document.getElementById('shop-place')?.value.trim() || '';
   const date = document.getElementById('shop-date')?.value || '';
   const comment = document.getElementById('shop-comment')?.value.trim() || '';
   
+  // Name is now required
+  if (!name) {
+    alert('Please enter an item name');
+    return null;
+  }
+  
   if (!date) {
     alert('Please select a date');
     return null;
   }
   
-  return { quantity: qty, priority: prio, place, date_purchase: date, comment };
+  return { name, quantity: qty, priority: prio, place, date_purchase: date, comment };
 }
 
 export function initShoppingUI() {

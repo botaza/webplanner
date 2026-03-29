@@ -33,11 +33,14 @@ export function renderShoppingList(list, containerId = 'shopping-list') {
 
   if (!state.expandedShoppingPriority) state.expandedShoppingPriority = new Set();
   
-  // CHANGE: Auto-expand ALL priority groups by default (not just high priority)
-  // This ensures the full list is visible when entering the shop tab
+  // Auto-expand ALL priority groups by default when entering the shop tab
   [1,2,3,4,5,6,7,8,9,10].forEach(p => state.expandedShoppingPriority.add(String(p)));
 
-  const html = Object.entries(groups).map(([priority, items]) => {
+  // Sort groups by priority DESCENDING (P10 at top, P1 at bottom)
+  const sortedPriorities = Object.keys(groups).sort((a, b) => parseInt(b) - parseInt(a));
+
+  const html = sortedPriorities.map((priority) => {
+    const items = groups[priority];
     const pNum = parseInt(priority);
     const isOpen = state.expandedShoppingPriority.has(priority);
     const label = priorityLabels[pNum] || `Priority ${pNum}`;
@@ -79,6 +82,7 @@ function renderShoppingItem(item, borderColor) {
           </div>
           <div class="text-sm text-zinc-300 mb-2">
             <span class="font-medium">${qty}×</span>
+            ${item.name ? `<span class="text-zinc-200 font-medium">${item.name}</span>` : '<span class="text-zinc-500 italic">No name</span>'}
             ${item.place ? `<span class="text-zinc-400"> @ ${item.place}</span>` : ''}
           </div>
           ${item.comment ? `<div class="text-xs text-zinc-500 italic">"${item.comment}"</div>` : ''}
@@ -110,6 +114,7 @@ export function toggleShoppingPriority(priority) {
   } else {
     state.expandedShoppingPriority.add(priority);
   }
+  // Re-render immediately
   if (window.refreshShoppingList) window.refreshShoppingList();
 }
 

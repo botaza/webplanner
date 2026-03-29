@@ -1,10 +1,7 @@
 <?php
 // php/api.php
-// UPDATED: Added daily recurrence support for events
-// UPDATED: Added original_hashtag field to add_event and update_event
-// UPDATED: Added compensation CRUD; income now stores tool field
-// UPDATED: Added update_expense action
-// UPDATED: Added Shopping List CRUD (get_shopping, add_shopping, update_shopping, delete_shopping)
+// UPDATED: Added Shopping List CRUD endpoints (get_shopping, add_shopping, update_shopping, delete_shopping)
+// UPDATED: Added 'shopping' to $files array for auto-initialization
 
 header('Content-Type: application/json');
 $dataDir = __DIR__ . '/../data';
@@ -18,7 +15,7 @@ $files = [
     'expenses'      => $dataDir . '/expenses.json',
     'income'        => $dataDir . '/income.json',
     'compensations' => $dataDir . '/compensations.json',
-    'shopping'      => $dataDir . '/shopping.json'  // NEW
+    'shopping'      => $dataDir . '/shopping.json'  // NEW: Shopping list
 ];
 
 function read($f) {
@@ -349,7 +346,7 @@ if ($action === 'get_compensations_aggregated') {
     exit;
 }
 
-// ── Shopping List ──
+// ── Shopping List ── (NEW SECTION)
 if ($action === 'get_shopping') {
     $data = read($files['shopping']);
     // Sort by priority descending (highest first), then by date_purchase ascending
@@ -367,6 +364,7 @@ if ($action === 'add_shopping') {
     $data = read($files['shopping']);
     $data[] = [
         'id' => time() . rand(10000, 99999),
+        'name' => $_POST['name'] ?? '',  // NEW: Item name (required)
         'quantity' => (int)($_POST['quantity'] ?? 0),
         'place' => $_POST['place'] ?? '',
         'date_purchase' => $_POST['date_purchase'] ?? '',
@@ -384,6 +382,7 @@ if ($action === 'update_shopping') {
     $updated = false;
     foreach ($data as &$item) {
         if ($item['id'] == $_POST['id']) {
+            if (isset($_POST['name']))       $item['name']       = $_POST['name'];
             if (isset($_POST['quantity']))   $item['quantity']   = (int)$_POST['quantity'];
             if (isset($_POST['place']))      $item['place']      = $_POST['place'];
             if (isset($_POST['date_purchase'])) $item['date_purchase'] = $_POST['date_purchase'];
