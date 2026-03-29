@@ -1,6 +1,6 @@
 // js/shopping-ui.js
 // UI HELPERS FOR SHOPPING MODULE
-// UPDATED: Added wishlist checkbox and optional date field handling
+// UPDATED: Added wishlist checkbox, optional date field, and two separate comment fields
 import { state } from './state.js';
 import { hideModal } from './utils.js';
 import { todayString } from './date-utils.js';
@@ -26,7 +26,8 @@ export function showShoppingModal(mode = 'add', item = null) {
   const dateContainer = document.getElementById('shop-date-container');
   const dateEl = document.getElementById('shop-date');
   const placeEl = document.getElementById('shop-place');
-  const commentEl = document.getElementById('shop-comment');
+  const comment1El = document.getElementById('shop-comment1');
+  const comment2El = document.getElementById('shop-comment2');
   
   if (mode === 'edit' && item) {
     if (nameEl) nameEl.value = item.name ?? '';
@@ -44,7 +45,8 @@ export function showShoppingModal(mode = 'add', item = null) {
       }
     }
     if (placeEl) placeEl.value = item.place ?? '';
-    if (commentEl) commentEl.value = item.comment ?? '';
+    if (comment1El) comment1El.value = item.comment1 ?? '';
+    if (comment2El) comment2El.value = item.comment2 ?? '';
   } else {
     if (nameEl) nameEl.value = '';
     if (qtySlider) { qtySlider.value = 1; if (qtyVal) qtyVal.textContent = '1'; }
@@ -56,7 +58,8 @@ export function showShoppingModal(mode = 'add', item = null) {
       if (dateEl) dateEl.value = '';
     }
     if (placeEl) placeEl.value = '';
-    if (commentEl) commentEl.value = '';
+    if (comment1El) comment1El.value = '';
+    if (comment2El) comment2El.value = '';
   }
   
   // Show modal
@@ -103,7 +106,8 @@ export function getShoppingFormData() {
   const hasDate = document.getElementById('shop-has-date')?.checked || false;
   const date = hasDate ? (document.getElementById('shop-date')?.value || '') : '';
   const place = document.getElementById('shop-place')?.value.trim() || '';
-  const comment = document.getElementById('shop-comment')?.value.trim() || '';
+  const comment1 = document.getElementById('shop-comment1')?.value.trim() || '';
+  const comment2 = document.getElementById('shop-comment2')?.value.trim() || '';
   
   // Name is required
   if (!name) {
@@ -124,7 +128,8 @@ export function getShoppingFormData() {
     is_wishlist: isWishlist,
     date_purchase: date, 
     place, 
-    comment 
+    comment1,
+    comment2
   };
 }
 

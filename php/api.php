@@ -1,7 +1,7 @@
 <?php
 // php/api.php
 // UPDATED: Added Shopping List CRUD endpoints
-// UPDATED: Added is_wishlist field support for shopping items
+// UPDATED: Added comment1, comment2, is_wishlist fields for shopping items
 // UPDATED: Date field is now optional for shopping items
 
 header('Content-Type: application/json');
@@ -369,7 +369,8 @@ if ($action === 'add_shopping') {
         'quantity' => (int)($_POST['quantity'] ?? 0),
         'place' => $_POST['place'] ?? '',
         'date_purchase' => $_POST['date_purchase'] ?? '',  // Now optional (empty string if not set)
-        'comment' => $_POST['comment'] ?? '',
+        'comment1' => $_POST['comment1'] ?? '',  // NEW: Item description
+        'comment2' => $_POST['comment2'] ?? '',  // NEW: Additional info
         'priority' => (int)($_POST['priority'] ?? 5),
         'is_wishlist' => isset($_POST['is_wishlist']) && $_POST['is_wishlist'] === 'true',  // NEW: Wishlist flag
         'created_at' => date('Y-m-d H:i:s')
@@ -388,7 +389,8 @@ if ($action === 'update_shopping') {
             if (isset($_POST['quantity']))     $item['quantity']     = (int)$_POST['quantity'];
             if (isset($_POST['place']))        $item['place']        = $_POST['place'];
             if (isset($_POST['date_purchase'])) $item['date_purchase'] = $_POST['date_purchase'];
-            if (isset($_POST['comment']))      $item['comment']      = $_POST['comment'];
+            if (isset($_POST['comment1']))     $item['comment1']     = $_POST['comment1'];
+            if (isset($_POST['comment2']))     $item['comment2']     = $_POST['comment2'];
             if (isset($_POST['priority']))     $item['priority']     = (int)$_POST['priority'];
             if (isset($_POST['is_wishlist']))  $item['is_wishlist']  = $_POST['is_wishlist'] === 'true';  // NEW
             $updated = true;

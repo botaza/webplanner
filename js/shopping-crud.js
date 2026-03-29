@@ -1,5 +1,6 @@
 // js/shopping-crud.js
 // CRUD OPERATIONS FOR SHOPPING LIST
+// UPDATED: Added support for comment1, comment2, and is_wishlist fields
 import { api } from './api.js';
 import { state } from './state.js';
 

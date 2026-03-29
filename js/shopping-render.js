@@ -1,6 +1,7 @@
 // js/shopping-render.js
 // RENDERING LOGIC FOR SHOPPING LIST
 // UPDATED: Added wishlist tag display, fixed expand/collapse, fixed edit button onclick
+// UPDATED: Added comment1 and comment2 display
 import { state } from './state.js';
 import { isGuest } from './lockscreen.js';
 import { getPriorityGroups } from './shopping-crud.js';
@@ -75,6 +76,8 @@ function renderShoppingItem(item, borderColor) {
   const prio = item.priority ?? 5;
   const date = item.date_purchase ? new Date(item.date_purchase).toLocaleDateString('ru-RU') : '—';
   const isWishlist = !!item.is_wishlist;
+  const comment1 = item.comment1 ?? '';
+  const comment2 = item.comment2 ?? '';
   
   return `
     <div class="bg-zinc-900 rounded-2xl p-4 border-l-4 ${borderColor} card">
@@ -90,7 +93,8 @@ function renderShoppingItem(item, borderColor) {
             ${item.name ? `<span class="text-zinc-200 font-medium">${item.name}</span>` : '<span class="text-zinc-500 italic">No name</span>'}
             ${item.place ? `<span class="text-zinc-400"> @ ${item.place}</span>` : ''}
           </div>
-          ${item.comment ? `<div class="text-xs text-zinc-500 italic">"${item.comment}"</div>` : ''}
+          ${comment1 ? `<div class="text-xs text-zinc-500 mb-1">📝 ${comment1}</div>` : ''}
+          ${comment2 ? `<div class="text-xs text-zinc-600 mb-1">ℹ️ ${comment2}</div>` : ''}
           <div class="text-xs text-zinc-600 mt-2">📅 ${date}</div>
         </div>
         <div class="flex flex-col items-end gap-2 shrink-0">

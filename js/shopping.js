@@ -1,7 +1,7 @@
 // js/shopping.js
 // ORCHESTRATOR FOR SHOPPING MODULE
 // UPDATED: Guests CAN create and edit shopping items, but CANNOT delete
-// UPDATED: Supports is_wishlist field and optional date_purchase field
+// UPDATED: Supports is_wishlist field, optional date_purchase, comment1, and comment2 fields
 import { requireAdmin } from './readonly-guard.js';
 import { state } from './state.js';
 import { loadDashboard } from './dashboard.js';

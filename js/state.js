@@ -1,6 +1,7 @@
 // js/state.js
 // GLOBAL APPLICATION STATE
 // Single source of truth for all reactive data in the Planner PWA
+// UPDATED: Added shopping module state fields
 
 export const state = {
   // Navigation
@@ -11,7 +12,7 @@ export const state = {
   expensesData: [],
   incomeData: [],
   compensationsData: [],
-  shoppingData: [],  // NEW: Shopping list items
+  shoppingData: [],  // Shopping list items
   
   // Firebase / Notifications
   messaging: null,

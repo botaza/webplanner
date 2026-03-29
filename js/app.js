@@ -1,8 +1,7 @@
 // js/app.js
 // MAIN APPLICATION BOOTSTRAP
-// UPDATED: Initialize income module at boot
-// UPDATED: Skip FCM token registration for guest role
 // UPDATED: Initialize shopping module at boot
+// UPDATED: Skip FCM token registration for guest role
 import { state } from './state.js';
 import { isUnlocked, showLockScreen, getRole, isGuest } from './lockscreen.js';
 import { api } from './api.js';
@@ -10,7 +9,7 @@ import { switchScreen } from './utils.js';
 import { loadPlanner } from './planner-crud.js';
 import { loadExpenses, initExpenses } from './expenses.js';
 import { initIncome, loadIncome } from './income.js';
-import { initShopping, loadShopping } from './shopping.js';
+import { initShopping, loadShopping } from './shopping.js';  // NEW: Import shopping module
 import { loadDashboard } from './dashboard.js';
 import { enableNotifications, updateNotifStatus } from './fcm-client.js';
 import { loadNotifications } from './notification-history.js';
@@ -41,9 +40,10 @@ async function bootApp() {
   initShopping();  // NEW: Initialize shopping module
   
   // Show a subtle guest-mode banner so the user knows they're in view-only mode
+  // Note: Most guest UI hiding is now handled in index.html inline script _applyGuestUI()
   if (isGuest()) {
     _showGuestBanner();
-    // Hide write buttons declared in index.html
+    // Apply guest UI restrictions (hide add buttons for non-shopping modules, etc.)
     if (typeof window._applyGuestUI === "function") window._applyGuestUI();
   }
   
@@ -66,7 +66,7 @@ function _showGuestBanner() {
     'z-index:500',
     'letter-spacing:0.3px'
   ].join(';');
-  banner.textContent = '👁 View-only mode';
+  banner.textContent = '👁 View-only mode (Shopping: Can Add/Edit)';
   document.body.prepend(banner);
 }
 

@@ -604,16 +604,22 @@ firebase.initializeApp(firebaseConfig);
         <input id="shop-date" type="date" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
       </div>
       
-      <!-- Place -->
+      <!-- Place (OPTIONAL) -->
       <div>
-        <label class="text-xs text-zinc-400 block mb-1">Place</label>
+        <label class="text-xs text-zinc-400 block mb-1">Place <span class="text-zinc-600">(optional)</span></label>
         <input id="shop-place" type="text" placeholder="Store name / location" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
       </div>
       
-      <!-- Comment -->
+      <!-- Comment 1: Item Description (OPTIONAL) -->
       <div>
-        <label class="text-xs text-zinc-400 block mb-1">Comment <span class="text-zinc-600">(optional)</span></label>
-        <textarea id="shop-comment" rows="3" placeholder="Notes, brand, size, etc." class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base resize-none"></textarea>
+        <label class="text-xs text-zinc-400 block mb-1">Comment 1: Item Description <span class="text-zinc-600">(optional)</span></label>
+        <textarea id="shop-comment1" rows="2" placeholder="Brand, size, color, etc." class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base resize-none"></textarea>
+      </div>
+      
+      <!-- Comment 2: Additional Info (OPTIONAL) -->
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Comment 2: Additional Info <span class="text-zinc-600">(optional)</span></label>
+        <textarea id="shop-comment2" rows="2" placeholder="Notes, reminders, alternatives, etc." class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base resize-none"></textarea>
       </div>
       
     </div>

@@ -1,6 +1,6 @@
 /* css/style.css
  * PLANNER PWA - MAIN STYLESHEET
- * UPDATED: Added Shopping Module styles (sliders, priority badges, cards)
+ * UPDATED: Added Shopping Module styles (sliders, priority badges, cards, wishlist tags)
  */
 
 /* ── Base & Reset ─────────────────────────────────────────────────────────── */
@@ -142,6 +142,13 @@ textarea {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+}
+
+/* ── Shopping Modal ────────────────────────────────────────────────────── */
+#modal-shopping > div {
+  max-height: 90vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ── Safe-Area Padding for Bottom Nav ──────────────────────────────────── */
@@ -548,4 +555,11 @@ textarea:focus-visible {
   background: #22c55e22;
   border-color: #22c55e;
   color: #22c55e;
+}
+
+/* Wishlist Badge */
+.wishlist-badge {
+  background: #f59e0b22;
+  color: #fbbf24;
+  border: 1px solid #f59e0b55;
 }
