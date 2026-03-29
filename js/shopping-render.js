@@ -107,6 +107,7 @@ function renderShoppingItem(item, borderColor) {
   `;
 }
 
+// ── EXPAND/COLLAPSE FUNCTIONS ──
 export function toggleShoppingPriority(priority) {
   if (!state.expandedShoppingPriority) state.expandedShoppingPriority = new Set();
   if (state.expandedShoppingPriority.has(priority)) {
@@ -115,22 +116,28 @@ export function toggleShoppingPriority(priority) {
     state.expandedShoppingPriority.add(priority);
   }
   // Re-render immediately
-  if (window.refreshShoppingList) window.refreshShoppingList();
+  if (window.refreshShoppingList) {
+    window.refreshShoppingList();
+  }
 }
 
 export function expandAllPriorities() {
   if (!state.expandedShoppingPriority) state.expandedShoppingPriority = new Set();
   [1,2,3,4,5,6,7,8,9,10].forEach(p => state.expandedShoppingPriority.add(String(p)));
-  if (window.refreshShoppingList) window.refreshShoppingList();
+  if (window.refreshShoppingList) {
+    window.refreshShoppingList();
+  }
 }
 
 export function collapseAllPriorities() {
   if (!state.expandedShoppingPriority) state.expandedShoppingPriority = new Set();
   state.expandedShoppingPriority.clear();
-  if (window.refreshShoppingList) window.refreshShoppingList();
+  if (window.refreshShoppingList) {
+    window.refreshShoppingList();
+  }
 }
 
-// Expose toggle functions to window for HTML onclick handlers
+// ── EXPOSE TO WINDOW FOR HTML onclick HANDLERS ──
 Object.assign(window, {
   toggleShoppingPriority,
   expandAllPriorities,

@@ -93,7 +93,32 @@ export async function handleDeleteShopping(id) {
   }
 }
 
-// Global exposure
+// ── EXPAND/COLLAPSE WRAPPERS ──
+// These ensure the state is updated AND the list re-renders
+export function handleExpandAllPriorities() {
+  if (!state.expandedShoppingPriority) state.expandedShoppingPriority = new Set();
+  [1,2,3,4,5,6,7,8,9,10].forEach(p => state.expandedShoppingPriority.add(String(p)));
+  renderShoppingList(state.shoppingData);
+}
+
+export function handleCollapseAllPriorities() {
+  if (!state.expandedShoppingPriority) state.expandedShoppingPriority = new Set();
+  state.expandedShoppingPriority.clear();
+  renderShoppingList(state.shoppingData);
+}
+
+export function handleTogglePriority(priority) {
+  if (!state.expandedShoppingPriority) state.expandedShoppingPriority = new Set();
+  if (state.expandedShoppingPriority.has(priority)) {
+    state.expandedShoppingPriority.delete(priority);
+  } else {
+    state.expandedShoppingPriority.add(priority);
+  }
+  renderShoppingList(state.shoppingData);
+}
+
+// ── GLOBAL EXPOSURE ──
+// Expose all functions to window for HTML onclick handlers
 Object.assign(window, {
   showAddShoppingItem,
   editShoppingItem,
@@ -101,8 +126,8 @@ Object.assign(window, {
   deleteShoppingItem: handleDeleteShopping,
   loadShopping,
   closeShoppingModal,
-  toggleShoppingPriority,
-  expandAllShoppingPriorities: expandAllPriorities,
-  collapseAllShoppingPriorities: collapseAllPriorities,
+  toggleShoppingPriority: handleTogglePriority,
+  expandAllShoppingPriorities: handleExpandAllPriorities,
+  collapseAllShoppingPriorities: handleCollapseAllPriorities,
   refreshShoppingList: loadShopping
 });
