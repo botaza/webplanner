@@ -1,5 +1,6 @@
 // js/shopping-render.js
 // RENDERING LOGIC FOR SHOPPING LIST
+// UPDATED: Guest UI logic (hide delete button), Expand/Collapse fix, Item Name display
 import { state } from './state.js';
 import { isGuest } from './lockscreen.js';
 import { getPriorityGroups } from './shopping-crud.js';
@@ -31,10 +32,10 @@ export function renderShoppingList(list, containerId = 'shopping-list') {
     3: 'border-zinc-500', 2: 'border-zinc-500', 1: 'border-zinc-500'
   };
 
-  // ✅ FIX: Only initialize Set if it doesn't exist - DO NOT auto-expand
+  // ✅ FIX: Only initialize Set once - do NOT auto-expand on every render
   if (!state.expandedShoppingPriority) {
     state.expandedShoppingPriority = new Set();
-    // Optional: Auto-expand all on FIRST load only
+    // Auto-expand all on FIRST load only
     [1,2,3,4,5,6,7,8,9,10].forEach(p => state.expandedShoppingPriority.add(String(p)));
   }
 
