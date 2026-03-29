@@ -1,19 +1,49 @@
 // js/state.js
+// GLOBAL APPLICATION STATE
+// Single source of truth for all reactive data in the Planner PWA
+
 export const state = {
-    currentScreen: 'screen-dashboard',
-    eventsData: [],
-    expensesData: [],
-    incomeData: [],
-    messaging: null,
-    selectedExpenseTool: null,
-    selectedExpenseCategory: null,
-    activePlannerHashtag: null,
-    notifPage: 1,
-    // Track expanded state for expenses list (Month → Day hierarchy)
-    expandedExpenseMonths: new Set(),
-    expandedExpenseDays: new Set(),
-    // Track expanded state for stats category drilldown accordions
-    expandedStatsCategories: new Set(),
-    // Current user role: 'admin' | 'guest' | null
-    role: null
+  // Navigation
+  currentScreen: 'screen-dashboard',
+  
+  // Data Collections
+  eventsData: [],
+  expensesData: [],
+  incomeData: [],
+  compensationsData: [],
+  shoppingData: [],  // NEW: Shopping list items
+  
+  // Firebase / Notifications
+  messaging: null,
+  
+  // Expense Module State
+  selectedExpenseTool: null,
+  selectedExpenseCategory: null,
+  
+  // Planner Module State
+  activePlannerHashtag: null,
+  
+  // Notification History Pagination
+  notifPage: 1,
+  
+  // Expandable List State - Expenses
+  expandedExpenseMonths: new Set(),
+  expandedExpenseDays: new Set(),
+  
+  // Expandable List State - Stats Category Drilldown
+  expandedStatsCategories: new Set(),
+  
+  // Expandable List State - Shopping Priority Groups
+  expandedShoppingPriority: new Set(),
+  
+  // Shopping Module State
+  shoppingModalMode: 'add',  // 'add' or 'edit'
+  editingShoppingId: null,
+  
+  // Income Module State
+  selectedIncomeTool: null,
+  selectedCompensationTool: null,
+  
+  // User Role (set by lockscreen.js)
+  role: null  // 'admin' | 'guest' | null
 };

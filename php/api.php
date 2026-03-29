@@ -4,6 +4,7 @@
 // UPDATED: Added original_hashtag field to add_event and update_event
 // UPDATED: Added compensation CRUD; income now stores tool field
 // UPDATED: Added update_expense action
+// UPDATED: Added Shopping List CRUD (get_shopping, add_shopping, update_shopping, delete_shopping)
 
 header('Content-Type: application/json');
 $dataDir = __DIR__ . '/../data';
@@ -16,7 +17,8 @@ $files = [
     'events'        => $dataDir . '/events.json',
     'expenses'      => $dataDir . '/expenses.json',
     'income'        => $dataDir . '/income.json',
-    'compensations' => $dataDir . '/compensations.json'
+    'compensations' => $dataDir . '/compensations.json',
+    'shopping'      => $dataDir . '/shopping.json'  // NEW
 ];
 
 function read($f) {
@@ -45,6 +47,7 @@ if ($action === 'get_events') {
     echo json_encode($data);
     exit;
 }
+
 if ($action === 'add_event') {
     $data = read($files['events']);
     $data[] = [
@@ -63,6 +66,7 @@ if ($action === 'add_event') {
     echo json_encode(['success' => true]);
     exit;
 }
+
 if ($action === 'update_event') {
     $data = read($files['events']);
     foreach ($data as &$e) {
@@ -85,6 +89,7 @@ if ($action === 'update_event') {
     echo json_encode(['success' => true]);
     exit;
 }
+
 if ($action === 'delete_event') {
     $data = read($files['events']);
     $data = array_filter($data, fn($e) => $e['id'] != $_POST['id']);
@@ -92,6 +97,7 @@ if ($action === 'delete_event') {
     echo json_encode(['success' => true]);
     exit;
 }
+
 if ($action === 'complete_event') {
     $data = read($files['events']);
     $id = $_POST['id'] ?? '';
@@ -115,6 +121,7 @@ if ($action === 'get_expenses') {
     echo json_encode(read($files['expenses']));
     exit;
 }
+
 if ($action === 'add_expense') {
     $data = read($files['expenses']);
     $data[] = [
@@ -129,6 +136,7 @@ if ($action === 'add_expense') {
     echo json_encode(['success' => true]);
     exit;
 }
+
 if ($action === 'update_expense') {
     $data = read($files['expenses']);
     $updated = false;
@@ -151,6 +159,7 @@ if ($action === 'update_expense') {
     echo json_encode(['success' => true]);
     exit;
 }
+
 if ($action === 'delete_expense') {
     $data = read($files['expenses']);
     $data = array_filter($data, fn($e) => $e['id'] != $_POST['id']);
@@ -165,17 +174,13 @@ if ($action === 'get_expenses_aggregated') {
     $start = $_POST['start_date'] ?? '';
     $end = $_POST['end_date'] ?? '';
     $group = $_POST['group_by'] ?? 'category';
-    
     $result = [];
     $total = 0;
-    
     foreach ($data as $exp) {
         if ($start && $exp['date'] < $start) continue;
         if ($end && $exp['date'] > $end) continue;
-        
         $key = $exp[$group] ?? 'unknown';
         $amt = (float)($exp['amount'] ?? 0);
-        
         if (!isset($result[$key])) {
             $result[$key] = ['label' => $key, 'amount' => 0, 'count' => 0];
         }
@@ -183,7 +188,6 @@ if ($action === 'get_expenses_aggregated') {
         $result[$key]['count'] += 1;
         $total += $amt;
     }
-    
     echo json_encode(['groups' => $result, 'total' => $total]);
     exit;
 }
@@ -193,14 +197,12 @@ if ($action === 'get_expenses_filtered') {
     $start = $_POST['start_date'] ?? '';
     $end = $_POST['end_date'] ?? '';
     $min = (float)($_POST['min_amount'] ?? 0);
-    
     $filtered = array_filter($data, function($e) use ($start, $end, $min) {
         if ($start && $e['date'] < $start) return false;
         if ($end && $e['date'] > $end) return false;
         if ($min && (float)($e['amount'] ?? 0) < $min) return false;
         return true;
     });
-    
     echo json_encode(array_values($filtered));
     exit;
 }
@@ -210,7 +212,6 @@ if ($action === 'get_expenses_metadata') {
     $dates = array_column($data, 'date');
     sort($dates);
     $size = file_exists($files['expenses']) ? filesize($files['expenses']) : 0;
-    
     echo json_encode([
         'record_count' => count($data),
         'min_date' => $dates[0] ?? null,
@@ -226,11 +227,9 @@ if ($action === 'archive_expenses_old') {
         echo json_encode(['error' => 'Missing date']);
         exit;
     }
-    
     $data = read($files['expenses']);
     $keep = [];
     $archive = [];
-    
     foreach ($data as $e) {
         if ($e['date'] < $before) {
             $archive[] = $e;
@@ -238,13 +237,10 @@ if ($action === 'archive_expenses_old') {
             $keep[] = $e;
         }
     }
-    
     write($files['expenses'], $keep);
-    
     $archiveFile = $dataDir . '/expenses-archive.json';
     $existingArchive = read($archiveFile);
     write($archiveFile, array_merge($existingArchive, $archive));
-    
     echo json_encode(['success' => true, 'archived_count' => count($archive)]);
     exit;
 }
@@ -254,6 +250,7 @@ if ($action === 'get_income') {
     echo json_encode(read($files['income']));
     exit;
 }
+
 if ($action === 'add_income') {
     $data = read($files['income']);
     $data[] = [
@@ -267,6 +264,7 @@ if ($action === 'add_income') {
     echo json_encode(['success' => true]);
     exit;
 }
+
 if ($action === 'delete_income') {
     $data = read($files['income']);
     $data = array_filter($data, fn($e) => $e['id'] != $_POST['id']);
@@ -280,18 +278,14 @@ if ($action === 'get_income_aggregated') {
     $data = read($files['income']);
     $start = $_POST['start_date'] ?? '';
     $end   = $_POST['end_date'] ?? '';
-
     $result = [];
     $total  = 0;
-
     foreach ($data as $inc) {
         if ($start && $inc['date'] < $start) continue;
         if ($end   && $inc['date'] > $end)   continue;
-
         $key = $inc['tool'] ?? 'unknown';
         if (!$key) $key = 'unknown';
         $amt = (float)($inc['amount'] ?? 0);
-
         if (!isset($result[$key])) {
             $result[$key] = ['label' => $key, 'amount' => 0, 'count' => 0];
         }
@@ -299,7 +293,6 @@ if ($action === 'get_income_aggregated') {
         $result[$key]['count']  += 1;
         $total += $amt;
     }
-
     echo json_encode(['groups' => $result, 'total' => $total]);
     exit;
 }
@@ -309,6 +302,7 @@ if ($action === 'get_compensations') {
     echo json_encode(read($files['compensations']));
     exit;
 }
+
 if ($action === 'add_compensation') {
     $data = read($files['compensations']);
     $data[] = [
@@ -322,6 +316,7 @@ if ($action === 'add_compensation') {
     echo json_encode(['success' => true]);
     exit;
 }
+
 if ($action === 'delete_compensation') {
     $data = read($files['compensations']);
     $data = array_filter($data, fn($e) => $e['id'] != $_POST['id']);
@@ -335,18 +330,14 @@ if ($action === 'get_compensations_aggregated') {
     $data  = read($files['compensations']);
     $start = $_POST['start_date'] ?? '';
     $end   = $_POST['end_date'] ?? '';
-
     $result = [];
     $total  = 0;
-
     foreach ($data as $comp) {
         if ($start && $comp['date'] < $start) continue;
         if ($end   && $comp['date'] > $end)   continue;
-
         $key = $comp['tool'] ?? 'unknown';
         if (!$key) $key = 'unknown';
         $amt = (float)($comp['amount'] ?? 0);
-
         if (!isset($result[$key])) {
             $result[$key] = ['label' => $key, 'amount' => 0, 'count' => 0];
         }
@@ -354,8 +345,75 @@ if ($action === 'get_compensations_aggregated') {
         $result[$key]['count']  += 1;
         $total += $amt;
     }
-
     echo json_encode(['groups' => $result, 'total' => $total]);
+    exit;
+}
+
+// ── Shopping List ──
+if ($action === 'get_shopping') {
+    $data = read($files['shopping']);
+    // Sort by priority descending (highest first), then by date_purchase ascending
+    usort($data, function($a, $b) {
+        $prioA = (int)($a['priority'] ?? 0);
+        $prioB = (int)($b['priority'] ?? 0);
+        if ($prioA !== $prioB) return $prioB - $prioA;
+        return strcmp($a['date_purchase'] ?? '', $b['date_purchase'] ?? '');
+    });
+    echo json_encode($data);
+    exit;
+}
+
+if ($action === 'add_shopping') {
+    $data = read($files['shopping']);
+    $data[] = [
+        'id' => time() . rand(10000, 99999),
+        'quantity' => (int)($_POST['quantity'] ?? 0),
+        'place' => $_POST['place'] ?? '',
+        'date_purchase' => $_POST['date_purchase'] ?? '',
+        'comment' => $_POST['comment'] ?? '',
+        'priority' => (int)($_POST['priority'] ?? 5),
+        'created_at' => date('Y-m-d H:i:s')
+    ];
+    write($files['shopping'], $data);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+if ($action === 'update_shopping') {
+    $data = read($files['shopping']);
+    $updated = false;
+    foreach ($data as &$item) {
+        if ($item['id'] == $_POST['id']) {
+            if (isset($_POST['quantity']))   $item['quantity']   = (int)$_POST['quantity'];
+            if (isset($_POST['place']))      $item['place']      = $_POST['place'];
+            if (isset($_POST['date_purchase'])) $item['date_purchase'] = $_POST['date_purchase'];
+            if (isset($_POST['comment']))    $item['comment']    = $_POST['comment'];
+            if (isset($_POST['priority']))   $item['priority']   = (int)$_POST['priority'];
+            $updated = true;
+            break;
+        }
+    }
+    if (!$updated) {
+        echo json_encode(['error' => 'Shopping item not found']);
+        exit;
+    }
+    // Re-sort after update
+    usort($data, function($a, $b) {
+        $prioA = (int)($a['priority'] ?? 0);
+        $prioB = (int)($b['priority'] ?? 0);
+        if ($prioA !== $prioB) return $prioB - $prioA;
+        return strcmp($a['date_purchase'] ?? '', $b['date_purchase'] ?? '');
+    });
+    write($files['shopping'], $data);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+if ($action === 'delete_shopping') {
+    $data = read($files['shopping']);
+    $data = array_filter($data, fn($item) => $item['id'] != $_POST['id']);
+    write($files['shopping'], array_values($data));
+    echo json_encode(['success' => true]);
     exit;
 }
 
@@ -370,6 +428,7 @@ if ($action === 'snapshot') {
     echo json_encode(['success' => true]);
     exit;
 }
+
 if ($action === 'clear_all') {
     foreach ($files as $f) if (file_exists($f)) unlink($f);
     echo json_encode(['success' => true]);
@@ -389,6 +448,7 @@ if ($action === 'get_notifications') {
     echo json_encode(['items' => $slice, 'total' => count($all), 'page' => $page, 'pages' => ceil(count($all) / $limit)]);
     exit;
 }
+
 if ($action === 'log_notification') {
     $entry = [
         'id' => time() . rand(1000, 9999),
@@ -408,6 +468,7 @@ if ($action === 'log_notification') {
     echo json_encode(['success' => true]);
     exit;
 }
+
 if ($action === 'clear_notifications') {
     if (file_exists($notifLog)) unlink($notifLog);
     echo json_encode(['success' => true]);
