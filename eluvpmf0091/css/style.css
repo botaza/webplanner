@@ -1,0 +1,565 @@
+/* css/style.css
+ * PLANNER PWA - MAIN STYLESHEET
+ * UPDATED: Added Shopping Module styles (sliders, priority badges, cards, wishlist tags)
+ */
+
+/* ── Base & Reset ─────────────────────────────────────────────────────────── */
+body {
+  -webkit-tap-highlight-color: transparent;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.screen {
+  display: none;
+}
+
+.screen.active {
+  display: block;
+}
+
+input[type="datetime-local"],
+input[type="date"] {
+  color-scheme: dark;
+}
+
+/* ── Chips / Buttons ─────────────────────────────────────────────────────── */
+.hashtag-chip,
+.tool-btn,
+.category-btn {
+  background: #27272a;
+  border: 1px solid #3f3f46;
+  color: #d4d4d4;
+  padding: 10px 12px;
+  border-radius: 9999px;
+  font-size: 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hashtag-chip:hover,
+.tool-btn:hover,
+.category-btn:hover {
+  background: #3a3a40;
+}
+
+.hashtag-chip.active,
+.tool-btn.active,
+.category-btn.active {
+  background: #22c55e22;
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+.hashtag-row,
+#exp-tool-buttons,
+#exp-category-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+#exp-category-buttons .category-btn {
+  font-size: 24px;
+  padding: 12px;
+  aspect-ratio: 1 / 1;
+}
+
+/* ── Prevent Input Zoom on iOS ───────────────────────────────────────────── */
+input[type="date"],
+input[type="datetime-local"],
+input[type="number"],
+input[type="text"],
+select,
+textarea {
+  font-size: 16px !important;
+}
+
+/* ── Modal Base: Sits at Bottom, Slides Up ──────────────────────────────── */
+.modal-sheet {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+/* ── Modal Inner Panel ──────────────────────────────────────────────────── */
+.modal-sheet > div {
+  width: 100%;
+  max-width: 40rem;
+  background: #18181b;
+  border-radius: 1.5rem 1.5rem 0 0;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Scrollable Body Inside the Panel ──────────────────────────────────── */
+.modal-sheet .modal-body {
+  overflow-y: auto;
+  flex: 1;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+/* ── Expense Modal Specifically ────────────────────────────────────────── */
+#modal-expense > div {
+  max-height: 90vh;
+}
+
+#modal-expense .overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* ── Event Modal ───────────────────────────────────────────────────────── */
+#modal-event > div {
+  max-height: 90vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* ── Keep Sticky Action Buttons Always Visible at Bottom ───────────────── */
+#modal-event .flex.gap-3.mt-8,
+#modal-income .flex.gap-3.mt-8 {
+  position: sticky;
+  bottom: 0;
+  background: #18181b;
+  padding-top: 12px;
+  margin-top: 12px;
+  padding-bottom: env(safe-area-inset-bottom, 12px);
+}
+
+/* ── Income Modal ──────────────────────────────────────────────────────── */
+#modal-income > div {
+  max-height: 90vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* ── Shopping Modal ────────────────────────────────────────────────────── */
+#modal-shopping > div {
+  max-height: 90vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Safe-Area Padding for Bottom Nav ──────────────────────────────────── */
+nav.fixed.bottom-0 {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Stats View Buttons ────────────────────────────────────────────────── */
+.stats-view-btn {
+  background: #27272a;
+  border: 1px solid #3f3f46;
+  color: #d4d4d4;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  font-size: 13px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.stats-view-btn:hover {
+  background: #3a3a40;
+}
+
+.stats-view-btn.active {
+  background: #22c55e22;
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+/* ── Expandable Expenses List ──────────────────────────────────────────── */
+#expenses-list > div > div[class*="bg-zinc-900 rounded-3xl p-4 mb-3"] {
+  transition: background-color 0.2s ease;
+}
+
+#expenses-list > div > div[class*="bg-zinc-900 rounded-3xl p-4 mb-3"]:hover {
+  background-color: #27272a;
+}
+
+#expenses-list > div > div[id^="month-content-"] > div > div[class*="bg-zinc-900/50 rounded-2xl p-3"] {
+  transition: background-color 0.2s ease;
+}
+
+#expenses-list > div > div[id^="month-content-"] > div > div[class*="bg-zinc-900/50 rounded-3xl p-3"]:hover {
+  background-color: #27272a50;
+}
+
+#expenses-list [id^="month-content-"],
+#expenses-list [id^="day-content-"] {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+#expenses-list .hidden {
+  display: none !important;
+}
+
+#expenses-list .card,
+#expenses-list [class*="bg-zinc-900/30 rounded-xl"] {
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+#expenses-list .card:active,
+#expenses-list [class*="bg-zinc-900/30 rounded-xl"]:active {
+  transform: scale(0.98);
+}
+
+#expenses-list [onclick*="deleteExpense"] {
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+#expenses-list [onclick*="deleteExpense"]:hover {
+  transform: scale(1.1);
+}
+
+/* ── Housekeeping Card ─────────────────────────────────────────────────── */
+#housekeeping-container > div {
+  transition: background-color 0.2s ease;
+}
+
+#housekeeping-container > div:hover {
+  background-color: #27272a;
+}
+
+/* ── Loading Spinner ───────────────────────────────────────────────────── */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ── Scrollbar Styling (Webkit) ───────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #18181b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
+
+/* ── Focus States for Accessibility ────────────────────────────────────── */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #22c55e;
+  outline-offset: 2px;
+}
+
+/* ── Print Styles ──────────────────────────────────────────────────────── */
+@media print {
+  nav,
+  header,
+  button,
+  .modal-sheet {
+    display: none !important;
+  }
+  .screen {
+    display: block !important;
+  }
+  .screen.active {
+    display: block !important;
+  }
+}
+
+/* ── Planner Card Action Icons ────────────────────────────────────────── */
+#planner-list .w-8.h-8 {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  transition: all 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#planner-list .w-8.h-8:active {
+  background-color: rgba(34, 197, 94, 0.1);
+  transform: scale(0.95);
+}
+
+@media (hover: hover) {
+  #planner-list .w-8.h-8:hover.text-emerald-400 {
+    color: #22c55e;
+    background-color: rgba(34, 197, 94, 0.1);
+  }
+  #planner-list .w-8.h-8:hover.text-white {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  #planner-list .w-8.h-8:hover.text-red-400 {
+    color: #ef4444;
+    background-color: rgba(239, 68, 68, 0.1);
+  }
+}
+
+#planner-list .flex.gap-1.items-center {
+  gap: 4px;
+}
+
+#planner-list .mr-2 {
+  margin-right: 8px;
+}
+
+@media (max-width: 360px) {
+  #planner-list .w-8.h-8 {
+    width: 28px;
+    height: 28px;
+    font-size: 1rem;
+  }
+  #planner-list .mr-2 {
+    margin-right: 4px;
+  }
+}
+
+@media (max-width: 768px) {
+  #planner-list .w-8.h-8 {
+    min-width: 32px;
+    min-height: 32px;
+  }
+}
+
+/* ── Event Modal: Date Shortcut Chips ─────────────────────────────────── */
+.date-shortcut-chip {
+  background: #27272a;
+  border: 1px solid #3f3f46;
+  color: #a1a1aa;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.date-shortcut-chip:hover {
+  background: #3a3a40;
+  color: #d4d4d4;
+}
+
+.date-shortcut-chip.active {
+  background: #22c55e22;
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+/* ── Event Modal: Day-of-Week Chip ────────────────────────────────────── */
+.event-dow-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #22c55e18;
+  border: 1px solid #22c55e55;
+  color: #4ade80;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  user-select: none;
+}
+
+.event-dow-date {
+  font-weight: 400;
+  color: #86efac;
+  font-size: 12px;
+}
+
+/* ── #completed Chip — Distinct "Archive" Appearance ──────────────────── */
+#planner-hashtag-filter .hashtag-chip[data-tag="#completed"] {
+  border-color: #78716c;
+  color: #a8a29e;
+}
+
+#planner-hashtag-filter .hashtag-chip[data-tag="#completed"]:hover {
+  background: #292524;
+  border-color: #a8a29e;
+  color: #d6d3d1;
+}
+
+#planner-hashtag-filter .hashtag-chip[data-tag="#completed"].active {
+  background: #78716c22;
+  border-color: #d97706;
+  color: #fbbf24;
+}
+
+/* ── Shopping Module ──────────────────────────────────────────────────── */
+
+/* Range Slider Styling */
+.shopping-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: #3f3f46;
+  outline: none;
+  margin: 12px 0;
+}
+
+.shopping-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #22c55e;
+  cursor: pointer;
+  border: 3px solid #18181b;
+  transition: transform 0.1s;
+}
+
+.shopping-slider::-webkit-slider-thumb:active {
+  transform: scale(1.1);
+}
+
+.shopping-slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #22c55e;
+  cursor: pointer;
+  border: 3px solid #18181b;
+}
+
+.shopping-slider-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #22c55e;
+  min-width: 24px;
+  text-align: center;
+}
+
+/* Priority Badge Styling */
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.priority-high {
+  background: #ef444422;
+  color: #f87171;
+  border: 1px solid #ef444455;
+}
+
+.priority-med {
+  background: #f59e0b22;
+  color: #fbbf24;
+  border: 1px solid #f59e0b55;
+}
+
+.priority-low {
+  background: #22c55e22;
+  color: #4ade80;
+  border: 1px solid #22c55e55;
+}
+
+/* Shopping Item Card */
+.shopping-item {
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.shopping-item:active {
+  transform: scale(0.98);
+}
+
+/* Priority Group Headers */
+.shopping-priority-header {
+  transition: background-color 0.2s ease;
+}
+
+.shopping-priority-header:hover {
+  background-color: #27272a;
+}
+
+/* Shopping List Container Padding for FAB */
+#shopping-list {
+  padding-bottom: 100px;
+}
+
+/* Touch-friendly button targets */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* Guest mode banner */
+#guest-banner {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Income Stats View Buttons */
+.income-stats-view-btn {
+  background: #27272a;
+  border: 1px solid #3f3f46;
+  color: #d4d4d4;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  font-size: 13px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.income-stats-view-btn:hover {
+  background: #3a3a40;
+}
+
+.income-stats-view-btn.active {
+  background: #22c55e22;
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+/* Wishlist Badge */
+.wishlist-badge {
+  background: #f59e0b22;
+  color: #fbbf24;
+  border: 1px solid #f59e0b55;
+}

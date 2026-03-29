@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Planner</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/style.css">
+<!-- Google Fonts -->
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+body { font-family: 'Inter', system-ui, sans-serif; }
+.nav-item { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+.nav-item.active { color: #22c55e; border-top: 3px solid #22c55e; }
+.card { transition: transform 0.2s; }
+.card:active { transform: scale(0.98); }
+input, select, textarea { font-size: 16px; }
+.stats-view-btn {
+  background: #27272a;
+  border: 1px solid #3f3f46;
+  color: #d4d4d4;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  font-size: 13px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.stats-view-btn:hover { background: #3a3a40; }
+.stats-view-btn.active {
+  background: #22c55e22;
+  border-color: #22c55e;
+  color: #22c55e;
+}
+</style>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"></script>
+<!-- Firebase config -->
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAMJaYSMXKgxpkaYfkyLXfR-u6ZuXpKef4",
+  authDomain: "plannernotifications-bd4b1.firebaseapp.com",
+  projectId: "plannernotifications-bd4b1",
+  storageBucket: "plannernotifications-bd4b1.firebasestorage.app",
+  messagingSenderId: "531159501999",
+  appId: "1:531159501999:web:2fcf2be70a3fb13f09185a",
+  measurementId: "G-21YWJ81ZRG"
+};
+firebase.initializeApp(firebaseConfig);
+</script>
+</head>
+<body class="bg-zinc-950 text-zinc-200 min-h-screen pb-20">
+<!-- HEADER -->
+<header class="bg-zinc-900 border-b border-zinc-800 px-4 py-3 flex items-center justify-between fixed top-0 left-0 right-0 z-50">
+  <div class="flex items-center gap-3">
+    <div class="w-8 h-8 bg-emerald-500 rounded-xl flex items-center justify-center text-white font-bold text-xl">P</div>
+    <h1 class="text-2xl font-semibold tracking-tight">Planner</h1>
+  </div>
+  <button onclick="takeSnapshot()"
+    class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium flex items-center gap-2">
+    <span class="text-emerald-400">📸</span>
+    <span>Snapshot</span>
+  </button>
+</header>
+
+<main class="pt-16 px-4 max-w-xl mx-auto">
+
+<!-- DASHBOARD -->
+<div id="screen-dashboard" class="screen">
+  <div class="flex justify-between items-center mb-4">
+    <div class="text-xs text-zinc-500 uppercase tracking-wide">This month</div>
+    <button onclick="toggleDashNumbers()"
+      id="dash-visibility-btn"
+      class="text-zinc-500 hover:text-zinc-300 text-xl transition px-2 py-1"
+      title="Toggle numbers">👁</button>
+  </div>
+  <div class="grid grid-cols-2 gap-4 mb-8">
+    <div onclick="switchScreen('screen-expenses')"
+      class="card bg-zinc-900 rounded-3xl p-5 cursor-pointer">
+      <div class="text-emerald-400 text-sm font-medium">EXPENSES</div>
+      <div id="dash-exp-total" class="text-3xl font-semibold mt-2 leading-tight">0</div>
+      <div id="dash-exp-adjusted" class="hidden text-sm font-medium text-zinc-400 mt-0.5 leading-tight"></div>
+      <div id="dash-exp-adj-label" class="hidden text-xs text-zinc-600 mt-0.5"></div>
+      <div class="text-xs text-zinc-500 mt-1">this month</div>
+    </div>
+    <div onclick="switchScreen('screen-income')"
+      class="card bg-zinc-900 rounded-3xl p-5 cursor-pointer">
+      <div class="text-emerald-400 text-sm font-medium">INCOME</div>
+      <div id="dash-inc-total" class="text-3xl font-semibold mt-2 leading-tight">0</div>
+      <div id="dash-adj-label" class="text-xs text-zinc-500 mt-1">this month</div>
+    </div>
+  </div>
+  <div class="mb-6">
+    <div class="flex justify-between items-center mb-3">
+      <div class="font-medium text-lg">Upcoming</div>
+      <button onclick="switchScreen('screen-planner')"
+        class="text-emerald-400 text-sm font-medium">All →</button>
+    </div>
+    <div id="upcoming-list" class="space-y-3"></div>
+  </div>
+  <div class="text-xs text-zinc-500 text-center mt-12">Tap bottom bar to navigate</div>
+</div>
+
+<!-- PLANNER -->
+<div id="screen-planner" class="screen hidden">
+  <div class="flex justify-between items-center mb-4">
+    <input id="planner-filter"
+      onkeyup="filterPlanner()"
+      placeholder="Filter hashtag or text..."
+      class="bg-zinc-900 border border-zinc-700 focus:border-emerald-500 rounded-3xl px-5 py-3 w-full text-base">
+  </div>
+  <div class="hashtag-row mb-6" id="planner-hashtag-filter"></div>
+  <div id="planner-list" class="space-y-3"></div>
+  <!-- Centered Floating Add Event Button -->
+  <button onclick="showAddEventModal()"
+    class="fixed bottom-24 left-1/2 -translate-x-1/2 w-16 h-16 bg-emerald-500 hover:bg-emerald-600 rounded-3xl shadow-2xl flex items-center justify-center text-4xl leading-none z-40 active:scale-95 transition-transform">
+    +
+  </button>
+</div>
+
+<!-- EXPENSES -->
+<div id="screen-expenses" class="screen hidden">
+  <div class="flex gap-3 mb-4">
+    <button onclick="showAddExpenseModal()"
+      class="flex-1 bg-emerald-500 hover:bg-emerald-600 py-4 rounded-3xl text-lg font-medium">+ Expense</button>
+    <button onclick="toggleExpenseStatsView()"
+      class="flex-1 bg-zinc-800 hover:bg-zinc-700 py-4 rounded-3xl text-lg font-medium">📊 Stats</button>
+  </div>
+  <div id="expenses-list" class="space-y-3"></div>
+  <!-- Stats Container (Hidden by Default) -->
+  <div id="expenses-stats-wrapper" class="hidden mt-6">
+    <div id="expenses-stats-controls" class="mb-4 space-y-3">
+      <!-- View Type Selector -->
+      <div class="flex gap-2 overflow-x-auto pb-2">
+        <button class="stats-view-btn active" data-view="pie-categories" onclick="window.setStatsView('pie-categories')">
+          🥧 Categories
+        </button>
+        <button class="stats-view-btn" data-view="pie-tools" onclick="window.setStatsView('pie-tools')">
+          🥧 Tools
+        </button>
+        <button class="stats-view-btn" data-view="list-monthly" onclick="window.setStatsView('list-monthly')">
+          📋 Monthly
+        </button>
+        <button class="stats-view-btn" data-view="filtered-limit" onclick="window.setStatsView('filtered-limit')">
+          🔍 Above Limit
+        </button>
+      </div>
+      <!-- Date Range Selector -->
+      <div class="bg-zinc-900 rounded-2xl p-3 space-y-2">
+        <div class="text-xs text-zinc-500 font-medium">Date Range</div>
+        <div class="flex gap-2">
+          <div class="flex-1">
+            <label class="text-[10px] text-zinc-500 block mb-1">From</label>
+            <input type="date" id="stats-date-start"
+              class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm"
+              onchange="window.setStatsDateRange()">
+          </div>
+          <div class="flex-1">
+            <label class="text-[10px] text-zinc-500 block mb-1">To</label>
+            <input type="date" id="stats-date-end"
+              class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm"
+              onchange="window.setStatsDateRange()">
+          </div>
+        </div>
+        <button onclick="window.resetStatsDateRange()"
+          class="w-full bg-zinc-800 hover:bg-zinc-700 py-2 rounded-xl text-xs text-zinc-400 flex items-center justify-center gap-2">
+          <span>🔄</span>
+          <span>Reset to Current Month</span>
+        </button>
+      </div>
+      <!-- Filter Controls (For Limit View - Injected by JS) -->
+      <div id="expenses-filter-controls"></div>
+    </div>
+    <div id="expenses-stats-total"></div>
+    <div id="expenses-stats-container" class="bg-zinc-900 rounded-3xl p-5 min-h-[300px]"></div>
+    <button onclick="toggleExpenseStatsView()"
+      class="w-full mt-4 py-4 bg-zinc-800 hover:bg-zinc-700 rounded-3xl text-lg font-medium">
+      Close Stats
+    </button>
+  </div>
+</div>
+
+<!-- INCOME -->
+<div id="screen-income" class="screen hidden">
+  <!-- Top action bar -->
+  <div class="flex gap-2 mb-4">
+    <button onclick="showAddIncomeModal()"
+      class="flex-1 bg-emerald-500 hover:bg-emerald-600 py-4 rounded-3xl text-base font-medium">
+      + Income
+    </button>
+    <button onclick="showAddCompensationModal()"
+      class="flex-1 bg-amber-600 hover:bg-amber-500 py-4 rounded-3xl text-base font-medium">
+      + Compensation
+    </button>
+    <button id="income-stats-toggle-btn"
+      onclick="toggleIncomeStats()"
+      class="stats-view-btn px-5 py-4 rounded-3xl text-base font-medium whitespace-nowrap">
+      Stats
+    </button>
+  </div>
+  <!-- Stats panel (hidden by default, toggled by JS) -->
+  <div id="income-stats-panel" class="hidden mb-4">
+    <div class="bg-zinc-900 rounded-3xl p-4">
+      <!-- Stats tab buttons -->
+      <div class="flex gap-2 mb-4">
+        <button class="income-stats-view-btn stats-view-btn active"
+          data-view="tools"
+          onclick="setIncomeStatsView('tools')">
+          Tools
+        </button>
+        <button class="income-stats-view-btn stats-view-btn"
+          data-view="monthly"
+          onclick="setIncomeStatsView('monthly')">
+          Monthly
+        </button>
+      </div>
+      <!-- Stats content rendered by income-stats.js -->
+      <div id="income-stats-container"></div>
+    </div>
+  </div>
+  <!-- Combined income + compensation list -->
+  <div id="income-list"></div>
+</div>
+
+<!-- SHOPPING -->
+<div id="screen-shopping" class="screen hidden">
+  <div class="flex justify-between items-center mb-4">
+    <div class="font-medium text-lg">Shopping List</div>
+    <div class="flex gap-2">
+      <button onclick="window.expandAllShoppingPriorities()" class="text-xs text-zinc-400 hover:text-emerald-400">Expand all</button>
+      <button onclick="window.collapseAllShoppingPriorities()" class="text-xs text-zinc-400 hover:text-emerald-400">Collapse all</button>
+    </div>
+  </div>
+  
+  <!-- Search Bar -->
+  <div class="mb-4">
+    <div class="relative">
+      <input 
+        type="text" 
+        id="shop-search" 
+        placeholder="🔍 Search items, places, notes..." 
+        class="w-full bg-zinc-900 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-3 pl-12 text-base"
+        oninput="window.filterShoppingList()">
+      <span class="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">🔍</span>
+      <button 
+        onclick="document.getElementById('shop-search').value=''; window.filterShoppingList()" 
+        class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 text-sm px-2 py-1">
+        Clear
+      </button>
+    </div>
+    <div id="shop-search-count" class="text-xs text-zinc-500 mt-2 hidden"></div>
+  </div>
+  
+  <div id="shopping-list" class="space-y-2"></div>
+  
+  <!-- Floating Add Button -->
+  <button onclick="showAddShoppingItem()"
+    class="fixed bottom-24 left-1/2 -translate-x-1/2 w-16 h-16 bg-emerald-500 hover:bg-emerald-600 rounded-3xl shadow-2xl flex items-center justify-center text-4xl leading-none z-40 active:scale-95 transition-transform">
+    +
+  </button>
+</div>
+
+<!-- MORE -->
+<div id="screen-more" class="screen hidden">
+  <div class="space-y-4">
+    <div class="bg-zinc-900 rounded-3xl p-5">
+      <div class="font-medium mb-3">Notifications</div>
+      <div id="notif-status" class="text-sm text-zinc-400">Checking...</div>
+      <button onclick="retryNotifications()"
+        id="notif-retry-btn"
+        class="hidden mt-3 w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-2xl text-sm font-medium">
+        Retry
+      </button>
+    </div>
+    <div id="housekeeping-container"></div>
+    <div onclick="takeSnapshot()" class="bg-zinc-900 rounded-3xl p-5 flex gap-4 items-center cursor-pointer">
+      <div class="text-3xl">📸</div>
+      <div>
+        <div class="font-medium">Create snapshot</div>
+        <div class="text-xs text-zinc-500">Backup all data</div>
+      </div>
+    </div>
+    <div class="bg-zinc-900 rounded-3xl p-5">
+      <div class="font-medium mb-3">Quick actions</div>
+      <div class="grid grid-cols-2 gap-3 text-sm">
+        <button onclick="clearAllData()"
+          class="bg-red-950 hover:bg-red-900 py-6 rounded-2xl">Clear all data</button>
+        <button onclick="exportData()"
+          class="bg-zinc-800 hover:bg-zinc-700 py-6 rounded-2xl">Export JSON</button>
+      </div>
+    </div>
+    <div class="text-[10px] text-zinc-500 text-center mt-10">
+      Hosted in second-layer folder<br>
+      Future: Android push via PWA
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICATIONS -->
+<div id="screen-notifications" class="screen hidden">
+  <div class="flex justify-between items-center mb-4">
+    <div class="font-medium text-lg">Notification History</div>
+    <button onclick="clearNotifications()"
+      class="text-xs text-red-400 font-medium">Clear all</button>
+  </div>
+  <div id="notifications-list" class="space-y-2"></div>
+  <div id="notifications-pagination" class="flex justify-center gap-3 mt-4"></div>
+</div>
+
+</main>
+
+<!-- BOTTOM NAV -->
+<nav class="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 z-50">
+  <div class="max-w-xl mx-auto grid grid-cols-7 text-[9px] font-medium">
+    <button onclick="switchScreen('screen-dashboard')"
+      class="nav-item flex flex-col items-center py-3">
+      <span class="text-2xl mb-0.5">🏠</span>
+      <span>Home</span>
+    </button>
+    <button onclick="switchScreen('screen-planner')"
+      class="nav-item flex flex-col items-center py-3">
+      <span class="text-2xl mb-0.5">📅</span>
+      <span>Planner</span>
+    </button>
+    <button onclick="switchScreen('screen-expenses')"
+      class="nav-item flex flex-col items-center py-3">
+      <span class="text-2xl mb-0.5">💸</span>
+      <span>Expense</span>
+    </button>
+    <button onclick="switchScreen('screen-income')"
+      class="nav-item flex flex-col items-center py-3">
+      <span class="text-2xl mb-0.5">💰</span>
+      <span>Income</span>
+    </button>
+    <button onclick="switchScreen('screen-shopping')"
+      class="nav-item flex flex-col items-center py-3">
+      <span class="text-2xl mb-0.5">🛒</span>
+      <span>Shop</span>
+    </button>
+    <button onclick="switchScreen('screen-notifications')"
+      class="nav-item flex flex-col items-center py-3">
+      <span class="text-2xl mb-0.5">🔔</span>
+      <span>Notifs</span>
+    </button>
+    <button onclick="switchScreen('screen-more')"
+      class="nav-item flex flex-col items-center py-3">
+      <span class="text-2xl mb-0.5">⋯</span>
+      <span>More</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ADD EVENT MODAL -->
+<div id="modal-event" class="hidden fixed inset-0 bg-black/80 items-end z-[100]">
+  <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto flex flex-col" style="max-height: 90vh;">
+    <div class="px-6 pt-5 pb-4 border-b border-zinc-800 shrink-0">
+      <div class="flex justify-between items-center">
+        <div class="text-xl font-semibold">New Event</div>
+        <button onclick="hideModal('modal-event')" class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
+      </div>
+    </div>
+    <div class="overflow-y-auto flex-1 px-6 py-4 space-y-4" style="-webkit-overflow-scrolling: touch; overscroll-behavior: contain;">
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Date &amp; Time</label>
+        <div id="event-date-shortcuts" class="flex flex-wrap gap-2 mb-2"></div>
+        <input id="event-date" type="date" onchange="onEventDateChange()" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+        <div id="event-dow-display" class="hidden mt-2 px-1"></div>
+        <input id="event-time" type="time" onchange="onEventDateChange()" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base mt-2">
+      </div>
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Description</label>
+        <input id="event-desc" type="text" placeholder="Meeting with client" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+      </div>
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Hashtag</label>
+        <input id="event-hashtag" type="text" placeholder="#pers" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+        <div class="hashtag-row mt-2" id="hashtag-suggestions"></div>
+      </div>
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Place</label>
+        <input id="event-place" type="text" placeholder="Office" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+        <div class="hashtag-row mt-2" id="place-suggestions"></div>
+      </div>
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Duration (min)</label>
+        <input id="event-duration" type="text" inputmode="numeric" placeholder="60" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+        <div class="hashtag-row mt-2" id="duration-suggestions"></div>
+      </div>
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Recurrence</label>
+        <select id="event-recurrence" onchange="onRecurrenceChange()" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+          <option value="none">None</option>
+          <option value="weekly">Weekly</option>
+          <option value="biweekly">Bi-weekly</option>
+          <option value="monthly">Monthly</option>
+          <option value="yearly">Yearly</option>
+        </select>
+      </div>
+      <div id="recurrence-occurrences-section" class="hidden">
+        <label class="text-xs text-zinc-400 block mb-1">Number of occurrences <span class="text-zinc-500">(including first)</span></label>
+        <input id="event-occurrences" type="number" min="2" max="100" placeholder="10" oninput="updateOccurrencePreview()" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+        <div id="occurrence-preview" class="mt-3 space-y-1"></div>
+      </div>
+    </div>
+    <div class="px-6 py-4 border-t border-zinc-800 flex gap-3 shrink-0">
+      <button onclick="hideModal('modal-event')" class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
+      <button onclick="saveEvent()" class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Save Event</button>
+    </div>
+  </div>
+</div>
+
+<!-- REPEAT EVENT MODAL -->
+<div id="modal-repeat-event" class="hidden fixed inset-0 bg-black/80 items-end z-[100]">
+  <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto">
+    <div class="px-6 pt-5 pb-4 border-b border-zinc-800">
+      <div class="flex justify-between items-center">
+        <div class="text-xl font-semibold">Repeat Event</div>
+        <button onclick="hideModal('modal-repeat-event')" class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
+      </div>
+    </div>
+    <div class="p-6 space-y-4">
+      <div class="text-sm text-zinc-400 mb-2">Create a recurring series from this event. The original event will be replaced.</div>
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Repeat every</label>
+        <select id="repeat-frequency" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="biweekly">Bi-weekly</option>
+          <option value="monthly">Monthly</option>
+          <option value="yearly">Yearly</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Number of occurrences <span class="text-zinc-500">(including this one)</span></label>
+        <input id="repeat-occurrences" type="number" min="2" max="100" value="10" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+      </div>
+      <div id="repeat-preview" class="mt-3 text-xs text-zinc-500 p-3 bg-zinc-950 rounded-2xl max-h-32 overflow-y-auto"></div>
+    </div>
+    <div class="px-6 py-4 border-t border-zinc-800 flex gap-3">
+      <button onclick="hideModal('modal-repeat-event')" class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
+      <button onclick="window.confirmRepeatEvent()" class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Create Series</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT EXPENSE MODAL -->
+<div id="modal-expense" class="hidden fixed inset-0 bg-black/80 flex items-end z-[100]">
+  <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto max-h-[90vh] overflow-hidden flex flex-col">
+    <div class="flex justify-between items-center px-6 pt-5 pb-3 border-b border-zinc-800 shrink-0">
+      <div id="exp-modal-title" class="text-xl font-semibold">New Expense</div>
+      <button onclick="closeExpenseModal()" class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
+    </div>
+    <div class="p-6 overflow-y-auto flex-1 space-y-4" style="-webkit-overflow-scrolling: touch; overscroll-behavior: contain;">
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Date</label>
+        <input id="exp-date" type="date" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+      </div>
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Amount</label>
+        <input id="exp-amount" type="number" step="0.01" placeholder="0.00" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+      </div>
+      <div>
+        <label class="text-xs text-zinc-400 block mb-2">Tool</label>
+        <div class="grid grid-cols-3 gap-3 mb-3" id="exp-tool-buttons"></div>
+        <div id="exp-tool-other-group" class="hidden">
+          <input id="exp-tool-other" type="text" placeholder="Specify other tool…" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base mt-2">
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-zinc-400 block mb-2">Category</label>
+        <div class="grid grid-cols-4 sm:grid-cols-6 gap-3" id="exp-category-buttons"></div>
+      </div>
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Description</label>
+        <input id="exp-desc" type="text" placeholder="Lunch / Taxi / Gift for mom" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+      </div>
+    </div>
+    <div class="px-6 py-4 border-t border-zinc-800 flex gap-3 shrink-0">
+      <button onclick="closeExpenseModal()" class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
+      <button id="exp-save-btn" onclick="saveExpense()" class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Save Expense</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD INCOME MODAL -->
+<div id="modal-income" class="modal-sheet hidden">
+  <div>
+    <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-zinc-800 shrink-0">
+      <div class="text-xl font-semibold">New Income</div>
+      <button onclick="closeIncomeModal()"
+        class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
+    </div>
+    <div class="modal-body px-6 py-4 space-y-4">
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Date</label>
+        <input id="inc-date" type="date"
+          class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+      </div>
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Amount</label>
+        <input id="inc-amount" type="number" step="0.01" placeholder="0"
+          class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+      </div>
+      <div>
+        <label class="text-xs text-zinc-400 block mb-2">Tool</label>
+        <div id="inc-tool-buttons" class="flex flex-wrap gap-2"></div>
+        <div id="inc-tool-other-group" class="hidden mt-3">
+          <input id="inc-tool-other" type="text" placeholder="Specify tool…"
+            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-3 text-base">
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Description <span class="text-zinc-600">(optional)</span></label>
+        <input id="inc-desc" type="text" placeholder="Salary / Freelance / Project…"
+          class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+      </div>
+    </div>
+    <div class="flex gap-3 px-6 py-4 border-t border-zinc-800 shrink-0"
+      style="padding-bottom: max(1rem, env(safe-area-inset-bottom));">
+      <button onclick="closeIncomeModal()"
+        class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
+      <button onclick="saveIncome()"
+        class="flex-1 py-4 bg-emerald-500 hover:bg-emerald-600 rounded-3xl text-lg font-medium">Save Income</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD COMPENSATION MODAL -->
+<div id="modal-compensation" class="modal-sheet hidden">
+  <div>
+    <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-zinc-800 shrink-0">
+      <div>
+        <div class="text-xl font-semibold">New Compensation</div>
+        <div class="text-xs text-zinc-500 mt-0.5">Will be deducted from total income</div>
+      </div>
+      <button onclick="closeCompensationModal()"
+        class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
+    </div>
+    <div class="modal-body px-6 py-4 space-y-4">
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Date</label>
+        <input id="comp-date" type="date"
+          class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+      </div>
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Amount</label>
+        <input id="comp-amount" type="number" step="0.01" placeholder="0"
+          class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+      </div>
+      <div>
+        <label class="text-xs text-zinc-400 block mb-2">Tool</label>
+        <div id="comp-tool-buttons" class="flex flex-wrap gap-2"></div>
+        <div id="comp-tool-other-group" class="hidden mt-3">
+          <input id="comp-tool-other" type="text" placeholder="Specify tool…"
+            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-3 text-base">
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Description <span class="text-zinc-600">(optional)</span></label>
+        <input id="comp-desc" type="text" placeholder="Tax / Fee / Deduction…"
+          class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+      </div>
+    </div>
+    <div class="flex gap-3 px-6 py-4 border-t border-zinc-800 shrink-0"
+      style="padding-bottom: max(1rem, env(safe-area-inset-bottom));">
+      <button onclick="closeCompensationModal()"
+        class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
+      <button onclick="saveCompensation()"
+        class="flex-1 py-4 bg-amber-600 hover:bg-amber-500 rounded-3xl text-lg font-medium">Save Compensation</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHOPPING ADD/EDIT MODAL -->
+<div id="modal-shopping" class="hidden fixed inset-0 bg-black/80 items-end z-[100]">
+  <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto max-h-[90vh] overflow-hidden flex flex-col">
+    <div class="flex justify-between items-center px-6 pt-5 pb-3 border-b border-zinc-800 shrink-0">
+      <div id="shopping-modal-title" class="text-xl font-semibold">New Shopping Item</div>
+      <button onclick="closeShoppingModal()" class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
+    </div>
+    <div class="p-6 overflow-y-auto flex-1 space-y-5" style="-webkit-overflow-scrolling: touch;">
+      
+      <!-- Item Name (REQUIRED) -->
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Item Name <span class="text-red-400">*</span></label>
+        <input id="shop-name" type="text" placeholder="e.g., Milk, Bread, Eggs" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+      </div>
+      
+      <!-- Quantity Slider (UPDATED: step="1" for integers, quick buttons for decimals) -->
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Quantity</label>
+        <div class="flex items-center gap-4">
+          <input type="range" id="shop-quantity" min="0" max="99" value="1" step="1" class="shopping-slider flex-1">
+          <span id="shop-quantity-value" class="shopping-slider-value">1</span>
+        </div>
+        <div class="flex gap-2 mt-2 flex-wrap">
+          <button type="button" onclick="setShopQuantity(0.1)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">0.1</button>
+          <button type="button" onclick="setShopQuantity(0.25)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">0.25</button>
+          <button type="button" onclick="setShopQuantity(0.5)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">0.5</button>
+          <button type="button" onclick="setShopQuantity(0.75)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">0.75</button>
+          <button type="button" onclick="setShopQuantity(1)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">1</button>
+          <button type="button" onclick="setShopQuantity(2)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">2</button>
+          <button type="button" onclick="setShopQuantity(5)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">5</button>
+        </div>
+      </div>
+      
+      <!-- Priority Slider -->
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Priority <span class="text-zinc-600">(1=low, 10=critical)</span></label>
+        <div class="flex items-center gap-4">
+          <input type="range" id="shop-priority" min="1" max="10" value="5" class="shopping-slider flex-1">
+          <span id="shop-priority-value" class="shopping-slider-value">5</span>
+        </div>
+      </div>
+      
+      <!-- Wishlist Checkbox -->
+      <div class="flex items-center gap-3">
+        <input type="checkbox" id="shop-wishlist" class="w-5 h-5 rounded bg-zinc-800 border-zinc-600 text-emerald-500 focus:ring-emerald-500">
+        <label for="shop-wishlist" class="text-sm text-zinc-300">🎁 Wishlist item</label>
+      </div>
+      
+      <!-- Has Date Checkbox -->
+      <div class="flex items-center gap-3">
+        <input type="checkbox" id="shop-has-date" class="w-5 h-5 rounded bg-zinc-800 border-zinc-600 text-emerald-500 focus:ring-emerald-500" onchange="toggleShopDateField()">
+        <label for="shop-has-date" class="text-sm text-zinc-300">📅 Set target date</label>
+      </div>
+      
+      <!-- Date of Purchase (Conditional) -->
+      <div id="shop-date-container" class="hidden">
+        <label class="text-xs text-zinc-400 block mb-1">Target Date</label>
+        <input id="shop-date" type="date" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+      </div>
+      
+      <!-- Place (OPTIONAL) -->
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Place <span class="text-zinc-600">(optional)</span></label>
+        <input id="shop-place" type="text" placeholder="Store name / location" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
+      </div>
+      
+      <!-- Comment 1: Item Description (OPTIONAL) -->
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Comment 1: Item Description <span class="text-zinc-600">(optional)</span></label>
+        <textarea id="shop-comment1" rows="2" placeholder="Brand, size, color, etc." class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base resize-none"></textarea>
+      </div>
+      
+      <!-- Comment 2: Additional Info (OPTIONAL) -->
+      <div>
+        <label class="text-xs text-zinc-400 block mb-1">Comment 2: Additional Info <span class="text-zinc-600">(optional)</span></label>
+        <textarea id="shop-comment2" rows="2" placeholder="Notes, reminders, alternatives, etc." class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base resize-none"></textarea>
+      </div>
+      
+    </div>
+    <div class="px-6 py-4 border-t border-zinc-800 flex gap-3 shrink-0">
+      <button onclick="closeShoppingModal()" class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
+      <button onclick="saveShoppingItem()" class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Save Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- App logic -->
+<script type="module" src="js/app.js"></script>
+
+<!-- Inline helpers for stats -->
+<script>
+function toggleDashNumbers() {
+  const hidden = localStorage.getItem('dash_numbers_hidden') === '1';
+  const nowHidden = !hidden;
+  localStorage.setItem('dash_numbers_hidden', nowHidden ? '1' : '0');
+  _applyDashVisibility(nowHidden);
+}
+function _applyDashVisibility(hide) {
+  const expEl    = document.getElementById('dash-exp-total');
+  const expAdjEl = document.getElementById('dash-exp-adjusted');
+  const incEl    = document.getElementById('dash-inc-total');
+  const adjEl    = document.getElementById('dash-adj-label');
+  const btn      = document.getElementById('dash-visibility-btn');
+  const mask     = '••••';
+  if (hide) {
+    if (expEl)    { expEl.dataset.real = expEl.textContent; expEl.dataset.realClass = expEl.className; expEl.textContent = mask; }
+    if (expAdjEl && !expAdjEl.classList.contains('hidden')) { expAdjEl.dataset.real = expAdjEl.textContent; expAdjEl.textContent = mask; }
+    if (incEl)    { incEl.dataset.real = incEl.textContent; incEl.dataset.realClass = incEl.className; incEl.textContent = mask; }
+    if (adjEl)    { adjEl.dataset.real = adjEl.textContent; }
+    if (btn)      btn.textContent = '🙈';
+  } else {
+    if (expEl && expEl.dataset.real)       { expEl.textContent = expEl.dataset.real; if (expEl.dataset.realClass) expEl.className = expEl.dataset.realClass; }
+    if (expAdjEl && expAdjEl.dataset.real) { expAdjEl.textContent = expAdjEl.dataset.real; }
+    if (incEl && incEl.dataset.real)       { incEl.textContent = incEl.dataset.real; if (incEl.dataset.realClass) incEl.className = incEl.dataset.realClass; }
+    if (btn) btn.textContent = '👁';
+  }
+}
+// Apply on page load
+window.addEventListener('DOMContentLoaded', () => {
+  const hidden = localStorage.getItem('dash_numbers_hidden') === '1';
+  if (hidden) _applyDashVisibility(true);
+});
+function _applyGuestUI() {
+  if (!window.isGuest || !window.isGuest()) return;
+  // Hide Add buttons for OTHER modules (Planner, Expenses, Income)
+  const fab = document.querySelector('#screen-planner button[onclick="showAddEventModal()"]');
+  if (fab) fab.classList.add('hidden');
+  const expBtn = document.querySelector('#screen-expenses button[onclick="showAddExpenseModal()"]');
+  if (expBtn) expBtn.classList.add('hidden');
+  const incBtn  = document.querySelector('#screen-income button[onclick="showAddIncomeModal()"]');
+  const compBtn = document.querySelector('#screen-income button[onclick="showAddCompensationModal()"]');
+  if (incBtn)  incBtn.classList.add('hidden');
+  if (compBtn) compBtn.classList.add('hidden');
+  
+  // NOTE: Shopping Add button is NOT hidden for guests (guests can add/edit shopping)
+  // Only delete buttons are hidden via JS rendering in shopping-render.js
+  
+  // Hide destructive/admin actions
+  const clearBtn = document.querySelector('button[onclick="clearAllData()"]');
+  if (clearBtn) clearBtn.closest('.grid')?.classList.add('hidden');
+  const snapHeaderBtn = document.querySelector('header button[onclick="takeSnapshot()"]');
+  if (snapHeaderBtn) snapHeaderBtn.classList.add('hidden');
+  const snapCard = document.querySelector('#screen-more div[onclick="takeSnapshot()"]');
+  if (snapCard) snapCard.classList.add('hidden');
+  const retryBtn = document.getElementById('notif-retry-btn');
+  if (retryBtn) retryBtn.classList.add('hidden');
+  const hkContainer = document.getElementById('housekeeping-container');
+  if (hkContainer) {
+    const manageBtn = hkContainer.querySelector('button[onclick="window.showHousekeepingModal()"]');
+    if (manageBtn) manageBtn.classList.add('hidden');
+  }
+}
+window._applyGuestUI = _applyGuestUI;
+function toggleExpenseStatsView() {
+  const list = document.getElementById('expenses-list');
+  const wrapper = document.getElementById('expenses-stats-wrapper');
+  if (wrapper.classList.contains('hidden')) {
+    list.classList.add('hidden');
+    wrapper.classList.remove('hidden');
+    if (window.refreshExpenseStats) window.refreshExpenseStats();
+  } else {
+    list.classList.remove('hidden');
+    wrapper.classList.add('hidden');
+  }
+}
+// Shopping modal: toggle date field visibility
+function toggleShopDateField() {
+  const hasDate = document.getElementById('shop-has-date');
+  const dateContainer = document.getElementById('shop-date-container');
+  if (hasDate && dateContainer) {
+    if (hasDate.checked) {
+      dateContainer.classList.remove('hidden');
+    } else {
+      dateContainer.classList.add('hidden');
+    }
+  }
+}
+window.toggleShopDateField = toggleShopDateField;
+// Shopping quantity quick-set buttons
+function setShopQuantity(val) {
+  const slider = document.getElementById('shop-quantity');
+  const display = document.getElementById('shop-quantity-value');
+  if (slider && display) {
+    slider.value = val;
+    display.textContent = parseFloat(val).toFixed(2).replace(/\.00$/, '').replace(/\.0$/, '').replace(/\.(\d)0$/, '.$1');
+  }
+}
+window.setShopQuantity = setShopQuantity;
+</script>
+</body>
+</html>
