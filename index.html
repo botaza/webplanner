@@ -588,13 +588,26 @@ firebase.initializeApp(firebaseConfig);
         <input id="shop-name" type="text" placeholder="e.g., Milk, Bread, Eggs" class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base">
       </div>
       
-      <!-- Quantity Slider (FIXED: Integers only via slider, decimals via buttons) -->
+      <!-- Quantity Slider with +/- Buttons (UPDATED) -->
       <div>
         <label class="text-xs text-zinc-400 block mb-1">Quantity</label>
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3">
+          <!-- Minus Button -->
+          <button type="button" onclick="adjustShopQuantity(-1)" 
+            class="w-12 h-12 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-2xl flex items-center justify-center text-2xl text-zinc-300 transition">
+            −
+          </button>
+          <!-- Slider -->
           <input type="range" id="shop-quantity" min="0" max="99" value="1" step="1" class="shopping-slider flex-1" oninput="roundSliderValue()">
-          <span id="shop-quantity-value" class="shopping-slider-value">1</span>
+          <!-- Value Display -->
+          <span id="shop-quantity-value" class="shopping-slider-value w-12 text-center">1</span>
+          <!-- Plus Button -->
+          <button type="button" onclick="adjustShopQuantity(1)" 
+            class="w-12 h-12 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-2xl flex items-center justify-center text-2xl text-emerald-400 transition">
+            +
+          </button>
         </div>
+        <!-- Quick Decimal Buttons -->
         <div class="flex gap-2 mt-2 flex-wrap">
           <button type="button" onclick="setShopQuantity(0.1)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">0.1</button>
           <button type="button" onclick="setShopQuantity(0.25)" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-full">0.25</button>
@@ -770,8 +783,23 @@ function roundSliderValue() {
     display.textContent = rounded;
   }
 }
+// Adjust quantity by +/- 1 (for the +/- buttons)
+function adjustShopQuantity(delta) {
+  const slider = document.getElementById('shop-quantity');
+  const display = document.getElementById('shop-quantity-value');
+  if (slider && display) {
+    let current = parseFloat(slider.value) || 0;
+    let newValue = current + delta;
+    // Clamp between 0 and 99
+    if (newValue < 0) newValue = 0;
+    if (newValue > 99) newValue = 99;
+    slider.value = newValue;
+    display.textContent = newValue;
+  }
+}
 window.setShopQuantity = setShopQuantity;
 window.roundSliderValue = roundSliderValue;
+window.adjustShopQuantity = adjustShopQuantity;
 </script>
 </body>
 </html>
