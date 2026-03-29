@@ -594,7 +594,7 @@ firebase.initializeApp(firebaseConfig);
       
       <!-- Comment -->
       <div>
-        <label class="text-xs text-zinc-400 block mb-1">Comment</label>
+        <label class="text-xs text-zinc-400 block mb-1">Comment <span class="text-zinc-600">(optional)</span></label>
         <textarea id="shop-comment" rows="3" placeholder="Notes, brand, size, etc." class="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-5 py-4 text-base resize-none"></textarea>
       </div>
       
@@ -652,6 +652,8 @@ function _applyGuestUI() {
   const compBtn = document.querySelector('#screen-income button[onclick="showAddCompensationModal()"]');
   if (incBtn)  incBtn.classList.add('hidden');
   if (compBtn) compBtn.classList.add('hidden');
+  const shopBtn = document.querySelector('#screen-shopping button[onclick="showAddShoppingItem()"]');
+  if (shopBtn) shopBtn.classList.add('hidden');
   const clearBtn = document.querySelector('button[onclick="clearAllData()"]');
   if (clearBtn) clearBtn.closest('.grid')?.classList.add('hidden');
   const snapHeaderBtn = document.querySelector('header button[onclick="takeSnapshot()"]');
