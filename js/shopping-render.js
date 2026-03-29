@@ -31,10 +31,12 @@ export function renderShoppingList(list, containerId = 'shopping-list') {
     3: 'border-zinc-500', 2: 'border-zinc-500', 1: 'border-zinc-500'
   };
 
-  if (!state.expandedShoppingPriority) state.expandedShoppingPriority = new Set();
-  
-  // Auto-expand ALL priority groups by default when entering the shop tab
-  [1,2,3,4,5,6,7,8,9,10].forEach(p => state.expandedShoppingPriority.add(String(p)));
+  // ✅ FIX: Only initialize Set if it doesn't exist - DO NOT auto-expand
+  if (!state.expandedShoppingPriority) {
+    state.expandedShoppingPriority = new Set();
+    // Optional: Auto-expand all on FIRST load only
+    [1,2,3,4,5,6,7,8,9,10].forEach(p => state.expandedShoppingPriority.add(String(p)));
+  }
 
   // Sort groups by priority DESCENDING (P10 at top, P1 at bottom)
   const sortedPriorities = Object.keys(groups).sort((a, b) => parseInt(b) - parseInt(a));
