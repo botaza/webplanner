@@ -1,6 +1,6 @@
 // js/shopping-render.js
 // RENDERING LOGIC FOR SHOPPING LIST
-// UPDATED: Guest UI logic (hide delete button), Expand/Collapse fix, Item Name display
+// FIXED: Edit button now has onclick handler to open edit modal
 import { state } from './state.js';
 import { isGuest } from './lockscreen.js';
 import { getPriorityGroups } from './shopping-crud.js';
@@ -93,14 +93,14 @@ function renderShoppingItem(item, borderColor) {
         </div>
         <div class="flex flex-col items-end gap-2 shrink-0">
           ${!isGuest() ? `
-            <button data-edit-id="${item.id}"
+            <button onclick="window.editShoppingItem('${item.id}'); event.stopPropagation()"
               class="text-zinc-400 hover:text-white text-lg transition px-1 touch-manipulation min-w-[32px] min-h-[32px]"
               title="Edit">✏️</button>
             <button onclick="window.deleteShoppingItem('${item.id}'); event.stopPropagation()"
               class="text-red-400 hover:text-red-300 text-lg transition px-1 touch-manipulation min-w-[32px] min-h-[32px]"
               title="Delete">🗑</button>
           ` : `
-            <button data-edit-id="${item.id}"
+            <button onclick="window.editShoppingItem('${item.id}'); event.stopPropagation()"
               class="text-zinc-400 hover:text-white text-lg transition px-1 touch-manipulation min-w-[32px] min-h-[32px]"
               title="Edit">✏️</button>
           `}
