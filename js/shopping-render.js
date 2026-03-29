@@ -32,8 +32,10 @@ export function renderShoppingList(list, containerId = 'shopping-list') {
   };
 
   if (!state.expandedShoppingPriority) state.expandedShoppingPriority = new Set();
-  // Auto-expand high priority groups
-  [10,9,8,7].forEach(p => state.expandedShoppingPriority.add(String(p)));
+  
+  // CHANGE: Auto-expand ALL priority groups by default (not just high priority)
+  // This ensures the full list is visible when entering the shop tab
+  [1,2,3,4,5,6,7,8,9,10].forEach(p => state.expandedShoppingPriority.add(String(p)));
 
   const html = Object.entries(groups).map(([priority, items]) => {
     const pNum = parseInt(priority);
