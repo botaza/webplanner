@@ -1,4 +1,6 @@
 // js/fcm-client.js
+// UPDATED: Sends username alongside token to save-subscription.php
+// UPDATED: Browser is detected server-side from User-Agent
 
 import { state } from './state.js';
 
@@ -6,13 +8,16 @@ const VAPID_KEY = 'BMlwBTFnXAZuDBkyK8UENXQz-kUTTzZGy1HEoNXbV6l-MmUyTilUJmXbVNs-v
 
 async function registerFcmToken(token) {
     const storageKey = 'fcm_registered_token';
-    const savedKey = 'fcm_token_saved';
+    const savedKey   = 'fcm_token_saved';
 
     try {
         const res = await fetch('php/save-subscription.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token })
+            body: JSON.stringify({
+                token,
+                username: state.guestbookUsername || ''
+            })
         });
 
         if (res.ok) {
@@ -81,13 +86,13 @@ function initForegroundMessaging() {
 }
 
 function updateNotifStatus() {
-    const el = document.getElementById('notif-status');
+    const el       = document.getElementById('notif-status');
     const retryBtn = document.getElementById('notif-retry-btn');
     if (!el) return;
 
     const permission = Notification.permission;
     const tokenSaved = localStorage.getItem('fcm_token_saved') === '1';
-    const token = localStorage.getItem('fcm_registered_token');
+    const token      = localStorage.getItem('fcm_registered_token');
 
     if (permission === 'denied') {
         el.innerHTML = '<span style="color:#f87171">🚫 Blocked — enable in browser settings</span>';
@@ -119,9 +124,109 @@ async function retryNotifications() {
     updateNotifStatus();
 }
 
+// ── Token Manager ─────────────────────────────────────────────────────────────
+
+async function loadTokenManager() {
+    const container = document.getElementById('token-manager-list');
+    if (!container) return;
+
+    container.innerHTML = '<div class="text-zinc-500 text-sm text-center py-4">Loading...</div>';
+
+    try {
+        const res  = await fetch('php/api.php', {
+            method: 'POST',
+            body: (() => { const f = new FormData(); f.append('action', 'get_tokens'); return f; })()
+        });
+        const data = await res.json();
+        const tokens = data.tokens || [];
+
+        if (tokens.length === 0) {
+            container.innerHTML = '<div class="text-zinc-500 text-sm text-center py-4">No tokens registered</div>';
+            return;
+        }
+
+        const myToken = localStorage.getItem('fcm_registered_token') || '';
+
+        container.innerHTML = tokens.map((t, i) => {
+            const isMe    = t.token === myToken;
+            const browser = t.browser || 'Unknown';
+            const user    = t.username || '—';
+            const seen    = t.last_seen ? t.last_seen.slice(0, 16) : '—';
+            const short   = '…' + t.token.slice(-10);
+
+            return `
+            <div class="flex items-center justify-between gap-3 py-2 border-b border-zinc-800 last:border-0">
+                <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium flex items-center gap-2">
+                        <span>${browser}</span>
+                        ${isMe ? '<span class="text-[10px] bg-emerald-900 text-emerald-400 px-2 py-0.5 rounded-full">this device</span>' : ''}
+                    </div>
+                    <div class="text-xs text-zinc-500 mt-0.5">
+                        👤 ${user} &nbsp;·&nbsp; <span class="font-mono">${short}</span>
+                    </div>
+                    <div class="text-xs text-zinc-600 mt-0.5">last seen ${seen}</div>
+                </div>
+                <button onclick="window.deleteToken('${t.token}')"
+                        class="text-red-400 text-xs px-3 py-1.5 bg-red-950 hover:bg-red-900 rounded-xl shrink-0">
+                    Delete
+                </button>
+            </div>`;
+        }).join('');
+
+    } catch (err) {
+        container.innerHTML = '<div class="text-red-400 text-sm text-center py-4">Failed to load tokens</div>';
+        console.error('[token-manager] Failed to load tokens:', err);
+    }
+}
+
+async function deleteToken(token) {
+    if (!confirm('Delete this device token? It will stop receiving notifications until it re-registers.')) return;
+
+    const form = new FormData();
+    form.append('action', 'delete_token');
+    form.append('token', token);
+
+    const res  = await fetch('php/api.php', { method: 'POST', body: form });
+    const data = await res.json();
+
+    if (data.success) {
+        // If deleting our own token, clear local flags
+        if (token === localStorage.getItem('fcm_registered_token')) {
+            localStorage.removeItem('fcm_registered_token');
+            localStorage.removeItem('fcm_token_saved');
+            updateNotifStatus();
+        }
+        await loadTokenManager();
+    } else {
+        alert('Failed to delete token.');
+    }
+}
+
+async function deleteAllTokens() {
+    if (!confirm('Delete ALL device tokens? Everyone will stop receiving notifications until they re-register.')) return;
+
+    const form = new FormData();
+    form.append('action', 'delete_all_tokens');
+
+    const res  = await fetch('php/api.php', { method: 'POST', body: form });
+    const data = await res.json();
+
+    if (data.success) {
+        localStorage.removeItem('fcm_registered_token');
+        localStorage.removeItem('fcm_token_saved');
+        updateNotifStatus();
+        await loadTokenManager();
+    } else {
+        alert('Failed to delete all tokens.');
+    }
+}
+
 Object.assign(window, {
     retryNotifications,
-    updateNotifStatus
+    updateNotifStatus,
+    loadTokenManager,
+    deleteToken,
+    deleteAllTokens
 });
 
 export {

@@ -519,6 +519,50 @@ if ($action === 'clear_guestbook') {
     exit;
 }
 
+// ── Token Management ──
+$tokensFile = $dataDir . '/fcm-tokens.json';
+
+function readTokens(string $file): array {
+    if (!file_exists($file)) return [];
+    return json_decode(file_get_contents($file), true) ?: [];
+}
+
+function writeTokens(string $file, array $tokens): void {
+    file_put_contents($file, json_encode(array_values($tokens), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+}
+
+if ($action === 'get_tokens') {
+    $tokens = readTokens($tokensFile);
+    // Normalise: migrate flat strings to objects
+    $tokens = array_map(function($t) {
+        if (is_string($t)) {
+            return ['token' => $t, 'username' => '', 'browser' => 'Unknown', 'registered_at' => '', 'last_seen' => ''];
+        }
+        return $t;
+    }, $tokens);
+    echo json_encode(['tokens' => array_values($tokens)]);
+    exit;
+}
+
+if ($action === 'delete_token') {
+    $target = trim($_POST['token'] ?? '');
+    if (!$target) { echo json_encode(['error' => 'No token provided']); exit; }
+    $tokens = readTokens($tokensFile);
+    $tokens = array_filter($tokens, function($t) use ($target) {
+        $tok = is_string($t) ? $t : ($t['token'] ?? '');
+        return $tok !== $target;
+    });
+    writeTokens($tokensFile, $tokens);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+if ($action === 'delete_all_tokens') {
+    writeTokens($tokensFile, []);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 // ── System ──
 if ($action === 'snapshot') {
     $ts = date('Ymd_His');
