@@ -224,7 +224,6 @@ firebase.initializeApp(firebaseConfig);
       <button onclick="window.collapseAllShoppingPriorities()" class="text-xs text-zinc-400 hover:text-emerald-400">Collapse all</button>
     </div>
   </div>
-
   <div class="mb-4">
     <div class="relative">
       <input
@@ -242,9 +241,7 @@ firebase.initializeApp(firebaseConfig);
     </div>
     <div id="shop-search-count" class="text-xs text-zinc-500 mt-2 hidden"></div>
   </div>
-
   <div id="shopping-list" class="space-y-2"></div>
-
   <button onclick="showAddShoppingItem()"
     class="fixed bottom-24 left-1/2 -translate-x-1/2 w-16 h-16 bg-emerald-500 hover:bg-emerald-600 rounded-3xl shadow-2xl flex items-center justify-center text-4xl leading-none z-40 active:scale-95 transition-transform">
     +
@@ -254,7 +251,6 @@ firebase.initializeApp(firebaseConfig);
 <!-- MORE -->
 <div id="screen-more" class="screen hidden">
   <div class="space-y-4">
-
     <!-- Notifications status -->
     <div class="bg-zinc-900 rounded-3xl p-5">
       <div class="font-medium mb-3">Notifications</div>
@@ -266,7 +262,7 @@ firebase.initializeApp(firebaseConfig);
       </button>
     </div>
 
-    <!-- Device Token Manager -->
+    <!-- Device Token Manager - UPDATED with Chat Only toggle -->
     <div class="bg-zinc-900 rounded-3xl p-5" id="token-manager-panel">
       <div class="flex justify-between items-center mb-3">
         <div class="font-medium">Device Tokens</div>
@@ -322,13 +318,10 @@ firebase.initializeApp(firebaseConfig);
       <button onclick="window.clearGuestbook()" class="text-red-400 text-sm font-medium flex items-center gap-1">🗑 Clear</button>
     </div>
   </div>
-
   <!-- Multi-guestbook chips -->
   <div id="guestbook-chips" class="guestbook-chips"></div>
-
   <!-- Chat container with infinite scroll -->
   <div id="guestbook-chat-container" class="guestbook-chat-container bg-zinc-900 rounded-3xl p-4"></div>
-
   <!-- New message input -->
   <div class="fixed bottom-20 left-4 right-4 bg-zinc-900 rounded-3xl p-3 flex gap-3 items-end border border-zinc-700 z-50">
     <input id="guestbook-input" type="text" placeholder="Write a message..."
@@ -336,7 +329,6 @@ firebase.initializeApp(firebaseConfig);
            onkeypress="if(event.key === 'Enter') window.sendGuestbookMessage()">
     <button onclick="window.sendGuestbookMessage()" class="bg-emerald-500 text-white px-6 py-3 rounded-2xl font-medium">Send</button>
   </div>
-
   <!-- Emoji picker -->
   <div id="guestbook-emoji-picker" class="emoji-picker hidden"></div>
 </div>

@@ -1,45 +1,29 @@
 <?php
 // php/send-notifications.php
-// UPDATED:
-// 1. Service account path is a DIRECTORY (auto-discovers .json file)
-// 2. Fixed trailing spaces in API URLs
-// 3. Filter out completed events
-// 4. Fixed isWithinTimeWindow() to use real timestamps
-// 5. Widened default tolerance to 7 minutes
-// 6. Rule 6 buckets each event into exactly one horizon (no overlaps)
-// 7. ALL rules mark notified EVEN ON FAILURE to prevent spam on broken tokens
-// 8. Rules 2-5 use notifyBatched() (20 events per notification)
-// 9. Rule 6 matches events on EXACTLY day 3, 7, or 14
-// 10. Token skipping for bad tokens (30 min cooldown)
-// 11. Rule 7: Guestbook new-message notifications
-//     - 1-minute debounce (fires after 1 min of silence)
-//     - Tokens whose stored username matches the last sender are skipped
-//     - fcm-tokens.json is now an array of objects {token, username, browser, ...}
+// UPDATED: Added support for chatOnly token preference
+// Tokens with chatOnly=true receive ONLY guestbook notifications (Rule 7)
 
 date_default_timezone_set('Asia/Vladivostok');
 
 define('SERVICE_ACCOUNT_DIR', '/var/www/html/');
-define('TOKENS_FILE',    __DIR__ . '/../data/fcm-tokens.json');
-define('EVENTS_FILE',    __DIR__ . '/../data/events.json');
-define('GUESTBOOKS_FILE',__DIR__ . '/../data/guestbooks.json');
-define('NOTIFIED_FILE',  __DIR__ . '/../data/notified-cache.json');
-define('LOG_FILE',       __DIR__ . '/../data/notification-log.json');
-define('PROJECT_ID',     'plannernotifications-bd4b1');
+define('TOKENS_FILE', __DIR__ . '/../data/fcm-tokens.json');
+define('EVENTS_FILE', __DIR__ . '/../data/events.json');
+define('GUESTBOOKS_FILE', __DIR__ . '/../data/guestbooks.json');
+define('NOTIFIED_FILE', __DIR__ . '/../data/notified-cache.json');
+define('LOG_FILE', __DIR__ . '/../data/notification-log.json');
+define('PROJECT_ID', 'plannernotifications-bd4b1');
 define('GUESTBOOK_DEBOUNCE_SECS', 60); // 1 minute
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
-
-/**
- * Load tokens file and return two things:
- *   $rawTokens  — plain array of token strings (for FCM sending)
- *   $tokenObjects — array of full objects {token, username, browser, ...}
- */
 function loadTokenData(): array {
     if (!file_exists(TOKENS_FILE)) return [[], []];
     $data = json_decode(file_get_contents(TOKENS_FILE), true) ?: [];
     $objects = array_map(function($t) {
         if (is_string($t)) {
-            return ['token' => $t, 'username' => '', 'browser' => 'Unknown'];
+            return ['token' => $t, 'username' => '', 'browser' => 'Unknown', 'prefs' => ['chatOnly' => false]];
+        }
+        if (!isset($t['prefs']) || !is_array($t['prefs'])) {
+            $t['prefs'] = ['chatOnly' => false];
         }
         return $t;
     }, $data);
@@ -47,8 +31,23 @@ function loadTokenData(): array {
     return [$strings, $objects];
 }
 
-// ── Core helpers ──────────────────────────────────────────────────────────────
+// ── New helper: Filter tokens based on rule and chatOnly preference ───────────
+function getTokensForRule(array $tokenObjects, string $rule): array {
+    $filtered = [];
+    foreach ($tokenObjects as $obj) {
+        $prefs = $obj['prefs'] ?? ['chatOnly' => false];
+        $chatOnly = $prefs['chatOnly'] ?? false;
 
+        // If token is chatOnly, allow ONLY Rule 7 (guestbook)
+        if ($chatOnly && strpos($rule, 'rule7_guestbook') === false) {
+            continue;
+        }
+        $filtered[] = $obj['token'];
+    }
+    return $filtered;
+}
+
+// ── Core helpers ──────────────────────────────────────────────────────────────
 function findServiceAccountFile(string $dir): ?string {
     if (!is_dir($dir)) { echo date('Y-m-d H:i:s') . " Directory not found: $dir\n"; return null; }
     $files = glob($dir . '/*.json');
@@ -64,8 +63,8 @@ function getOAuthAccessToken(string $saFile): ?string {
     if (!file_exists($saFile)) { echo date('Y-m-d H:i:s') . " SA file not found: $saFile\n"; return null; }
     $sa = json_decode(file_get_contents($saFile), true);
     if (!$sa || empty($sa['private_key'])) { echo date('Y-m-d H:i:s') . " Invalid SA JSON\n"; return null; }
-    $now     = time();
-    $header  = base64UrlEncode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
+    $now = time();
+    $header = base64UrlEncode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
     $payload = base64UrlEncode(json_encode([
         'iss' => $sa['client_email'], 'sub' => $sa['client_email'],
         'aud' => 'https://oauth2.googleapis.com/token',
@@ -73,12 +72,12 @@ function getOAuthAccessToken(string $saFile): ?string {
         'scope' => 'https://www.googleapis.com/auth/firebase.messaging'
     ]));
     $input = "$header.$payload";
-    $pkey  = openssl_pkey_get_private($sa['private_key']);
+    $pkey = openssl_pkey_get_private($sa['private_key']);
     if (!$pkey || !openssl_sign($input, $sigRaw, $pkey, OPENSSL_ALGO_SHA256)) {
         $tmpKey = tempnam(sys_get_temp_dir(), 'pkey_');
         $tmpData = tempnam(sys_get_temp_dir(), 'jdata_');
-        $tmpSig  = tempnam(sys_get_temp_dir(), 'jsig_');
-        file_put_contents($tmpKey,  $sa['private_key']);
+        $tmpSig = tempnam(sys_get_temp_dir(), 'jsig_');
+        file_put_contents($tmpKey, $sa['private_key']);
         file_put_contents($tmpData, $input);
         shell_exec("openssl dgst -sha256 -sign " . escapeshellarg($tmpKey) . " -out " . escapeshellarg($tmpSig) . " " . escapeshellarg($tmpData) . " 2>&1");
         $sigRaw = file_get_contents($tmpSig);
@@ -86,11 +85,11 @@ function getOAuthAccessToken(string $saFile): ?string {
         if (!$sigRaw || strlen($sigRaw) < 64) { echo date('Y-m-d H:i:s') . " JWT signing failed.\n"; return null; }
     }
     $jwt = $input . '.' . base64UrlEncode($sigRaw);
-    $ch  = curl_init('https://oauth2.googleapis.com/token');
+    $ch = curl_init('https://oauth2.googleapis.com/token');
     curl_setopt_array($ch, [
         CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15,
-        CURLOPT_POSTFIELDS  => http_build_query(['grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer', 'assertion' => $jwt]),
-        CURLOPT_HTTPHEADER  => ['Content-Type: application/x-www-form-urlencoded'],
+        CURLOPT_POSTFIELDS => http_build_query(['grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer', 'assertion' => $jwt]),
+        CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
     ]);
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -102,7 +101,7 @@ function getOAuthAccessToken(string $saFile): ?string {
 }
 
 function sendFcmV1(string $accessToken, string $deviceToken, string $title, string $body): bool {
-    $url     = 'https://fcm.googleapis.com/v1/projects/' . PROJECT_ID . '/messages:send';
+    $url = 'https://fcm.googleapis.com/v1/projects/' . PROJECT_ID . '/messages:send';
     $payload = json_encode(['message' => [
         'token' => $deviceToken,
         'notification' => ['title' => $title, 'body' => $body],
@@ -120,8 +119,8 @@ function sendFcmV1(string $accessToken, string $deviceToken, string $title, stri
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10,
-        CURLOPT_HTTPHEADER  => ['Authorization: Bearer ' . $accessToken, 'Content-Type: application/json'],
-        CURLOPT_POSTFIELDS  => $payload,
+        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $accessToken, 'Content-Type: application/json'],
+        CURLOPT_POSTFIELDS => $payload,
     ]);
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -135,7 +134,6 @@ function sendFcmV1(string $accessToken, string $deviceToken, string $title, stri
 
 function notifyWithTokenSkip(string $accessToken, array $tokens, string $title, string $body,
     string $rule, string $eventId = '', string $eventDesc = ''): bool {
-
     static $badTokens = [];
     $goodTokens = [];
     $now = time();
@@ -161,8 +159,8 @@ function notifyWithTokenSkip(string $accessToken, array $tokens, string $title, 
 function notifyBatched(string $accessToken, array $tokens, string $title, array $lines,
     string $rule, int $batchSize = 20): bool {
     $batches = array_chunk($lines, $batchSize);
-    $total   = count($batches);
-    $allOk   = true;
+    $total = count($batches);
+    $allOk = true;
     foreach ($batches as $i => $chunk) {
         $batchTitle = $total > 1 ? $title . ' (' . ($i + 1) . '/' . $total . ')' : $title;
         $ok = notifyWithTokenSkip($accessToken, $tokens, $batchTitle, implode("\n", $chunk), $rule);
@@ -188,33 +186,27 @@ function logNotification(string $title, string $body, string $rule,
 }
 
 function alreadyNotified(array &$notified, string $key): bool { return isset($notified[$key]); }
-function markNotified(array &$notified, string $key): void    { $notified[$key] = time(); }
-
+function markNotified(array &$notified, string $key): void { $notified[$key] = time(); }
 function cleanNotified(array &$notified): void {
-    $cutoff  = time() - (48 * 60 * 60);
+    $cutoff = time() - (48 * 60 * 60);
     $notified = array_filter($notified, fn($ts) => is_int($ts) && $ts > $cutoff);
 }
-
 function isWithinTimeWindow(int $hour, int $minute = 0, int $toleranceMin = 7): bool {
-    $now      = time();
+    $now = time();
     $todayBase = strtotime(date('Y-m-d') . " {$hour}:{$minute}:00");
     return $now >= $todayBase && $now < ($todayBase + $toleranceMin * 60);
 }
-
-function todayDate(): string    { return date('Y-m-d'); }
+function todayDate(): string { return date('Y-m-d'); }
 function tomorrowDate(): string { return date('Y-m-d', strtotime('+1 day')); }
-
 function daysFromNow(string $dt): float {
     return (strtotime(explode(' ', $dt)[0]) - strtotime(todayDate())) / 86400;
 }
-
 function formatEventLine(array $ev): string {
-    $time  = isset($ev['dt'])       ? date('H:i', strtotime($ev['dt'])) : '';
-    $place = !empty($ev['place'])   && $ev['place']    !== '?' ? ' @ ' . $ev['place']              : '';
-    $dur   = !empty($ev['duration'])&& $ev['duration'] !== '?' ? ' (' . $ev['duration'] . ' min)' : '';
+    $time = isset($ev['dt']) ? date('H:i', strtotime($ev['dt'])) : '';
+    $place = !empty($ev['place']) && $ev['place'] !== '?' ? ' @ ' . $ev['place'] : '';
+    $dur = !empty($ev['duration']) && $ev['duration'] !== '?' ? ' (' . $ev['duration'] . ' min)' : '';
     return $time . ' ' . ($ev['desc'] ?? '') . $place . $dur;
 }
-
 function getEventsForNotifications(string $eventsFile): array {
     if (!file_exists($eventsFile)) return [];
     $all = json_decode(file_get_contents($eventsFile), true) ?: [];
@@ -237,11 +229,11 @@ echo date('Y-m-d H:i:s') . " Events (active only): " . count($events) . "\n";
 $notified = file_exists(NOTIFIED_FILE) ? (json_decode(file_get_contents(NOTIFIED_FILE), true) ?: []) : [];
 cleanNotified($notified);
 
-$now           = time();
-$today         = todayDate();
-$tomorrow      = tomorrowDate();
-$accessToken   = null;
-$anythingToDo  = false;
+$now = time();
+$today = todayDate();
+$tomorrow = tomorrowDate();
+$accessToken = null;
+$anythingToDo = false;
 
 function getToken(): ?string {
     global $accessToken;
@@ -257,16 +249,19 @@ function getToken(): ?string {
 foreach ($events as $ev) {
     if (empty($ev['dt']) || empty($ev['id'])) continue;
     $eventTime = strtotime($ev['dt']);
-    $diff      = $eventTime - $now;
+    $diff = $eventTime - $now;
     if ($diff <= 0 || $diff > 4020) continue;
     $key = '1h:' . $ev['id'];
     if (alreadyNotified($notified, $key)) continue;
     $anythingToDo = true;
     $diffMins = max(1, (int)round($diff / 60));
     $title = '⏰ Starting soon';
-    $body  = formatEventLine($ev) . ' — in ' . $diffMins . ' min';
+    $body = formatEventLine($ev) . ' — in ' . $diffMins . ' min';
     if (!getToken()) break;
-    notifyWithTokenSkip($accessToken, $tokens, $title, $body, 'rule1_1hour', $ev['id'], $ev['desc'] ?? '');
+    $ruleTokens = getTokensForRule($tokenObjects, 'rule1_1hour');
+    if (!empty($ruleTokens)) {
+        notifyWithTokenSkip($accessToken, $ruleTokens, $title, $body, 'rule1_1hour', $ev['id'], $ev['desc'] ?? '');
+    }
     markNotified($notified, $key);
 }
 
@@ -281,7 +276,10 @@ if (isWithinTimeWindow(17, 0)) {
             $anythingToDo = true;
             $lines = array_map(fn($e) => '• ' . date('D d M', strtotime($e['dt'])) . ' ' . formatEventLine($e), $upcoming);
             if (!getToken()) goto saveNotified;
-            notifyBatched($accessToken, $tokens, '📅 Upcoming #event', $lines, 'rule2_event_hashtag');
+            $ruleTokens = getTokensForRule($tokenObjects, 'rule2_event_hashtag');
+            if (!empty($ruleTokens)) {
+                notifyBatched($accessToken, $ruleTokens, '📅 Upcoming #event', $lines, 'rule2_event_hashtag');
+            }
         } else { echo date('Y-m-d H:i:s') . " [rule2] No #event events upcoming.\n"; }
         markNotified($notified, $key);
     }
@@ -298,7 +296,10 @@ if (isWithinTimeWindow(19, 0)) {
             $anythingToDo = true;
             $lines = array_map(fn($e) => '• ' . date('D d M', strtotime($e['dt'])) . ' ' . formatEventLine($e), $upcoming);
             if (!getToken()) goto saveNotified;
-            notifyBatched($accessToken, $tokens, '🎛 Upcoming #control', $lines, 'rule3_control_hashtag');
+            $ruleTokens = getTokensForRule($tokenObjects, 'rule3_control_hashtag');
+            if (!empty($ruleTokens)) {
+                notifyBatched($accessToken, $ruleTokens, '🎛 Upcoming #control', $lines, 'rule3_control_hashtag');
+            }
         } else { echo date('Y-m-d H:i:s') . " [rule3] No #control events upcoming.\n"; }
         markNotified($notified, $key);
     }
@@ -315,7 +316,10 @@ if (isWithinTimeWindow(21, 0)) {
             $anythingToDo = true;
             $lines = array_map(fn($e) => '• ' . date('D d M', strtotime($e['dt'])) . ' ' . formatEventLine($e), $upcoming);
             if (!getToken()) goto saveNotified;
-            notifyBatched($accessToken, $tokens, '👤 Upcoming #pers', $lines, 'rule4_pers_hashtag');
+            $ruleTokens = getTokensForRule($tokenObjects, 'rule4_pers_hashtag');
+            if (!empty($ruleTokens)) {
+                notifyBatched($accessToken, $ruleTokens, '👤 Upcoming #pers', $lines, 'rule4_pers_hashtag');
+            }
         } else { echo date('Y-m-d H:i:s') . " [rule4] No #pers events upcoming.\n"; }
         markNotified($notified, $key);
     }
@@ -332,7 +336,10 @@ if (isWithinTimeWindow(23, 0)) {
             $anythingToDo = true;
             $lines = array_map(fn($e) => '• ' . formatEventLine($e), $tomorrowEvents);
             if (!getToken()) goto saveNotified;
-            notifyBatched($accessToken, $tokens, '📋 Tomorrow\'s events', $lines, 'rule5_tomorrow');
+            $ruleTokens = getTokensForRule($tokenObjects, 'rule5_tomorrow');
+            if (!empty($ruleTokens)) {
+                notifyBatched($accessToken, $ruleTokens, '📋 Tomorrow\'s events', $lines, 'rule5_tomorrow');
+            }
         } else { echo date('Y-m-d H:i:s') . " [rule5] No events tomorrow.\n"; }
         markNotified($notified, $key);
     }
@@ -347,9 +354,9 @@ if (isWithinTimeWindow(8, 0)) {
             if (empty($e['dt'])) continue;
             $days = daysFromNow($e['dt']);
             if ($days <= 0) continue;
-            if      ($days >= 2.5  && $days < 3.5)  $buckets[3][]  = $e;
-            elseif  ($days >= 6.5  && $days < 7.5)  $buckets[7][]  = $e;
-            elseif  ($days >= 13.5 && $days < 14.5) $buckets[14][] = $e;
+            if ($days >= 2.5 && $days < 3.5) $buckets[3][] = $e;
+            elseif ($days >= 6.5 && $days < 7.5) $buckets[7][] = $e;
+            elseif ($days >= 13.5 && $days < 14.5) $buckets[14][] = $e;
         }
         $lines = [];
         foreach ($buckets as $horizon => $evs) {
@@ -361,36 +368,24 @@ if (isWithinTimeWindow(8, 0)) {
         if (!empty($lines)) {
             $anythingToDo = true;
             if (!getToken()) goto saveNotified;
-            notifyWithTokenSkip($accessToken, $tokens, '📆 Upcoming events', implode("\n", $lines), 'rule6_horizon');
+            $ruleTokens = getTokensForRule($tokenObjects, 'rule6_horizon');
+            if (!empty($ruleTokens)) {
+                notifyWithTokenSkip($accessToken, $ruleTokens, '📆 Upcoming events', implode("\n", $lines), 'rule6_horizon');
+            }
         } else { echo date('Y-m-d H:i:s') . " [rule6] No events on day 3, 7, or 14.\n"; }
         markNotified($notified, $key);
     }
 }
 
 // ── RULE 7: Guestbook — 1-min debounce, skip sender's own token ──────────────
-//
-// Debounce: only fire if the newest unnotified message is >= 60 seconds old.
-// Sender skip: each token object has a 'username' field. If it matches the
-// username of the last message sender, that token is excluded from this firing.
-// This means the person who sent the last message won't be notified of their
-// own message, while everyone else will.
-//
-// Pointer: $notified['guestbook_last:{book}'] stores the Unix timestamp of the
-// newest message already notified about (NOT a date string — so cleanNotified()
-// must not sweep it). We protect it with a 'gb:' prefix that cleanNotified()
-// ignores by checking for int values > cutoff; since guestbook pointers are
-// recent Unix timestamps they survive the 48h window fine.
-
 if (file_exists(GUESTBOOKS_FILE)) {
     $guestbooks = json_decode(file_get_contents(GUESTBOOKS_FILE), true) ?: [];
-
     foreach ($guestbooks as $bookKey => $messages) {
         if (empty($messages)) continue;
 
         $notifiedKey   = 'guestbook_last:' . $bookKey;
         $lastNotifiedTs = isset($notified[$notifiedKey]) ? (int)$notified[$notifiedKey] : 0;
 
-        // Collect messages newer than our pointer
         $newMessages = array_filter($messages, function($m) use ($lastNotifiedTs) {
             $ts = strtotime(str_replace(' ', 'T', $m['dt'] ?? ''));
             return $ts !== false && $ts > $lastNotifiedTs;
@@ -401,7 +396,6 @@ if (file_exists(GUESTBOOKS_FILE)) {
             continue;
         }
 
-        // Newest message timestamp — used for debounce and pointer advance
         $newestTs = max(array_map(
             fn($m) => (int)strtotime(str_replace(' ', 'T', $m['dt'] ?? '')),
             $newMessages
@@ -413,7 +407,6 @@ if (file_exists(GUESTBOOKS_FILE)) {
             continue;
         }
 
-        // Who sent the last (newest) message?
         $lastSenderUsername = '';
         foreach ($newMessages as $m) {
             $ts = (int)strtotime(str_replace(' ', 'T', $m['dt'] ?? ''));
@@ -423,11 +416,9 @@ if (file_exists(GUESTBOOKS_FILE)) {
             }
         }
 
-        // Build recipient list: exclude tokens whose username matches the last sender
         $recipientTokens = [];
         foreach ($tokenObjects as $obj) {
             $objUsername = trim($obj['username'] ?? '');
-            // Skip if username matches and is non-empty
             if ($objUsername !== '' && $objUsername === $lastSenderUsername) {
                 echo date('Y-m-d H:i:s') . " [rule7] Skipping token for sender '{$lastSenderUsername}' ({$obj['browser']}).\n";
                 continue;
@@ -441,13 +432,12 @@ if (file_exists(GUESTBOOKS_FILE)) {
             continue;
         }
 
-        // Sort new messages oldest-first, cap display at last 5
         usort($newMessages, fn($a, $b) =>
             strtotime(str_replace(' ', 'T', $a['dt'])) - strtotime(str_replace(' ', 'T', $b['dt']))
         );
-        $newMessages    = array_values($newMessages);
+        $newMessages = array_values($newMessages);
         $displayMessages = array_slice($newMessages, -5);
-        $hiddenCount    = count($newMessages) - count($displayMessages);
+        $hiddenCount = count($newMessages) - count($displayMessages);
 
         $bookLabel = $bookKey === 'general' ? '' : '[' . ucfirst($bookKey) . '] ';
         $lines = array_map(function($m) {
@@ -469,7 +459,6 @@ if (file_exists(GUESTBOOKS_FILE)) {
 
         notifyWithTokenSkip($accessToken, $recipientTokens, $title, $body, 'rule7_guestbook');
 
-        // Advance pointer regardless of delivery result (prevent re-spam)
         $notified[$notifiedKey] = $newestTs;
         echo date('Y-m-d H:i:s') . " [rule7] Notified '{$bookKey}', pointer → " . date('Y-m-d H:i:s', $newestTs) . "\n";
     }
@@ -482,3 +471,4 @@ if (!$anythingToDo) {
 saveNotified:
 file_put_contents(NOTIFIED_FILE, json_encode($notified, JSON_PRETTY_PRINT));
 echo date('Y-m-d H:i:s') . " Done.\n";
+?>

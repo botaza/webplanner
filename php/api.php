@@ -1,8 +1,8 @@
-
 <?php
 // php/api.php
 // UPDATED: Added full multi-guestbook support
-// UPDATED: Hardcoded UTC+10 (Asia/Vladivostok) so stored timestamps are consistent
+// UPDATED: Hardcoded UTC+10 (Asia/Vladivostok)
+// UPDATED: Added token preferences (chatOnly toggle) - one user can receive ONLY chat notifications
 
 date_default_timezone_set('Asia/Vladivostok');
 
@@ -151,11 +151,11 @@ if ($action === 'update_expense') {
     $updated = false;
     foreach ($data as &$e) {
         if ($e['id'] == $_POST['id']) {
-            if (isset($_POST['date']))     $e['date']     = $_POST['date'];
-            if (isset($_POST['amount']))   $e['amount']   = (float)$_POST['amount'];
-            if (isset($_POST['tool']))     $e['tool']     = $_POST['tool'];
+            if (isset($_POST['date'])) $e['date'] = $_POST['date'];
+            if (isset($_POST['amount'])) $e['amount'] = (float)$_POST['amount'];
+            if (isset($_POST['tool'])) $e['tool'] = $_POST['tool'];
             if (isset($_POST['category'])) $e['category'] = $_POST['category'];
-            if (isset($_POST['desc']))     $e['desc']     = $_POST['desc'];
+            if (isset($_POST['desc'])) $e['desc'] = $_POST['desc'];
             $updated = true;
             break;
         }
@@ -393,14 +393,14 @@ if ($action === 'update_shopping') {
     $updated = false;
     foreach ($data as &$item) {
         if ($item['id'] == $_POST['id']) {
-            if (isset($_POST['name']))         $item['name']         = $_POST['name'];
-            if (isset($_POST['quantity']))     $item['quantity']     = (int)$_POST['quantity'];
-            if (isset($_POST['place']))        $item['place']        = $_POST['place'];
+            if (isset($_POST['name'])) $item['name'] = $_POST['name'];
+            if (isset($_POST['quantity'])) $item['quantity'] = (int)$_POST['quantity'];
+            if (isset($_POST['place'])) $item['place'] = $_POST['place'];
             if (isset($_POST['date_purchase'])) $item['date_purchase'] = $_POST['date_purchase'];
-            if (isset($_POST['comment1']))     $item['comment1']     = $_POST['comment1'];
-            if (isset($_POST['comment2']))     $item['comment2']     = $_POST['comment2'];
-            if (isset($_POST['priority']))     $item['priority']     = (int)$_POST['priority'];
-            if (isset($_POST['is_wishlist']))  $item['is_wishlist']  = $_POST['is_wishlist'] === 'true';
+            if (isset($_POST['comment1'])) $item['comment1'] = $_POST['comment1'];
+            if (isset($_POST['comment2'])) $item['comment2'] = $_POST['comment2'];
+            if (isset($_POST['priority'])) $item['priority'] = (int)$_POST['priority'];
+            if (isset($_POST['is_wishlist'])) $item['is_wishlist'] = $_POST['is_wishlist'] === 'true';
             $updated = true;
             break;
         }
@@ -440,7 +440,6 @@ if ($action === 'add_guestbook_message') {
     $data = read($files['guestbooks']);
     $book = $_POST['book'] ?? 'general';
     if (!isset($data[$book])) $data[$book] = [];
-
     $data[$book][] = [
         'id'       => time() . rand(10000, 99999),
         'username' => $_POST['username'] ?? 'Guest',
@@ -448,11 +447,9 @@ if ($action === 'add_guestbook_message') {
         'emoji'    => $_POST['emoji'] ?? '',
         'dt'       => date('Y-m-d H:i:s')
     ];
-
     if (count($data[$book]) > 2000) {
         $data[$book] = array_slice($data[$book], -2000);
     }
-
     write($files['guestbooks'], $data);
     echo json_encode(['success' => true]);
     exit;
@@ -519,9 +516,79 @@ if ($action === 'clear_guestbook') {
     exit;
 }
 
-// ── Token Management ──
+// ── Token Management with chatOnly preference ──
 $tokensFile = $dataDir . '/fcm-tokens.json';
 
+function readTokensWithPrefs(string $file): array {
+    if (!file_exists($file)) return [];
+    $data = json_decode(file_get_contents($file), true) ?: [];
+    return array_map(function($t) {
+        if (is_string($t)) {
+            return [
+                'token' => $t,
+                'username' => '',
+                'browser' => 'Unknown',
+                'registered_at' => date('Y-m-d H:i:s'),
+                'last_seen' => date('Y-m-d H:i:s'),
+                'prefs' => ['chatOnly' => false]
+            ];
+        }
+        if (!isset($t['prefs']) || !is_array($t['prefs'])) {
+            $t['prefs'] = ['chatOnly' => false];
+        }
+        return $t;
+    }, $data);
+}
+
+function writeTokensWithPrefs(string $file, array $tokens): void {
+    file_put_contents($file, json_encode(array_values($tokens), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+}
+
+if ($action === 'get_tokens') {
+    $tokens = readTokensWithPrefs($tokensFile);
+    echo json_encode($tokens);
+    exit;
+}
+
+if ($action === 'update_token_prefs') {
+    $tokenStr = $_POST['token'] ?? '';
+    $prefsJson = $_POST['prefs'] ?? '{}';
+    $prefs = json_decode($prefsJson, true) ?: ['chatOnly' => false];
+
+    if (!$tokenStr) {
+        echo json_encode(['error' => 'Token required']);
+        exit;
+    }
+
+    $tokens = readTokensWithPrefs($tokensFile);
+    $updated = false;
+
+    foreach ($tokens as &$t) {
+        if ($t['token'] === $tokenStr) {
+            $t['prefs'] = $prefs;
+            $t['last_seen'] = date('Y-m-d H:i:s');
+            $updated = true;
+            break;
+        }
+    }
+
+    if (!$updated) {
+        $tokens[] = [
+            'token' => $tokenStr,
+            'username' => $_POST['username'] ?? 'Guest',
+            'browser' => $_POST['browser'] ?? 'Unknown',
+            'registered_at' => date('Y-m-d H:i:s'),
+            'last_seen' => date('Y-m-d H:i:s'),
+            'prefs' => $prefs
+        ];
+    }
+
+    writeTokensWithPrefs($tokensFile, $tokens);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// ── Legacy token actions (kept for compatibility) ──
 function readTokens(string $file): array {
     if (!file_exists($file)) return [];
     return json_decode(file_get_contents($file), true) ?: [];
@@ -529,19 +596,6 @@ function readTokens(string $file): array {
 
 function writeTokens(string $file, array $tokens): void {
     file_put_contents($file, json_encode(array_values($tokens), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-}
-
-if ($action === 'get_tokens') {
-    $tokens = readTokens($tokensFile);
-    // Normalise: migrate flat strings to objects
-    $tokens = array_map(function($t) {
-        if (is_string($t)) {
-            return ['token' => $t, 'username' => '', 'browser' => 'Unknown', 'registered_at' => '', 'last_seen' => ''];
-        }
-        return $t;
-    }, $tokens);
-    echo json_encode(['tokens' => array_values($tokens)]);
-    exit;
 }
 
 if ($action === 'delete_token') {
@@ -583,6 +637,7 @@ if ($action === 'clear_all') {
 
 // ── Notifications ──
 $notifLog = $dataDir . '/notification-log.json';
+
 if ($action === 'get_notifications') {
     if (!file_exists($notifLog)) { echo json_encode([]); exit; }
     $all = json_decode(file_get_contents($notifLog), true) ?: [];
@@ -623,4 +678,3 @@ if ($action === 'clear_notifications') {
 
 echo json_encode(['error' => 'unknown action']);
 ?>
-

@@ -1,6 +1,7 @@
 // js/app.js
 // MAIN APPLICATION BOOTSTRAP
 // UPDATED: Initialize shopping module and full multi-guestbook module
+// UPDATED: Import updateTokenChatOnly and ensure token manager works with chatOnly preference
 
 import { state } from './state.js';
 import { isUnlocked, showLockScreen, getRole, isGuest } from './lockscreen.js';
@@ -13,18 +14,18 @@ import { initShopping, loadShopping } from './shopping.js';
 import { loadDashboard } from './dashboard.js';
 import { enableNotifications, updateNotifStatus } from './fcm-client.js';
 import { loadNotifications } from './notification-history.js';
-import { initGuestbook, loadGuestbook } from './guestbook.js';   // NEW
+import { initGuestbook, loadGuestbook } from './guestbook.js';
 
 async function bootApp() {
   // Store role in shared state
   state.role = getRole(); // 'admin' | 'guest'
-  
+
   // Initialize backend files if missing
   await api('init');
-  
+
   // Default to dashboard screen
   switchScreen('screen-dashboard');
-  
+
   // FCM: only register / request token for admin users
   if (typeof firebase !== 'undefined') {
     state.messaging = firebase.messaging();
@@ -33,20 +34,20 @@ async function bootApp() {
     }
     updateNotifStatus();
   }
-  
+
   // Initialize modules
   loadDashboard();
   initExpenses();
   initIncome();
   initShopping();
-  initGuestbook();          // ← NEW: Initialize guestbook module
-  
+  initGuestbook();          // ← Initialize guestbook module
+
   // Show guest mode banner and apply restrictions
   if (isGuest()) {
     _showGuestBanner();
     if (typeof window._applyGuestUI === "function") window._applyGuestUI();
   }
-  
+
   console.log(`[app.js] Boot complete — role: ${state.role}`);
 }
 
