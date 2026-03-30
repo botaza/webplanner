@@ -2,6 +2,9 @@
 <?php
 // php/api.php
 // UPDATED: Added full multi-guestbook support
+// UPDATED: Hardcoded UTC+10 (Asia/Vladivostok) so stored timestamps are consistent
+
+date_default_timezone_set('Asia/Vladivostok');
 
 header('Content-Type: application/json');
 $dataDir = __DIR__ . '/../data';
