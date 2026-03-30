@@ -1,159 +1,134 @@
-// js/guestbook-render.js
-// RENDERING LOGIC FOR GUESTBOOK MODULE
-// Handles multi-guestbook chips, infinite scroll chat display, and date grouping
-// UPDATED: Times parsed as UTC+10 local (api.php now saves with Asia/Vladivostok set)
-// UPDATED: Delete message button available in all books including general (admin only)
+// >> - js/guestbook-render.js
+// GUESTBOOK RENDERING LOGIC
+// FIXED: Messages now appear at the BOTTOM (newest at bottom) with proper auto-scroll to bottom
 
 import { state } from './state.js';
-import { isGuest } from './lockscreen.js';
-
-let currentPage = 1;
-const MESSAGES_PER_PAGE = 30;
 
 /**
- * Parse a stored datetime string as UTC+10 local time.
- * api.php saves with date_default_timezone_set('Asia/Vladivostok'),
- * so 'YYYY-MM-DD HH:MM:SS' is already UTC+10 — no offset adjustment needed.
- * We just normalize the separator so all JS engines parse it correctly.
+ * Render ALL guestbook messages in the chat container
+ * Messages are sorted oldest → newest (standard chat behavior)
+ * Automatically scrolls to the very bottom after rendering
  */
-function parseStoredDt(dt) {
-  return new Date(dt.includes('T') ? dt : dt.replace(' ', 'T'));
+export function renderGuestbookMessages(messages = []) {
+    const container = document.getElementById('guestbook-chat-container');
+    if (!container) {
+        console.warn('[guestbook-render] Chat container not found');
+        return;
+    }
+
+    // Clear previous content
+    container.innerHTML = '';
+
+    if (!messages || messages.length === 0) {
+        container.innerHTML = `
+            <div class="flex flex-col items-center justify-center h-full py-20 text-zinc-500">
+                <div class="text-6xl mb-4 opacity-50">💬</div>
+                <div class="text-lg">No messages yet</div>
+                <div class="text-sm mt-1">Be the first to write something!</div>
+            </div>`;
+        return;
+    }
+
+    // Sort messages by timestamp (oldest first)
+    const sortedMessages = [...messages].sort((a, b) => {
+        const timeA = new Date(a.dt || '1970-01-01').getTime();
+        const timeB = new Date(b.dt || '1970-01-01').getTime();
+        return timeA - timeB;
+    });
+
+    let html = '';
+
+    sortedMessages.forEach(msg => {
+        const isMine = String(msg.username || '').toLowerCase() === String(state.guestbookUsername || '').toLowerCase();
+
+        const messageTime = new Date(msg.dt || Date.now()).toLocaleTimeString('ru-RU', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        html += `
+            <div class="message ${isMine ? 'mine' : ''}">
+                <div class="bubble">
+                    ${msg.emoji ? `<span class="mr-1 text-xl">${msg.emoji}</span>` : ''}
+                    ${msg.text ? msg.text.replace(/\n/g, '<br>') : ''}
+                </div>
+                <div class="meta">
+                    <span class="font-medium">${msg.username || 'Guest'}</span>
+                    <span>${messageTime}</span>
+                </div>
+            </div>`;
+    });
+
+    container.innerHTML = html;
+
+    // IMPORTANT FIX: Scroll to bottom so newest messages are visible
+    // We use multiple timeouts because the DOM needs time to layout
+    const scrollToBottom = () => {
+        container.scrollTop = container.scrollHeight;
+    };
+
+    // Immediate scroll
+    scrollToBottom();
+
+    // After content is painted
+    setTimeout(scrollToBottom, 10);
+
+    // Safety net in case of images, fonts, or complex layout
+    setTimeout(scrollToBottom, 100);
+    setTimeout(scrollToBottom, 300);
 }
 
 /**
- * Render the top chips for switching between guestbooks.
- * Non-general chips get a small × delete button for admins.
+ * Append a single new message to the bottom (optimistic update)
+ * Used when sending a message for instant feedback
  */
-export function renderGuestbookChips() {
-  const container = document.getElementById('guestbook-chips');
-  if (!container) return;
+export function appendGuestbookMessage(message) {
+    const container = document.getElementById('guestbook-chat-container');
+    if (!container) return;
 
-  let html = '';
+    const isMine = String(message.username || '').toLowerCase() === String(state.guestbookUsername || '').toLowerCase();
 
-  Object.keys(state.guestbooksData).forEach(key => {
-    const isActive = key === state.currentGuestbookKey;
-    const displayName = key === 'general' ? 'General' :
-                       key.charAt(0).toUpperCase() + key.slice(1);
-    const canDelete = !isGuest() && key !== 'general';
+    const messageTime = new Date(message.dt || Date.now()).toLocaleTimeString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 
-    html += `
-      <div class="guestbook-chip ${isActive ? 'active' : ''} flex items-center gap-1"
-           style="display:inline-flex">
-        <span onclick="window.switchGuestbook('${key}')" style="cursor:pointer">${displayName}</span>
-        ${canDelete ? `<span onclick="window.deleteCurrentGuestbook('${key}')"
-              style="cursor:pointer;opacity:0.6;font-size:0.75rem;line-height:1;padding-left:2px"
-              title="Delete this guestbook">×</span>` : ''}
-      </div>`;
-  });
-
-  // Add "New" button as a chip
-  html += `
-    <div class="guestbook-chip" onclick="window.createNewGuestbook()">
-      + New
-    </div>`;
-
-  container.innerHTML = html;
-}
-
-/**
- * Render messages with date grouping (newest on top)
- */
-export function renderGuestbookMessages(messages = null) {
-  const container = document.getElementById('guestbook-chat-container');
-  if (!container) return;
-
-  const data = messages || state.guestbooksData[state.currentGuestbookKey] || [];
-
-  // Sort newest first
-  const sorted = [...data].sort((a, b) => parseStoredDt(b.dt) - parseStoredDt(a.dt));
-
-  let html = '';
-  let currentDate = '';
-
-  sorted.forEach(msg => {
-    const msgDate = parseStoredDt(msg.dt).toLocaleDateString('en-CA'); // YYYY-MM-DD
-
-    if (msgDate !== currentDate) {
-      currentDate = msgDate;
-      const dateLabel = getDateLabel(msg.dt);
-      html += `
-        <div class="text-xs text-zinc-500 text-center my-6 font-medium">
-          ${dateLabel}
+    const messageHTML = `
+        <div class="message ${isMine ? 'mine' : ''}">
+            <div class="bubble">
+                ${message.emoji ? `<span class="mr-1 text-xl">${message.emoji}</span>` : ''}
+                ${message.text ? message.text.replace(/\n/g, '<br>') : ''}
+            </div>
+            <div class="meta">
+                <span class="font-medium">${message.username || 'Guest'}</span>
+                <span>${messageTime}</span>
+            </div>
         </div>`;
+
+    container.insertAdjacentHTML('beforeend', messageHTML);
+
+    // Smooth scroll to the new message
+    setTimeout(() => {
+        container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'smooth'
+        });
+    }, 10);
+}
+
+/**
+ * Force scroll to bottom (useful after switching guestbooks or loading)
+ */
+export function scrollGuestbookToBottom() {
+    const container = document.getElementById('guestbook-chat-container');
+    if (container) {
+        container.scrollTop = container.scrollHeight;
     }
-
-    const isMine = msg.username === state.guestbookUsername;
-    // Admins can delete messages in any book, including general
-    const canDelete = !isGuest();
-
-    html += `
-      <div class="message ${isMine ? 'mine' : ''}">
-        <div class="bubble">
-          ${msg.emoji ? `<span class="mr-2">${msg.emoji}</span>` : ''}
-          ${msg.text}
-        </div>
-        <div class="meta">
-          <span>${msg.username}</span>
-          <span>${formatTime(msg.dt)}</span>
-          ${canDelete ? `<span onclick="window.deleteMessage('${msg.id}')"
-                style="cursor:pointer;opacity:0.5;margin-left:4px" title="Delete message">🗑</span>` : ''}
-        </div>
-      </div>`;
-  });
-
-  if (sorted.length === 0) {
-    html = `<div class="text-center text-zinc-500 py-12">No messages yet.<br>Be the first to write something!</div>`;
-  }
-
-  container.innerHTML = html;
-
-  // Scroll to bottom (newest messages)
-  container.scrollTop = container.scrollHeight;
 }
 
-/**
- * Format relative date label using the stored UTC+10 time directly
- */
-function getDateLabel(dt) {
-  const date = parseStoredDt(dt);
-  const today = new Date();
-
-  const dateStr      = date.toLocaleDateString('en-CA');
-  const todayStr     = today.toLocaleDateString('en-CA');
-  const yesterday    = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const yesterdayStr = yesterday.toLocaleDateString('en-CA');
-
-  if (dateStr === todayStr)     return 'Today';
-  if (dateStr === yesterdayStr) return 'Yesterday';
-
-  return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-}
-
-/**
- * Format message time from stored UTC+10 value
- */
-function formatTime(dt) {
-  return parseStoredDt(dt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-}
-
-/**
- * Infinite scroll handler (load older messages when scrolling up)
- */
-export function setupInfiniteScroll() {
-  const container = document.getElementById('guestbook-chat-container');
-  if (!container) return;
-
-  container.addEventListener('scroll', () => {
-    if (container.scrollTop < 100) {
-      console.log('[guestbook] Reached top — infinite scroll ready for future pagination');
-    }
-  });
-}
-
-// Expose functions to window for inline onclick handlers
+// Expose helper for debugging / manual calls if needed
 Object.assign(window, {
-  renderGuestbookChips,
-  renderGuestbookMessages,
-  setupInfiniteScroll
+    scrollGuestbookToBottom
 });
+
+// << - js/guestbook-render.js
