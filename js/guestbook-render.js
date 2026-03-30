@@ -1,7 +1,8 @@
 // js/guestbook-render.js
 // RENDERING LOGIC FOR GUESTBOOK MODULE
 // Handles multi-guestbook chips, infinite scroll chat display, and date grouping
-// UPDATED: UTC+10 time display; delete-guestbook button on non-general chips (admin only)
+// UPDATED: Times parsed as UTC+10 local (api.php now saves with Asia/Vladivostok set)
+// UPDATED: Delete message button available in all books including general (admin only)
 
 import { state } from './state.js';
 import { isGuest } from './lockscreen.js';
@@ -9,15 +10,14 @@ import { isGuest } from './lockscreen.js';
 let currentPage = 1;
 const MESSAGES_PER_PAGE = 30;
 
-const UTC_OFFSET_MS = 10 * 60 * 60 * 1000;
-
 /**
- * Convert a stored UTC datetime string to a UTC+10 Date object
+ * Parse a stored datetime string as UTC+10 local time.
+ * api.php saves with date_default_timezone_set('Asia/Vladivostok'),
+ * so 'YYYY-MM-DD HH:MM:SS' is already UTC+10 — no offset adjustment needed.
+ * We just normalize the separator so all JS engines parse it correctly.
  */
-function toUTC10(dt) {
-  // dt stored as 'YYYY-MM-DD HH:MM:SS' (server local) or ISO string
-  const base = new Date(dt.includes('T') ? dt : dt.replace(' ', 'T') + 'Z');
-  return new Date(base.getTime() + UTC_OFFSET_MS);
+function parseStoredDt(dt) {
+  return new Date(dt.includes('T') ? dt : dt.replace(' ', 'T'));
 }
 
 /**
@@ -65,13 +65,13 @@ export function renderGuestbookMessages(messages = null) {
   const data = messages || state.guestbooksData[state.currentGuestbookKey] || [];
 
   // Sort newest first
-  const sorted = [...data].sort((a, b) => new Date(b.dt) - new Date(a.dt));
+  const sorted = [...data].sort((a, b) => parseStoredDt(b.dt) - parseStoredDt(a.dt));
 
   let html = '';
   let currentDate = '';
 
   sorted.forEach(msg => {
-    const msgDate = toUTC10(msg.dt).toISOString().split('T')[0];
+    const msgDate = parseStoredDt(msg.dt).toLocaleDateString('en-CA'); // YYYY-MM-DD
 
     if (msgDate !== currentDate) {
       currentDate = msgDate;
@@ -83,6 +83,7 @@ export function renderGuestbookMessages(messages = null) {
     }
 
     const isMine = msg.username === state.guestbookUsername;
+    // Admins can delete messages in any book, including general
     const canDelete = !isGuest();
 
     html += `
@@ -111,16 +112,17 @@ export function renderGuestbookMessages(messages = null) {
 }
 
 /**
- * Simple helper to format relative date labels using UTC+10
+ * Format relative date label using the stored UTC+10 time directly
  */
 function getDateLabel(dt) {
-  const date = toUTC10(dt);
-  const nowLocal = new Date(Date.now() + UTC_OFFSET_MS);
+  const date = parseStoredDt(dt);
+  const today = new Date();
 
-  const dateStr      = date.toISOString().split('T')[0];
-  const todayStr     = nowLocal.toISOString().split('T')[0];
-  const yesterday    = new Date(nowLocal.getTime() - 86400000);
-  const yesterdayStr = yesterday.toISOString().split('T')[0];
+  const dateStr      = date.toLocaleDateString('en-CA');
+  const todayStr     = today.toLocaleDateString('en-CA');
+  const yesterday    = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const yesterdayStr = yesterday.toLocaleDateString('en-CA');
 
   if (dateStr === todayStr)     return 'Today';
   if (dateStr === yesterdayStr) return 'Yesterday';
@@ -129,11 +131,10 @@ function getDateLabel(dt) {
 }
 
 /**
- * Format message time as UTC+10
+ * Format message time from stored UTC+10 value
  */
 function formatTime(dt) {
-  const date = toUTC10(dt);
-  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  return parseStoredDt(dt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
 /**
@@ -145,7 +146,6 @@ export function setupInfiniteScroll() {
 
   container.addEventListener('scroll', () => {
     if (container.scrollTop < 100) {
-      // Load more logic can be added later (for now we load all messages)
       console.log('[guestbook] Reached top — infinite scroll ready for future pagination');
     }
   });
