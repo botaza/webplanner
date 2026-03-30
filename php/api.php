@@ -506,6 +506,19 @@ if ($action === 'delete_guestbook') {
     exit;
 }
 
+if ($action === 'clear_guestbook') {
+    $data = read($files['guestbooks']);
+    $book = trim($_POST['book'] ?? '');
+    if (!$book || !isset($data[$book])) {
+        echo json_encode(['error' => 'Guestbook not found']);
+        exit;
+    }
+    $data[$book] = [];
+    write($files['guestbooks'], $data);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 // ── System ──
 if ($action === 'snapshot') {
     $ts = date('Ymd_His');

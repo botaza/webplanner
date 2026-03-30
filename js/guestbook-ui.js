@@ -8,6 +8,7 @@ import { state } from './state.js';
 import { hideModal } from './utils.js';
 import { addGuestbookMessage, createGuestbook, deleteGuestbook } from './guestbook-crud.js';
 import { renderGuestbookChips, renderGuestbookMessages } from './guestbook-render.js';
+import { api } from './api.js';
 
 const EMOJI_LIST = ['👍', '❤️', '😂', '🎉', '😮', '🙏', '🔥', '👏', '😢', '😍', '🚀', '🍀'];
 
@@ -124,6 +125,23 @@ export async function deleteMessage(id) {
 }
 
 /**
+ * Clear all messages from the current guestbook (admin only).
+ * The book itself is kept — only its messages are wiped.
+ */
+export async function clearGuestbook() {
+  const key = state.currentGuestbookKey;
+  const label = key === 'general' ? 'General' : key.charAt(0).toUpperCase() + key.slice(1);
+  if (!confirm(`Clear ALL messages from "${label}"? This cannot be undone.`)) return;
+
+  const res = await api('clear_guestbook', { book: key });
+  if (res && res.success) {
+    await loadGuestbook();
+  } else {
+    alert('Failed to clear chat.');
+  }
+}
+
+/**
  * Switch to another guestbook
  */
 export function switchGuestbook(key) {
@@ -166,6 +184,7 @@ Object.assign(window, {
   sendGuestbookMessage,
   createNewGuestbook,
   deleteCurrentGuestbook,
+  clearGuestbook,
   deleteMessage,
   switchGuestbook,
   insertEmoji,
