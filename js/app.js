@@ -1,5 +1,6 @@
 // js/app.js
 // MAIN APPLICATION BOOTSTRAP
+// UPDATED: Chat tab is now the default home screen
 // UPDATED: Initialize shopping module and full multi-guestbook module
 // UPDATED: Import updateTokenChatOnly and ensure token manager works with chatOnly preference
 
@@ -23,8 +24,8 @@ async function bootApp() {
   // Initialize backend files if missing
   await api('init');
 
-  // Default to dashboard screen
-  switchScreen('screen-dashboard');
+  // DEFAULT TO CHAT TAB (Guestbook) as the new home screen
+  switchScreen('screen-guestbook');
 
   // FCM: only register / request token for admin users
   if (typeof firebase !== 'undefined') {
@@ -36,11 +37,11 @@ async function bootApp() {
   }
 
   // Initialize modules
-  loadDashboard();
+  loadDashboard();      // still load in background if needed
   initExpenses();
   initIncome();
   initShopping();
-  initGuestbook();          // ← Initialize guestbook module
+  initGuestbook();      // ← Initialize guestbook module
 
   // Show guest mode banner and apply restrictions
   if (isGuest()) {
@@ -48,7 +49,7 @@ async function bootApp() {
     if (typeof window._applyGuestUI === "function") window._applyGuestUI();
   }
 
-  console.log(`[app.js] Boot complete — role: ${state.role}`);
+  console.log(`[app.js] Boot complete — role: ${state.role} — default screen: Guestbook`);
 }
 
 function _showGuestBanner() {

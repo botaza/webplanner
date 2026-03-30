@@ -1,6 +1,6 @@
-// >> - js/guestbook.js
+// js/guestbook.js
 // GUESTBOOK MODULE ORCHESTRATOR
-// Fully compatible with the latest guestbook-render.js (bottom-aligned chat + auto-scroll)
+// UPDATED: Prompts for username on first visit + updates token association
 
 import { state } from './state.js';
 import { api } from './api.js';
@@ -9,27 +9,69 @@ import {
     appendGuestbookMessage, 
     scrollGuestbookToBottom 
 } from './guestbook-render.js';
-import { hideModal } from './utils.js';
+
+function ensureUsername() {
+    // If we already have a good username, return it
+    if (state.guestbookUsername && state.guestbookUsername !== 'Guest') {
+        return state.guestbookUsername;
+    }
+
+    // Check localStorage
+    let username = localStorage.getItem('guestbook_username');
+
+    if (!username || username === 'Guest' || username.trim() === '') {
+        username = prompt('What is your name for the guestbook chat?', 'Guest');
+        
+        if (!username || username.trim() === '') {
+            username = 'Guest';
+        } else {
+            username = username.trim();
+        }
+
+        localStorage.setItem('guestbook_username', username);
+    }
+
+    state.guestbookUsername = username;
+
+    // Update the FCM token with the new username (important for chat-only logic)
+    const currentToken = localStorage.getItem('fcm_registered_token');
+    if (currentToken) {
+        // Fire and forget - don't block UI
+        fetch('php/api.php', {
+            method: 'POST',
+            body: (() => {
+                const f = new FormData();
+                f.append('action', 'update_token_prefs');
+                f.append('token', currentToken);
+                f.append('username', username);
+                f.append('prefs', JSON.stringify({ chatOnly: false })); // preserve existing prefs
+                return f;
+            })()
+        }).catch(err => console.warn('Failed to update token username:', err));
+    }
+
+    return username;
+}
 
 export async function loadGuestbook(specificBookKey = null) {
     if (specificBookKey) {
         state.currentGuestbookKey = specificBookKey;
     }
 
+    // Ensure username is set before loading anything
+    ensureUsername();
+
     try {
         const data = await api('get_guestbooks');
         state.guestbooksData = data || { general: [] };
 
-        // Render the guestbook chips (tabs)
         renderGuestbookChips();
 
-        // Get messages for the currently selected guestbook
         const currentMessages = state.guestbooksData[state.currentGuestbookKey] || [];
 
-        // Render messages with proper bottom alignment and auto-scroll
         renderGuestbookMessages(currentMessages);
 
-        // Extra safety scroll after everything has rendered
+        // Safety scroll to bottom
         setTimeout(scrollGuestbookToBottom, 150);
 
         console.log(`[guestbook.js] Loaded "${state.currentGuestbookKey}" with ${currentMessages.length} messages`);
@@ -70,10 +112,10 @@ export async function sendGuestbookMessage() {
     if (!input || !input.value.trim()) return;
 
     const text = input.value.trim();
-    const username = state.guestbookUsername || 'Guest';
+    const username = ensureUsername();        // ensure we have a name
     const currentBook = state.currentGuestbookKey;
 
-    // Optimistic UI: show message immediately
+    // Optimistic UI
     const optimisticMsg = {
         id: 'temp-' + Date.now(),
         username: username,
@@ -83,8 +125,6 @@ export async function sendGuestbookMessage() {
     };
 
     appendGuestbookMessage(optimisticMsg);
-
-    // Clear input
     input.value = '';
 
     try {
@@ -96,16 +136,10 @@ export async function sendGuestbookMessage() {
         });
 
         if (res.success) {
-            // Reload full list to stay in sync with server
-            setTimeout(() => {
-                loadGuestbook();
-            }, 200);
-        } else {
-            console.warn('[guestbook] Server returned error:', res);
+            setTimeout(() => loadGuestbook(), 200);
         }
     } catch (err) {
         console.error('[guestbook] Failed to send message:', err);
-        // Optional: show a small error toast here in the future
     }
 }
 
@@ -119,7 +153,6 @@ export function switchGuestbook(bookKey) {
 export function initGuestbook() {
     console.log('[guestbook.js] Initialized');
 
-    // Make key functions available globally for HTML onclick handlers
     Object.assign(window, {
         sendGuestbookMessage,
         switchGuestbook,
@@ -130,7 +163,6 @@ export function initGuestbook() {
             try {
                 const res = await api('create_guestbook', { name: name.trim() });
                 if (res.success) {
-                    // Switch to the newly created guestbook
                     loadGuestbook(res.key);
                 } else {
                     alert(res.error || 'Failed to create guestbook');
@@ -141,7 +173,6 @@ export function initGuestbook() {
         },
         clearGuestbook: async () => {
             if (!confirm(`Clear ALL messages in "${state.currentGuestbookKey}"?`)) return;
-
             try {
                 await api('clear_guestbook', { book: state.currentGuestbookKey });
                 loadGuestbook();
@@ -151,15 +182,11 @@ export function initGuestbook() {
         }
     });
 
-    // Optional: Add Enter key support for the input field
+    // Enter key support
     const inputField = document.getElementById('guestbook-input');
     if (inputField) {
         inputField.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendGuestbookMessage();
-            }
+            if (e.key === 'Enter') sendGuestbookMessage();
         });
     }
 }
-
-// << - js/guestbook.js
