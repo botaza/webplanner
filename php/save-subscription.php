@@ -1,30 +1,24 @@
 <?php
 // php/save-subscription.php
-// UPDATED: Stores token objects with username, browser, and last_seen
-// Structure: [ { token, username, browser, registered_at, last_seen }, ... ]
-
+// UPDATED: Stores token objects with username, browser, last_seen, AND preserves prefs on re-registration
+// Structure: [ { token, username, browser, registered_at, last_seen, prefs }, ... ]
 date_default_timezone_set('Asia/Vladivostok');
 header('Content-Type: application/json');
-
 $tokensFile = __DIR__ . '/../data/fcm-tokens.json';
-
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['error' => 'Method not allowed']);
     exit;
 }
-
 $input = file_get_contents('php://input');
 $body  = json_decode($input, true);
 $token    = $body['token']    ?? null;
 $username = $body['username'] ?? '';
-
 if (!$token || !is_string($token)) {
     http_response_code(400);
     echo json_encode(['error' => 'Invalid or missing FCM token']);
     exit;
 }
-
 // Detect browser from User-Agent
 function detectBrowser(string $ua): string {
     if (stripos($ua, 'YaBrowser') !== false)  return 'Yandex';
@@ -35,26 +29,33 @@ function detectBrowser(string $ua): string {
     if (stripos($ua, 'Safari/')  !== false)  return 'Safari';
     return 'Unknown';
 }
-
 $ua      = $_SERVER['HTTP_USER_AGENT'] ?? '';
 $browser = detectBrowser($ua);
 $now     = date('Y-m-d H:i:s');
-
 // Load existing tokens
 $tokens = [];
 if (file_exists($tokensFile)) {
     $raw    = file_get_contents($tokensFile);
     $tokens = json_decode($raw, true) ?: [];
 }
-
 // Migrate flat array of strings → array of objects (one-time migration)
 $tokens = array_map(function($t) use ($now) {
     if (is_string($t)) {
-        return ['token' => $t, 'username' => '', 'browser' => 'Unknown', 'registered_at' => $now, 'last_seen' => $now];
+        return [
+            'token' => $t,
+            'username' => '',
+            'browser' => 'Unknown',
+            'registered_at' => $now,
+            'last_seen' => $now,
+            'prefs' => ['chatOnly' => false]
+        ];
+    }
+    // Ensure prefs exist on legacy objects
+    if (!isset($t['prefs']) || !is_array($t['prefs'])) {
+        $t['prefs'] = ['chatOnly' => false];
     }
     return $t;
 }, $tokens);
-
 // Find existing entry for this token
 $found = false;
 foreach ($tokens as &$entry) {
@@ -63,24 +64,27 @@ foreach ($tokens as &$entry) {
         $entry['last_seen'] = $now;
         if ($username) $entry['username'] = $username;
         if ($browser !== 'Unknown') $entry['browser'] = $browser;
+        // ✅ CRITICAL FIX: Preserve existing prefs on re-registration
+        if (!isset($entry['prefs']) || !is_array($entry['prefs'])) {
+            $entry['prefs'] = ['chatOnly' => false];
+        }
         $found = true;
         break;
     }
 }
 unset($entry);
-
 if (!$found) {
     $tokens[] = [
         'token'         => $token,
         'username'      => $username,
         'browser'       => $browser,
         'registered_at' => $now,
-        'last_seen'     => $now
+        'last_seen'     => $now,
+        'prefs'         => ['chatOnly' => false]
     ];
 }
-
 $dir = dirname($tokensFile);
 if (!is_dir($dir)) mkdir($dir, 0755, true);
 file_put_contents($tokensFile, json_encode(array_values($tokens), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-
 echo json_encode(['success' => true]);
+?>

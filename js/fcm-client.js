@@ -1,9 +1,8 @@
 // js/fcm-client.js
 // UPDATED: Full support for chatOnly token preference
 // Tokens can now be toggled to receive ONLY guestbook/chat notifications
-
+// FIXED: Removed default chatOnly=false reset on enableNotifications to preserve user preference
 import { state } from './state.js';
-
 const VAPID_KEY = 'BMlwBTFnXAZuDBkyK8UENXQz-kUTTzZGy1HEoNXbV6l-MmUyTilUJmXbVNs-vetYYHUvjLfAfk24hTHU4lJMxYY';
 
 async function registerFcmToken(token) {
@@ -47,17 +46,18 @@ async function enableNotifications() {
             }
         }
         if (Notification.permission !== 'granted') return;
-
+        
         const registration = await navigator.serviceWorker.register('firebase-messaging-sw.js');
         const token = await state.messaging.getToken({
             vapidKey: VAPID_KEY,
             serviceWorkerRegistration: registration
         });
-
+        
         if (token) {
             await registerFcmToken(token);
-            // Default preference is chatOnly = false
-            await updateTokenChatOnly(token, false);
+            // ✅ FIX: Removed default updateTokenChatOnly(token, false)
+            // save-subscription.php now handles defaults for new tokens.
+            // For existing tokens, we MUST NOT reset prefs here or user choice is lost.
         } else {
             console.warn('No FCM token received — will retry next launch.');
         }
@@ -84,11 +84,10 @@ function updateNotifStatus() {
     const el = document.getElementById('notif-status');
     const retryBtn = document.getElementById('notif-retry-btn');
     if (!el) return;
-
     const permission = Notification.permission;
     const tokenSaved = localStorage.getItem('fcm_token_saved') === '1';
     const token = localStorage.getItem('fcm_registered_token');
-
+    
     if (permission === 'denied') {
         el.innerHTML = '<span style="color:#f87171">🚫 Blocked — enable in browser settings</span>';
         if (retryBtn) retryBtn.classList.add('hidden');
@@ -126,6 +125,7 @@ async function updateTokenChatOnly(token, chatOnly) {
         const form = new FormData();
         form.append('action', 'update_token_prefs');
         form.append('token', token);
+        // ✅ Only send prefs when explicitly toggling
         form.append('prefs', JSON.stringify({ chatOnly: chatOnly }));
         const res = await fetch('php/api.php', { method: 'POST', body: form });
         const data = await res.json();
@@ -140,69 +140,61 @@ async function updateTokenChatOnly(token, chatOnly) {
 async function loadTokenManager() {
     const container = document.getElementById('token-manager-list');
     if (!container) return;
-
     container.innerHTML = '<div class="text-zinc-500 text-sm text-center py-4">Loading tokens...</div>';
-
     try {
         const res = await fetch('php/api.php', {
             method: 'POST',
-            body: (() => { 
-                const f = new FormData(); 
-                f.append('action', 'get_tokens'); 
-                return f; 
+            body: (() => {
+                const f = new FormData();
+                f.append('action', 'get_tokens');
+                return f;
             })()
         });
         const tokens = await res.json();   // now returns array directly
-
         if (!tokens || tokens.length === 0) {
             container.innerHTML = '<div class="text-zinc-500 text-sm text-center py-4">No tokens registered yet</div>';
             return;
         }
-
         const myToken = localStorage.getItem('fcm_registered_token') || '';
-
         let html = '';
         tokens.forEach(t => {
             const isMe = t.token === myToken;
+            // ✅ Safe access to prefs with default fallback
             const chatOnly = t.prefs && t.prefs.chatOnly === true;
             const browser = t.browser || 'Unknown Device';
             const user = t.username || '—';
             const seen = t.last_seen ? t.last_seen.slice(0, 16) : '—';
             const short = '…' + t.token.slice(-12);
-
             html += `
-            <div class="bg-zinc-800 rounded-2xl p-4 mb-3">
-                <div class="flex justify-between items-start">
-                    <div class="flex-1 min-w-0">
-                        <div class="text-sm font-medium flex items-center gap-2">
-                            ${browser}
-                            ${isMe ? '<span class="text-[10px] bg-emerald-900 text-emerald-400 px-2 py-0.5 rounded-full">this device</span>' : ''}
-                        </div>
-                        <div class="text-xs text-zinc-500 mt-1">
-                            👤 ${user} &nbsp;·&nbsp; <span class="font-mono">${short}</span>
-                        </div>
-                        <div class="text-xs text-zinc-600 mt-0.5">last seen ${seen}</div>
-                    </div>
-
-                    <div class="flex flex-col items-end gap-2">
-                        <label class="flex items-center gap-2 text-xs cursor-pointer">
-                            <span class="text-zinc-400">Chat only</span>
-                            <input type="checkbox" 
-                                   ${chatOnly ? 'checked' : ''}
-                                   onchange="window.toggleChatOnly('${t.token}', this.checked)"
-                                   class="w-4 h-4 accent-emerald-500">
-                        </label>
-                        <button onclick="window.deleteToken('${t.token}')"
-                                class="text-red-400 text-xs px-3 py-1 bg-red-950 hover:bg-red-900 rounded-xl">
-                            Delete
-                        </button>
-                    </div>
-                </div>
-            </div>`;
+<div class="bg-zinc-800 rounded-2xl p-4 mb-3">
+    <div class="flex justify-between items-start">
+        <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium flex items-center gap-2">
+                ${browser}
+                ${isMe ? '<span class="text-[10px] bg-emerald-900 text-emerald-400 px-2 py-0.5 rounded-full">this device</span>' : ''}
+            </div>
+            <div class="text-xs text-zinc-500 mt-1">
+                👤 ${user} &nbsp;·&nbsp; <span class="font-mono">${short}</span>
+            </div>
+            <div class="text-xs text-zinc-600 mt-0.5">last seen ${seen}</div>
+        </div>
+        <div class="flex flex-col items-end gap-2">
+            <label class="flex items-center gap-2 text-xs cursor-pointer">
+                <span class="text-zinc-400">Chat only</span>
+                <input type="checkbox"
+                    ${chatOnly ? 'checked' : ''}
+                    onchange="window.toggleChatOnly('${t.token}', this.checked)"
+                    class="w-4 h-4 accent-emerald-500">
+            </label>
+            <button onclick="window.deleteToken('${t.token}')"
+                class="text-red-400 text-xs px-3 py-1 bg-red-950 hover:bg-red-900 rounded-xl">
+                Delete
+            </button>
+        </div>
+    </div>
+</div>`;
         });
-
         container.innerHTML = html;
-
     } catch (err) {
         container.innerHTML = '<div class="text-red-400 text-sm text-center py-4">Failed to load tokens</div>';
         console.error('[token-manager] Failed to load tokens:', err);
