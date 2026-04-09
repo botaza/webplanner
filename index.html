@@ -466,7 +466,8 @@ firebase.initializeApp(firebaseConfig);
   </div>
 </div>
 
-<!-- ADD / EDIT EXPENSE MODAL -->
+<!-- ADD / EDIT EXPENSE MODAL  [PATCHED – multi-date support] -->
+<!-- Replace the entire #modal-expense block in index.html with this -->
 <div id="modal-expense" class="hidden fixed inset-0 bg-black/80 flex items-end z-[100]">
   <div class="bg-zinc-900 rounded-t-3xl w-full max-w-xl mx-auto max-h-[90vh] overflow-hidden flex flex-col">
     <div class="flex justify-between items-center px-6 pt-5 pb-3 border-b border-zinc-800 shrink-0">
@@ -474,19 +475,71 @@ firebase.initializeApp(firebaseConfig);
       <button onclick="closeExpenseModal()" class="text-3xl leading-none text-zinc-400 hover:text-white">×</button>
     </div>
     <div class="p-6 overflow-y-auto flex-1 space-y-4" style="-webkit-overflow-scrolling: touch; overscroll-behavior: contain;">
+
+      <!-- ── DATE SECTION ── -->
       <div>
-        <label class="text-xs text-zinc-400 block mb-1">Date</label>
-        <input id="exp-date" type="date" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+        <div class="flex justify-between items-center mb-1">
+          <label class="text-xs text-zinc-400">Date</label>
+          <!-- Toggle between single-date and multi-date modes -->
+          <button id="exp-multi-date-btn"
+                  onclick="toggleMultiDateMode()"
+                  class="text-xs px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700
+                         text-zinc-400 hover:text-emerald-400 hover:border-emerald-600 transition">
+            📅 Multi-date
+          </button>
+        </div>
+
+        <!-- SINGLE DATE (default) -->
+        <div id="exp-single-date-row">
+          <input id="exp-date" type="date"
+                 class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+        </div>
+
+        <!-- MULTI-DATE PANEL (hidden until toggled) -->
+        <div id="exp-multi-date-panel" class="hidden space-y-3 mt-2">
+          <!-- Selected date chips -->
+          <div class="bg-zinc-800/50 border border-zinc-700 rounded-2xl p-3">
+            <div class="text-[10px] text-zinc-500 uppercase tracking-wide mb-2 flex justify-between items-center">
+              <span>Selected dates</span>
+              <span id="exp-multi-date-count" class="text-zinc-400 normal-case text-xs font-normal">
+                No dates selected
+              </span>
+            </div>
+            <div id="exp-date-chips" class="flex flex-wrap gap-2 min-h-[28px]">
+              <span class="text-xs text-zinc-500 italic">Add dates below</span>
+            </div>
+          </div>
+
+          <!-- Date picker to add new dates -->
+          <div class="flex gap-2">
+            <input id="exp-multi-date-picker" type="date"
+                   class="flex-1 bg-zinc-800 border border-zinc-700 focus:border-emerald-500
+                          rounded-2xl px-4 py-3 text-base">
+            <button onclick="addMultiDate()"
+                    class="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700
+                           text-white px-5 rounded-2xl font-medium transition">
+              + Add
+            </button>
+          </div>
+          <p class="text-[11px] text-zinc-500 leading-snug">
+            Pick a date and tap <strong class="text-zinc-400">+ Add</strong> to queue it.
+            One expense record will be saved for each date.
+          </p>
+        </div>
       </div>
+      <!-- ── END DATE SECTION ── -->
+
       <div>
         <label class="text-xs text-zinc-400 block mb-1">Amount</label>
-        <input id="exp-amount" type="number" step="0.01" placeholder="0.00" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+        <input id="exp-amount" type="number" step="0.01" placeholder="0.00"
+               class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
       </div>
       <div>
         <label class="text-xs text-zinc-400 block mb-2">Tool</label>
         <div class="grid grid-cols-3 gap-3 mb-3" id="exp-tool-buttons"></div>
         <div id="exp-tool-other-group" class="hidden">
-          <input id="exp-tool-other" type="text" placeholder="Specify other tool…" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base mt-2">
+          <input id="exp-tool-other" type="text" placeholder="Specify other tool…"
+                 class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base mt-2">
         </div>
       </div>
       <div>
@@ -495,12 +548,15 @@ firebase.initializeApp(firebaseConfig);
       </div>
       <div>
         <label class="text-xs text-zinc-400 block mb-1">Description</label>
-        <input id="exp-desc" type="text" placeholder="Lunch / Taxi / Gift for mom" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
+        <input id="exp-desc" type="text" placeholder="Lunch / Taxi / Gift for mom"
+               class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
       </div>
     </div>
     <div class="px-6 py-4 border-t border-zinc-800 flex gap-3 shrink-0">
-      <button onclick="closeExpenseModal()" class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
-      <button id="exp-save-btn" onclick="saveExpense()" class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Save Expense</button>
+      <button onclick="closeExpenseModal()"
+              class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
+      <button id="exp-save-btn" onclick="saveExpense()"
+              class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Save Expense</button>
     </div>
   </div>
 </div>
