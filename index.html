@@ -498,6 +498,32 @@ firebase.initializeApp(firebaseConfig);
         <input id="exp-desc" type="text" placeholder="Lunch / Taxi / Gift for mom" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
       </div>
     </div>
+
+      <div class="border-t border-zinc-800 pt-4">
+        <div class="flex items-center gap-3 mb-3">
+          <input type="checkbox" id="exp-multi-date-toggle"
+            class="w-5 h-5 rounded bg-zinc-800 border-zinc-600 text-emerald-500 focus:ring-emerald-500"
+            onchange="toggleExpenseMultiDate()">
+          <label for="exp-multi-date-toggle" class="text-sm text-zinc-300">📅 Also add to another date</label>
+        </div>
+        <div id="exp-multi-date-container" class="hidden space-y-3">
+          <div id="exp-extra-dates-list" class="space-y-2"></div>
+          <div class="flex gap-2 items-center">
+            <input id="exp-extra-date-input" type="date"
+              class="flex-1 bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-2xl px-4 py-3 text-base">
+            <button type="button" onclick="addExpenseExtraDate()"
+              class="px-4 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-2xl text-sm font-medium whitespace-nowrap">
+              + Add date
+            </button>
+          </div>
+          <div id="exp-multi-date-preview" class="text-xs text-zinc-500 hidden">
+            Will save <span id="exp-multi-date-count" class="text-emerald-400 font-medium"></span> expense entries total
+          </div>
+        </div>
+      </div>
+
+    </div>
+
     <div class="px-6 py-4 border-t border-zinc-800 flex gap-3 shrink-0">
       <button onclick="closeExpenseModal()" class="flex-1 py-4 bg-zinc-800 rounded-3xl text-lg font-medium">Cancel</button>
       <button id="exp-save-btn" onclick="saveExpense()" class="flex-1 py-4 bg-emerald-500 rounded-3xl text-lg font-medium">Save Expense</button>
