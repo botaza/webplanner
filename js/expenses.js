@@ -100,6 +100,7 @@ export async function loadExpenses() {
 function closeExpenseModal() {
     _editingExpenseId = null;
     _setModalMode('add');
+    _resetMultiDateUI();    
     hideModal('modal-expense');
 }
 
@@ -161,10 +162,21 @@ async function handleSaveExpense() {
         }
 
         if (res?.success) {
+            // Save extra-date copies (only when adding new, not editing)
+            if (!_editingExpenseId) {
+                const extraDates = _getExtraExpenseDates();
+                for (const extraDate of extraDates) {
+                    try {
+                        await saveExpenseData({ ...formData, date: extraDate });
+                    } catch (e) {
+                        console.error('[expenses.js] Failed to save extra-date expense:', e);
+                    }
+                }
+            }
             await loadExpenses();
             await loadDashboard();
             resetExpenseForm();
-            closeExpenseModal(); // resets _editingExpenseId and mode internally
+            closeExpenseModal();
         } else {
             alert('Could not save expense' + (res?.error ? `: ${res.error}` : ''));
         }
@@ -208,6 +220,95 @@ function selectExpenseTool(code)     { handleToolSelect(code); }
 function selectExpenseCategory(name) { handleCategorySelect(name); }
 function refreshExpenseStats()       { renderStatsContainer(); }
 
+
+
+// ── MULTI-DATE HELPERS ──
+
+let _extraExpenseDates = [];
+
+function _resetMultiDateUI() {
+    _extraExpenseDates = [];
+    const toggle = document.getElementById('exp-multi-date-toggle');
+    const container = document.getElementById('exp-multi-date-container');
+    const input = document.getElementById('exp-extra-date-input');
+    const list = document.getElementById('exp-extra-dates-list');
+    const preview = document.getElementById('exp-multi-date-preview');
+    if (toggle) toggle.checked = false;
+    if (container) container.classList.add('hidden');
+    if (input) input.value = '';
+    if (list) list.innerHTML = '';
+    if (preview) preview.classList.add('hidden');
+}
+
+function toggleExpenseMultiDate() {
+    const toggle = document.getElementById('exp-multi-date-toggle');
+    const container = document.getElementById('exp-multi-date-container');
+    if (!toggle || !container) return;
+    if (toggle.checked) {
+        container.classList.remove('hidden');
+    } else {
+        container.classList.add('hidden');
+        _extraExpenseDates = [];
+        const list = document.getElementById('exp-extra-dates-list');
+        if (list) list.innerHTML = '';
+        _updateMultiDatePreview();
+    }
+}
+
+function addExpenseExtraDate() {
+    const input = document.getElementById('exp-extra-date-input');
+    if (!input || !input.value) return;
+    const date = input.value;
+    const primaryDate = document.getElementById('exp-date')?.value;
+    if (date === primaryDate) {
+        alert('This is the same as the primary date. It will already be saved there.');
+        return;
+    }
+    if (_extraExpenseDates.includes(date)) {
+        alert('This date is already in the list.');
+        return;
+    }
+    _extraExpenseDates.push(date);
+    input.value = '';
+    _renderExtraDatesList();
+    _updateMultiDatePreview();
+}
+
+function _removeExtraDate(date) {
+    _extraExpenseDates = _extraExpenseDates.filter(d => d !== date);
+    _renderExtraDatesList();
+    _updateMultiDatePreview();
+}
+
+function _renderExtraDatesList() {
+    const list = document.getElementById('exp-extra-dates-list');
+    if (!list) return;
+    list.innerHTML = _extraExpenseDates.map(date => {
+        const formatted = new Date(date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+        return `<div class="flex items-center justify-between bg-zinc-800 rounded-xl px-4 py-2">
+            <span class="text-sm text-zinc-200">📅 ${formatted}</span>
+            <button type="button" onclick="window._removeExpenseExtraDate('${date}')" class="text-zinc-500 hover:text-red-400 text-lg leading-none ml-3">×</button>
+        </div>`;
+    }).join('');
+}
+
+function _updateMultiDatePreview() {
+    const preview = document.getElementById('exp-multi-date-preview');
+    const count = document.getElementById('exp-multi-date-count');
+    if (!preview || !count) return;
+    const total = 1 + _extraExpenseDates.length;
+    if (_extraExpenseDates.length > 0) {
+        count.textContent = total;
+        preview.classList.remove('hidden');
+    } else {
+        preview.classList.add('hidden');
+    }
+}
+
+function _getExtraExpenseDates() {
+    return [..._extraExpenseDates];
+}
+
 // ── GLOBAL EXPOSURE ──
 Object.assign(window, {
     // Core actions
@@ -241,4 +342,9 @@ Object.assign(window, {
     // Rendering helpers
     renderExpenseTools:      (tools) => renderExpenseTools(tools || EXPENSE_TOOLS),
     renderExpenseCategories: (cats)  => renderExpenseCategories(cats || EXPENSE_CATEGORIES)
+
+    toggleExpenseMultiDate,
+    addExpenseExtraDate,
+    _removeExpenseExtraDate: _removeExtraDate,
+
 });
