@@ -704,56 +704,43 @@ nav.fixed.bottom-0 .grid {
   padding-bottom: 1rem;
 }
 
-/* ===== FIX: Expense Modal Layout (Multi-date compatibility) ===== */
+/* ===== FIX: Expense Modal Layout (v2 - Safe & Precise) ===== */
 #modal-expense {
-  width: 100vw;
-  height: 100vh;
+  /* Only fixes horizontal centering; leaves Tailwind's inset/display alone */
+  justify-content: center !important;
 }
 
 #modal-expense > div {
-  width: 100%;
-  max-width: 40rem;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  margin: 0 auto;
-  background: #18181b;
-  border-radius: 1.5rem 1.5rem 0 0;
-  overflow: hidden; /* Contain internal children */
+  /* Forces proper width & prevents flex-collapse on narrow inputs */
+  width: 100% !important;
+  max-width: 40rem !important;
+  flex-shrink: 0 !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
 }
 
-/* Prevent scrollable area from collapsing width */
+/* Prevent inner scroll area from collapsing width */
 #modal-expense .overflow-y-auto {
-  min-width: 0;
-  max-width: 100%;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  padding-bottom: 1rem !important;
 }
 
-/* Ensure multi-date container respects modal width */
+/* Fix multi-date container overflow & alignment */
 #exp-multi-date-container {
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  padding: 0 1.5rem; /* Match modal padding */
+  width: 100% !important;
+  padding: 0 1.5rem !important;
+  box-sizing: border-box !important;
 }
 
-/* Fix date input + button row overflow on small screens */
 #exp-multi-date-container .flex.gap-2 {
-  min-width: 0;
-  flex-wrap: nowrap;
+  min-width: 0 !important;
+  flex-wrap: nowrap !important;
   gap: 0.5rem !important;
 }
 
 #exp-extra-date-input {
-  min-width: 0;
-  flex: 1 1 auto;
-  padding-right: 0.75rem !important;
-  padding-left: 0.75rem !important;
-}
-
-#exp-multi-date-container button {
-  flex-shrink: 0;
-  white-space: nowrap;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  padding: 0.75rem 1rem !important;
 }
