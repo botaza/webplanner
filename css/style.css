@@ -685,3 +685,21 @@ nav.fixed.bottom-0 .grid {
     font-size: 22px;
   }
 }
+
+/* Fix for Expense FAB after multi-date addition */
+#screen-expenses button[onclick*="showAddExpenseModal"] {
+  bottom: 7.5rem;           /* ~120px - safe on most phones */
+  box-shadow: 0 10px 15px -3px rgb(16 185 129 / 0.4);
+}
+
+@media (max-height: 700px) {
+  #screen-expenses button[onclick*="showAddExpenseModal"] {
+    bottom: 6.5rem;         /* tighter on very small screens */
+  }
+}
+
+/* Make expense modal scroll better with multi-date */
+#modal-expense .overflow-y-auto {
+  max-height: calc(90vh - 180px);   /* leave room for header + footer */
+  padding-bottom: 1rem;
+}

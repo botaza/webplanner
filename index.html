@@ -124,7 +124,9 @@ firebase.initializeApp(firebaseConfig);
 <div id="screen-expenses" class="screen hidden">
   <div class="flex gap-3 mb-4">
     <button onclick="showAddExpenseModal()"
-      class="flex-1 bg-emerald-500 hover:bg-emerald-600 py-4 rounded-3xl text-lg font-medium">+ Expense</button>
+  class="fixed bottom-28 left-1/2 -translate-x-1/2 w-16 h-16 bg-emerald-500 hover:bg-emerald-600 rounded-3xl shadow-2xl flex items-center justify-center text-4xl leading-none z-50 active:scale-95 transition-all duration-200 shadow-emerald-500/50">
+  +
+</button>
     <button onclick="toggleExpenseStatsView()"
       class="flex-1 bg-zinc-800 hover:bg-zinc-700 py-4 rounded-3xl text-lg font-medium">📊 Stats</button>
   </div>
