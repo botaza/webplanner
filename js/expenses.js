@@ -1,8 +1,13 @@
 // js/expenses.js
 // ORCHESTRATOR MODULE FOR EXPENSES
+// Coordinates UI, CRUD, Rendering, Stats, and Housekeeping
+// UPDATED: Added editExpense and handleUpdateExpense for inline editing
+// UPDATED: Exposed toggleStatsCategoryDrilldown to window
+// FIXED: closeExpenseModal defined locally so Cancel/× always resets modal mode to Add
 
 import { requireAdmin } from './readonly-guard.js';
 import { state } from './state.js';
+import { api } from './api.js';
 import { hideModal } from './utils.js';
 import { loadDashboard } from './dashboard.js';
 import { todayString } from './date-utils.js';
@@ -10,6 +15,8 @@ import { todayString } from './date-utils.js';
 import {
     initExpenseUI,
     showExpenseModal,
+    // NOTE: closeExpenseModal intentionally NOT imported from expenses-ui.js —
+    // we define it locally below so it also resets the modal mode on every close.
     renderExpenseTools,
     renderExpenseCategories,
     handleToolSelect,
@@ -43,23 +50,30 @@ import {
     renderStatsContainer
 } from './expenses-stats.js';
 
-import { initAdvancedFilter } from './expenses-advanced-filter.js';
-import { initHousekeepingUI } from './expenses-housekeeping.js';
+import {
+    initAdvancedFilter
+} from './expenses-advanced-filter.js';
+
+import {
+    initHousekeepingUI
+} from './expenses-housekeeping.js';
 
 // ── EDIT STATE ──
+// Holds the ID of the expense currently being edited, or null if adding new
 let _editingExpenseId = null;
 
-// ── MULTI-DATE STATE ──
-let _extraExpenseDates = [];
+// ── INITIALIZATION ──
 
 export function initExpenses() {
-    console.log('[expenses.js] Initializing...');
+    console.log('[expenses.js] Initializing modules...');
     initExpenseUI();
     initExpenseStats();
     initAdvancedFilter('expenses-filter-controls');
     initHousekeepingUI();
     console.log('[expenses.js] Initialization complete');
 }
+
+// ── LOAD & RENDER ──
 
 export async function loadExpenses() {
     try {
@@ -69,55 +83,70 @@ export async function loadExpenses() {
     } catch (err) {
         console.error('[expenses.js] Failed to load expenses:', err);
         const container = document.getElementById('expenses-list');
-        if (container) container.innerHTML = `<div class="text-red-400 text-center py-10">Failed to load expenses</div>`;
+        if (container) {
+            container.innerHTML = `<div class="text-red-400 text-center py-10">Failed to load expenses</div>`;
+        }
     }
 }
 
-// ── MODAL CLOSE (always reset) ──
+// ── MODAL OPEN / CLOSE ──
+
+/**
+ * Close the expense modal and always reset to Add mode.
+ * Defined here (not imported from expenses-ui.js) so we can also clear
+ * _editingExpenseId and restore the title/button on every close path
+ * — including Cancel button, × button, and post-save.
+ */
 function closeExpenseModal() {
     _editingExpenseId = null;
-    _extraExpenseDates = [];
     _setModalMode('add');
-    _resetMultiDateUI();
     hideModal('modal-expense');
 }
 
-// ── ADD FLOW ──
+// ── ADD EXPENSE FLOW ──
+
 function showAddExpenseModal() {
     _editingExpenseId = null;
-    _extraExpenseDates = [];
 
-    document.getElementById('exp-date').value = todayString();
-    document.getElementById('exp-amount').value = '';
-    document.getElementById('exp-desc').value = '';
-    document.getElementById('exp-tool-other').value = '';
+    const dateEl   = document.getElementById('exp-date');
+    const amountEl = document.getElementById('exp-amount');
+    const descEl   = document.getElementById('exp-desc');
+    const otherEl  = document.getElementById('exp-tool-other');
+    if (dateEl)   dateEl.value   = todayString();
+    if (amountEl) amountEl.value = '';
+    if (descEl)   descEl.value   = '';
+    if (otherEl)  otherEl.value  = '';
 
-    state.selectedExpenseTool = null;
+    state.selectedExpenseTool     = null;
     state.selectedExpenseCategory = null;
 
     showExpenseModal();
     renderExpenseTools(EXPENSE_TOOLS);
     renderExpenseCategories(EXPENSE_CATEGORIES);
-    document.getElementById('exp-tool-other-group')?.classList.add('hidden');
+
+    const otherGroup = document.getElementById('exp-tool-other-group');
+    if (otherGroup) otherGroup.classList.add('hidden');
 
     _setModalMode('add');
-    _resetMultiDateUI();
 }
 
-// ── EDIT FLOW ──
+// ── EDIT EXPENSE FLOW ──
+
 function editExpense(id) {
-    const expense = state.expensesData.find(e => String(e.id) === String(id));
-    if (!expense) return;
+    const expense = (state.expensesData || []).find(e => String(e.id) === String(id));
+    if (!expense) {
+        console.error('[expenses.js] editExpense: expense not found', id);
+        return;
+    }
 
     _editingExpenseId = id;
-    _extraExpenseDates = [];
     populateExpenseForm(expense);
     showExpenseModal();
     _setModalMode('edit');
-    _resetMultiDateUI();
 }
 
-// ── SAVE ──
+// ── SAVE / UPDATE ──
+
 async function handleSaveExpense() {
     if (!requireAdmin()) return;
     const formData = getExpenseFormData();
@@ -129,168 +158,87 @@ async function handleSaveExpense() {
             res = await updateExpenseData(_editingExpenseId, formData);
         } else {
             res = await saveExpenseData(formData);
-
-            // Save extra dates
-            for (const extraDate of _extraExpenseDates) {
-                if (extraDate !== formData.date) {
-                    try {
-                        await saveExpenseData({ ...formData, date: extraDate });
-                    } catch (e) {
-                        console.error('Extra date save failed:', e);
-                    }
-                }
-            }
         }
 
         if (res?.success) {
             await loadExpenses();
             await loadDashboard();
             resetExpenseForm();
-            closeExpenseModal();
+            closeExpenseModal(); // resets _editingExpenseId and mode internally
         } else {
-            alert('Could not save expense');
+            alert('Could not save expense' + (res?.error ? `: ${res.error}` : ''));
         }
     } catch (err) {
-        console.error('[expenses.js] Save error:', err);
-        alert('Network/server error');
+        console.error('[expenses.js] Save/update error:', err);
+        alert('Network/server error while saving expense');
     }
 }
 
 // ── DELETE ──
+
 async function handleDeleteExpense(id) {
     if (!requireAdmin()) return;
     if (!confirm('Delete this expense?')) return;
-
     try {
         await deleteExpenseData(id);
         await loadExpenses();
         await loadDashboard();
     } catch (err) {
-        console.error(err);
-        alert('Failed to delete');
+        console.error('[expenses.js] Delete error:', err);
+        alert('Failed to delete expense');
     }
 }
 
-// ── PRIVATE ──
+// ── PRIVATE HELPERS ──
+
 function _setModalMode(mode) {
-    const title = document.getElementById('exp-modal-title');
-    const btn = document.getElementById('exp-save-btn');
+    const title   = document.getElementById('exp-modal-title');
+    const saveBtn = document.getElementById('exp-save-btn');
+
     if (mode === 'edit') {
-        title.textContent = 'Edit Expense';
-        btn.textContent = 'Update Expense';
+        if (title)   title.textContent   = 'Edit Expense';
+        if (saveBtn) saveBtn.textContent = 'Update Expense';
     } else {
-        title.textContent = 'New Expense';
-        btn.textContent = 'Save Expense';
+        if (title)   title.textContent   = 'New Expense';
+        if (saveBtn) saveBtn.textContent = 'Save Expense';
     }
 }
 
-function _resetMultiDateUI() {
-    _extraExpenseDates = [];
-    const toggle = document.getElementById('exp-multi-date-toggle');
-    const container = document.getElementById('exp-multi-date-container');
-    const list = document.getElementById('exp-extra-dates-list');
-    const preview = document.getElementById('exp-multi-date-preview');
-
-    if (toggle) toggle.checked = false;
-    if (container) container.classList.add('hidden');
-    if (list) list.innerHTML = '';
-    if (preview) preview.classList.add('hidden');
-}
-
-function toggleExpenseMultiDate() {
-    const toggle = document.getElementById('exp-multi-date-toggle');
-    const container = document.getElementById('exp-multi-date-container');
-    if (toggle.checked) {
-        container.classList.remove('hidden');
-    } else {
-        _resetMultiDateUI();
-    }
-}
-
-function addExpenseExtraDate() {
-    const input = document.getElementById('exp-extra-date-input');
-    if (!input?.value) return;
-
-    const date = input.value;
-    const primary = document.getElementById('exp-date').value;
-
-    if (date === primary) {
-        alert('Same as primary date');
-        return;
-    }
-    if (_extraExpenseDates.includes(date)) {
-        alert('Already added');
-        return;
-    }
-
-    _extraExpenseDates.push(date);
-    _renderExtraDatesList();
-    _updateMultiDatePreview();
-}
-
-function _removeExtraDate(date) {
-    _extraExpenseDates = _extraExpenseDates.filter(d => d !== date);
-    _renderExtraDatesList();
-    _updateMultiDatePreview();
-}
-
-function _renderExtraDatesList() {
-    const list = document.getElementById('exp-extra-dates-list');
-    if (!list) return;
-
-    list.innerHTML = _extraExpenseDates.map(date => {
-        const formatted = new Date(date).toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' });
-        return `
-            <div class="flex items-center justify-between bg-zinc-800 rounded-xl px-4 py-2">
-                <span>📅 ${formatted}</span>
-                <button onclick="window._removeExpenseExtraDate('${date}')" class="text-red-400 hover:text-red-300 text-xl">×</button>
-            </div>`;
-    }).join('');
-}
-
-function _updateMultiDatePreview() {
-    const preview = document.getElementById('exp-multi-date-preview');
-    const count = document.getElementById('exp-multi-date-count');
-    if (!preview || !count) return;
-
-    const total = 1 + _extraExpenseDates.length;
-    if (_extraExpenseDates.length > 0) {
-        count.textContent = total;
-        preview.classList.remove('hidden');
-    } else {
-        preview.classList.add('hidden');
-    }
-}
-
-function _getExtraExpenseDates() {
-    return [..._extraExpenseDates];
-}
+function selectExpenseTool(code)     { handleToolSelect(code); }
+function selectExpenseCategory(name) { handleCategorySelect(name); }
+function refreshExpenseStats()       { renderStatsContainer(); }
 
 // ── GLOBAL EXPOSURE ──
 Object.assign(window, {
+    // Core actions
     showAddExpenseModal,
-    saveExpense: handleSaveExpense,
-    deleteExpense: handleDeleteExpense,
+    saveExpense:       handleSaveExpense,
+    deleteExpense:     handleDeleteExpense,
     editExpense,
     loadExpenses,
+
+    // Expose local closeExpenseModal so any button in index.html can call it
+    // and always get the mode-reset behaviour
     closeExpenseModal,
 
-    selectExpenseTool: (code) => handleToolSelect(code),
-    selectExpenseCategory: (name) => handleCategorySelect(name),
+    // UI selections
+    selectExpenseTool,
+    selectExpenseCategory,
 
+    // Stats functions
     setStatsView,
     setStatsMonth,
     showStatsMonthPicker,
-    refreshExpenseStats: renderStatsContainer,
+    refreshExpenseStats,
 
+    // Category drilldown toggle (called from renderCategoryDrilldown HTML)
     toggleStatsCategoryDrilldown,
+
+    // Expandable list toggles
     toggleExpenseMonth,
     toggleExpenseDay,
 
-    renderExpenseTools: (t) => renderExpenseTools(t || EXPENSE_TOOLS),
-    renderExpenseCategories: (c) => renderExpenseCategories(c || EXPENSE_CATEGORIES),
-
-    toggleExpenseMultiDate,
-    addExpenseExtraDate,
-    _removeExpenseExtraDate: _removeExtraDate,
+    // Rendering helpers
+    renderExpenseTools:      (tools) => renderExpenseTools(tools || EXPENSE_TOOLS),
+    renderExpenseCategories: (cats)  => renderExpenseCategories(cats || EXPENSE_CATEGORIES)
 });
