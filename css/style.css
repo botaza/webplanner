@@ -703,3 +703,57 @@ nav.fixed.bottom-0 .grid {
   max-height: calc(90vh - 180px);   /* leave room for header + footer */
   padding-bottom: 1rem;
 }
+
+/* ===== FIX: Expense Modal Layout (Multi-date compatibility) ===== */
+#modal-expense {
+  width: 100vw;
+  height: 100vh;
+}
+
+#modal-expense > div {
+  width: 100%;
+  max-width: 40rem;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0 auto;
+  background: #18181b;
+  border-radius: 1.5rem 1.5rem 0 0;
+  overflow: hidden; /* Contain internal children */
+}
+
+/* Prevent scrollable area from collapsing width */
+#modal-expense .overflow-y-auto {
+  min-width: 0;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Ensure multi-date container respects modal width */
+#exp-multi-date-container {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0 1.5rem; /* Match modal padding */
+}
+
+/* Fix date input + button row overflow on small screens */
+#exp-multi-date-container .flex.gap-2 {
+  min-width: 0;
+  flex-wrap: nowrap;
+  gap: 0.5rem !important;
+}
+
+#exp-extra-date-input {
+  min-width: 0;
+  flex: 1 1 auto;
+  padding-right: 0.75rem !important;
+  padding-left: 0.75rem !important;
+}
+
+#exp-multi-date-container button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
