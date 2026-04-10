@@ -121,7 +121,7 @@ firebase.initializeApp(firebaseConfig);
 </div>
 
 <!-- EXPENSES -->
-<!-- Replace the entire <div id="screen-expenses" ...> block with this -->
+<!-- Replace the entire <div id="screen-expenses" ...> block in index.html with this -->
 <div id="screen-expenses" class="screen hidden">
   <div class="flex gap-3 mb-3">
     <button onclick="showAddExpenseModal()"
@@ -135,7 +135,7 @@ firebase.initializeApp(firebaseConfig);
       class="flex-1 bg-zinc-800 hover:bg-zinc-700 py-4 rounded-3xl text-lg font-medium">📊 Stats</button>
   </div>
 
-  <!-- Active-filter pill — hidden by default, shown when future filter is on -->
+  <!-- Active-filter pill — hidden until future filter is on -->
   <div id="exp-future-filter-active" class="hidden flex items-center gap-2 mb-3 px-1">
     <span class="text-xs text-violet-300 bg-violet-900/50 border border-violet-700 rounded-full px-3 py-1 flex items-center gap-1">
       🔮 Showing future only
