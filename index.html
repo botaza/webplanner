@@ -121,13 +121,29 @@ firebase.initializeApp(firebaseConfig);
 </div>
 
 <!-- EXPENSES -->
+<!-- Replace the entire <div id="screen-expenses" ...> block with this -->
 <div id="screen-expenses" class="screen hidden">
-  <div class="flex gap-3 mb-4">
+  <div class="flex gap-3 mb-3">
     <button onclick="showAddExpenseModal()"
       class="flex-1 bg-emerald-500 hover:bg-emerald-600 py-4 rounded-3xl text-lg font-medium">+ Expense</button>
+    <button id="exp-future-filter-btn"
+      onclick="toggleFutureFilter()"
+      class="bg-zinc-800 text-zinc-200 hover:bg-zinc-700 py-4 px-4 rounded-3xl text-lg font-medium transition">
+      🔮
+    </button>
     <button onclick="toggleExpenseStatsView()"
       class="flex-1 bg-zinc-800 hover:bg-zinc-700 py-4 rounded-3xl text-lg font-medium">📊 Stats</button>
   </div>
+
+  <!-- Active-filter pill — hidden by default, shown when future filter is on -->
+  <div id="exp-future-filter-active" class="hidden flex items-center gap-2 mb-3 px-1">
+    <span class="text-xs text-violet-300 bg-violet-900/50 border border-violet-700 rounded-full px-3 py-1 flex items-center gap-1">
+      🔮 Showing future only
+      <button onclick="clearFutureFilter()"
+              class="ml-1 text-violet-400 hover:text-white text-base leading-none">×</button>
+    </span>
+  </div>
+
   <div id="expenses-list" class="space-y-3"></div>
   <div id="expenses-stats-wrapper" class="hidden mt-6">
     <div id="expenses-stats-controls" class="mb-4 space-y-3">
@@ -177,6 +193,7 @@ firebase.initializeApp(firebaseConfig);
     </button>
   </div>
 </div>
+
 
 <!-- INCOME -->
 <div id="screen-income" class="screen hidden">
