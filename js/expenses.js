@@ -5,6 +5,7 @@
 // UPDATED: Exposed toggleStatsCategoryDrilldown to window
 // FIXED: closeExpenseModal defined locally so Cancel/× always resets modal mode to Add
 // PATCHED: Multi-date support for add flow
+// PATCHED: Future-expense filter for main list view
 
 import { requireAdmin } from './readonly-guard.js';
 import { state } from './state.js';
@@ -16,8 +17,6 @@ import { todayString } from './date-utils.js';
 import {
     initExpenseUI,
     showExpenseModal,
-    // NOTE: closeExpenseModal intentionally NOT imported from expenses-ui.js —
-    // we define it locally below so it also resets the modal mode on every close.
     renderExpenseTools,
     renderExpenseCategories,
     handleToolSelect,
@@ -64,7 +63,10 @@ let _editingExpenseId = null;
 
 // ── MULTI-DATE STATE ──
 let _multiDateMode = false;
-let _selectedDates = []; // Array<string> YYYY-MM-DD
+let _selectedDates = [];
+
+// ── FUTURE FILTER STATE ──
+let _futureFilterActive = false;
 
 // ── INITIALIZATION ──
 
@@ -83,12 +85,58 @@ export async function loadExpenses() {
     try {
         const data = await loadExpensesData();
         state.expensesData = data || [];
-        renderExpensesList(state.expensesData);
+
+        const listToRender = _futureFilterActive
+            ? state.expensesData.filter(e => e.category === 'future')
+            : state.expensesData;
+
+        renderExpensesList(listToRender);
+        _updateFutureFilterUI();
     } catch (err) {
         console.error('[expenses.js] Failed to load expenses:', err);
         const container = document.getElementById('expenses-list');
         if (container) {
             container.innerHTML = `<div class="text-red-400 text-center py-10">Failed to load expenses</div>`;
+        }
+    }
+}
+
+// ── FUTURE FILTER ──
+
+function toggleFutureFilter() {
+    _futureFilterActive = !_futureFilterActive;
+    const listToRender = _futureFilterActive
+        ? (state.expensesData || []).filter(e => e.category === 'future')
+        : (state.expensesData || []);
+    renderExpensesList(listToRender);
+    _updateFutureFilterUI();
+}
+
+function clearFutureFilter() {
+    _futureFilterActive = false;
+    renderExpensesList(state.expensesData || []);
+    _updateFutureFilterUI();
+}
+
+function _updateFutureFilterUI() {
+    const filterBtn  = document.getElementById('exp-future-filter-btn');
+    const activePill = document.getElementById('exp-future-filter-active');
+
+    if (filterBtn) {
+        if (_futureFilterActive) {
+            filterBtn.classList.add('bg-violet-700', 'text-white');
+            filterBtn.classList.remove('bg-zinc-800', 'text-zinc-200');
+        } else {
+            filterBtn.classList.remove('bg-violet-700', 'text-white');
+            filterBtn.classList.add('bg-zinc-800', 'text-zinc-200');
+        }
+    }
+
+    if (activePill) {
+        if (_futureFilterActive) {
+            activePill.classList.remove('hidden');
+        } else {
+            activePill.classList.add('hidden');
         }
     }
 }
@@ -144,7 +192,6 @@ function editExpense(id) {
     }
 
     _editingExpenseId = id;
-    // Multi-date is not available in edit mode — ensure it's off
     _multiDateMode = false;
     _selectedDates = [];
     _resetMultiDateUI();
@@ -157,7 +204,6 @@ function editExpense(id) {
 // ── MULTI-DATE HELPERS ──
 
 function toggleMultiDateMode() {
-    // Multi-date only allowed in add mode
     if (_editingExpenseId) return;
 
     _multiDateMode = !_multiDateMode;
@@ -167,7 +213,6 @@ function toggleMultiDateMode() {
     const singleRow = document.getElementById('exp-single-date-row');
 
     if (_multiDateMode) {
-        // Seed with current single-date value
         const current = document.getElementById('exp-date')?.value;
         _selectedDates = current ? [current] : [];
 
@@ -176,7 +221,6 @@ function toggleMultiDateMode() {
         if (singleRow) singleRow.classList.add('hidden');
         _renderDateChips();
     } else {
-        // Revert: restore first selected date to single input
         const fallback = _selectedDates[0] || todayString();
         const dateEl = document.getElementById('exp-date');
         if (dateEl) dateEl.value = fallback;
@@ -258,7 +302,6 @@ function _resetMultiDateUI() {
 async function handleSaveExpense() {
     if (!requireAdmin()) return;
 
-    // ── EDIT path: single date, same as before ──
     if (_editingExpenseId) {
         const formData = getExpenseFormData();
         if (!formData) return;
@@ -279,9 +322,8 @@ async function handleSaveExpense() {
         return;
     }
 
-    // ── ADD path: supports multi-date ──
     const formData = getExpenseFormData();
-    if (!formData) return; // getExpenseFormData already alerts on validation failure
+    if (!formData) return;
 
     let datesToSave;
     if (_multiDateMode) {
@@ -291,7 +333,6 @@ async function handleSaveExpense() {
         }
         datesToSave = [..._selectedDates];
     } else {
-        // Single date comes from getExpenseFormData already validated
         datesToSave = [formData.date];
     }
 
@@ -342,18 +383,17 @@ async function handleDeleteExpense(id) {
 // ── PRIVATE HELPERS ──
 
 function _setModalMode(mode) {
-    const title   = document.getElementById('exp-modal-title');
-    const saveBtn = document.getElementById('exp-save-btn');
+    const title    = document.getElementById('exp-modal-title');
+    const saveBtn  = document.getElementById('exp-save-btn');
     const multiBtn = document.getElementById('exp-multi-date-btn');
 
     if (mode === 'edit') {
-        if (title)    title.textContent    = 'Edit Expense';
-        if (saveBtn)  saveBtn.textContent  = 'Update Expense';
-        // Hide multi-date toggle in edit mode — editing always has one fixed date
+        if (title)    title.textContent   = 'Edit Expense';
+        if (saveBtn)  saveBtn.textContent = 'Update Expense';
         if (multiBtn) multiBtn.classList.add('hidden');
     } else {
-        if (title)    title.textContent    = 'New Expense';
-        if (saveBtn)  saveBtn.textContent  = 'Save Expense';
+        if (title)    title.textContent   = 'New Expense';
+        if (saveBtn)  saveBtn.textContent = 'Save Expense';
         if (multiBtn) multiBtn.classList.remove('hidden');
     }
 }
@@ -403,6 +443,10 @@ Object.assign(window, {
     toggleMultiDateMode,
     addMultiDate,
     removeMultiDate,
+
+    // Future filter
+    toggleFutureFilter,
+    clearFutureFilter,
 
     // Stats functions
     setStatsView,
