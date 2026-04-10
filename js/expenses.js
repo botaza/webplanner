@@ -85,12 +85,7 @@ export async function loadExpenses() {
     try {
         const data = await loadExpensesData();
         state.expensesData = data || [];
-
-        const listToRender = _futureFilterActive
-            ? state.expensesData.filter(e => e.category === 'future')
-            : state.expensesData;
-
-        renderExpensesList(listToRender);
+        renderExpensesList(_getExpenseListData());
         _updateFutureFilterUI();
     } catch (err) {
         console.error('[expenses.js] Failed to load expenses:', err);
@@ -103,18 +98,26 @@ export async function loadExpenses() {
 
 // ── FUTURE FILTER ──
 
-function toggleFutureFilter() {
-    _futureFilterActive = !_futureFilterActive;
-    const listToRender = _futureFilterActive
+/**
+ * Returns the list that should currently be shown in the main view.
+ * Exposed on window so expenses-render.js can call it when re-rendering
+ * after month/day expand toggles, without needing to know filter state.
+ */
+function _getExpenseListData() {
+    return _futureFilterActive
         ? (state.expensesData || []).filter(e => e.category === 'future')
         : (state.expensesData || []);
-    renderExpensesList(listToRender);
+}
+
+function toggleFutureFilter() {
+    _futureFilterActive = !_futureFilterActive;
+    renderExpensesList(_getExpenseListData());
     _updateFutureFilterUI();
 }
 
 function clearFutureFilter() {
     _futureFilterActive = false;
-    renderExpensesList(state.expensesData || []);
+    renderExpensesList(_getExpenseListData());
     _updateFutureFilterUI();
 }
 
@@ -133,11 +136,7 @@ function _updateFutureFilterUI() {
     }
 
     if (activePill) {
-        if (_futureFilterActive) {
-            activePill.classList.remove('hidden');
-        } else {
-            activePill.classList.add('hidden');
-        }
+        activePill.classList.toggle('hidden', !_futureFilterActive);
     }
 }
 
@@ -447,6 +446,8 @@ Object.assign(window, {
     // Future filter
     toggleFutureFilter,
     clearFutureFilter,
+    // Bridge for expenses-render.js — do not rename
+    _getExpenseListData,
 
     // Stats functions
     setStatsView,

@@ -6,17 +6,13 @@
 // UPDATED: renderCategoryDrilldown added for stats categories view
 // FIXED: Edit button on touch screens — replaced inline onclick with event delegation
 // UPDATED: Main list and stats show both total and adjusted (total − future) amounts
+// PATCHED: toggleExpenseMonth / toggleExpenseDay now respect the active future filter
 
 import { state } from './state.js';
 import { requireAdmin } from './readonly-guard.js';
 
 // ── HELPERS ──
 
-/**
- * Calculate adjusted total by subtracting 'future' category expenses
- * @param {Array} list - Array of expense objects
- * @returns {{ total: number, future: number, adjusted: number }}
- */
 function calcTotals(list) {
     const total   = list.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
     const future  = list.filter(e => e.category === 'future')
@@ -24,20 +20,11 @@ function calcTotals(list) {
     return { total, future, adjusted: total - future };
 }
 
-/**
- * Render a two-number total banner: Total and Adjusted (total − future).
- * If there are no future expenses, shows just the single total cleanly.
- * @param {number} total    - full total
- * @param {number} future   - future-category sum
- * @param {number} adjusted - total − future
- * @returns {string} HTML string
- */
 function totalBannerHTML(total, future, adjusted) {
     const fmtTotal    = total.toLocaleString('ru-RU');
     const fmtAdjusted = adjusted.toLocaleString('ru-RU');
 
     if (future === 0) {
-        // No future expenses — single clean card
         return `
             <div class="bg-zinc-900 rounded-3xl p-5 mb-4 text-center">
                 <div class="text-xs text-zinc-500 uppercase tracking-wide">Total</div>
@@ -61,15 +48,11 @@ function totalBannerHTML(total, future, adjusted) {
 }
 
 // ── EVENT DELEGATION SETUP ──
-// Called once after the expenses-list container is populated.
-// Handles edit button taps on touch screens via delegated listener.
-// We keep a single listener per container by tracking it on the element itself.
 
 function _attachExpensesListDelegation(container) {
     if (container._editDelegationAttached) return;
     container._editDelegationAttached = true;
 
-    // Use 'pointerup' so it fires reliably on both touch and mouse
     container.addEventListener('pointerup', function (e) {
         const btn = e.target.closest('[data-edit-id]');
         if (!btn) return;
@@ -80,11 +63,18 @@ function _attachExpensesListDelegation(container) {
     });
 }
 
+// ── HELPER: get the currently-active list (respects future filter) ──
+// expenses.js exposes window._getExpenseListData() so this module
+// doesn't need to know about the filter state directly.
+function _getActiveList() {
+    if (typeof window._getExpenseListData === 'function') {
+        return window._getExpenseListData();
+    }
+    return state.expensesData || [];
+}
+
 /**
  * Render the main expenses list with expandable month/day groups
- * Current month pinned at top, rest sort from most recent to older
- * Shows total + adjusted (excl. future) banner per month
- * @param {Array} list - Array of expense objects
  */
 export function renderExpensesList(list) {
   const container = document.getElementById('expenses-list');
@@ -99,10 +89,8 @@ export function renderExpensesList(list) {
     return;
   }
 
-  // Sort by date descending
   const sorted = [...list].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
-  // Group by Month (YYYY-MM)
   const groupedByMonth = {};
   sorted.forEach(exp => {
     const month = exp.date ? exp.date.substring(0, 7) : 'unknown';
@@ -110,7 +98,6 @@ export function renderExpensesList(list) {
     groupedByMonth[month].push(exp);
   });
 
-  // Get all months and separate current month
   const allMonths    = Object.keys(groupedByMonth).sort().reverse();
   const currentMonth = new Date().toISOString().slice(0, 7);
 
@@ -129,7 +116,6 @@ export function renderExpensesList(list) {
     const monthLabel      = formatMonthLabel(month);
     const isCurrentMonth  = month === currentMonth;
 
-    // Month header — show both numbers if future > 0
     const adjNote = mFuture > 0
         ? `<div class="text-right">
                <div class="text-emerald-400 font-semibold">−${mTotal.toLocaleString('ru-RU')}</div>
@@ -137,7 +123,6 @@ export function renderExpensesList(list) {
            </div>`
         : `<div class="text-emerald-400 font-semibold">−${mTotal.toLocaleString('ru-RU')}</div>`;
 
-    // Group by Day within month
     const groupedByDay = {};
     monthList.forEach(exp => {
       const day = exp.date || 'unknown';
@@ -239,16 +224,11 @@ export function renderExpensesList(list) {
   }).join('');
 
   container.innerHTML = `<div class="pb-20">${html}</div>`;
-
-  // Attach delegated pointer listener for edit buttons (touch-safe)
   _attachExpensesListDelegation(container);
 }
 
 /**
  * Render a specific stats list (e.g. for monthly view or filtered view)
- * Shows total + adjusted banner above the list
- * @param {Array} list - Array of expense objects
- * @param {string} containerId - Target DOM ID (e.g., 'expenses-stats-list')
  */
 export function renderStatsList(list, containerId = 'expenses-stats-list') {
   const container = document.getElementById(containerId);
@@ -294,7 +274,7 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
     const groupedByDay = {};
     groupedByMonth[month].forEach(exp => {
       const day = exp.date || 'unknown';
-      if (!groupedByDay[day]) groupedByDay[day] = []
+      if (!groupedByDay[day]) groupedByDay[day] = [];
       groupedByDay[day].push(exp);
     });
     const days = Object.keys(groupedByDay).sort().reverse();
@@ -381,10 +361,6 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
 
 /**
  * Render collapsible per-category entry lists below the pie chart.
- * Each category accordion shows all matching expenses for the selected time frame.
- * @param {HTMLElement} container  - DOM element to append into (after the chart)
- * @param {Object}      groupsData - { groups: { key: { label, amount, count } }, total }
- * @param {Array}       allExpenses - Full flat array of expense objects for the period
  */
 export function renderCategoryDrilldown(container, groupsData, allExpenses) {
   if (!container) return;
@@ -394,7 +370,6 @@ export function renderCategoryDrilldown(container, groupsData, allExpenses) {
 
   if (keys.length === 0 || !allExpenses || allExpenses.length === 0) return;
 
-  // Build a lookup: category → sorted expenses
   const byCategory = {};
   allExpenses.forEach(exp => {
     const key = exp.category || 'unknown';
@@ -402,10 +377,8 @@ export function renderCategoryDrilldown(container, groupsData, allExpenses) {
     byCategory[key].push(exp);
   });
 
-  // Sort categories by total amount descending (mirrors pie chart order)
   const sortedKeys = keys.sort((a, b) => (groups[b]?.amount || 0) - (groups[a]?.amount || 0));
 
-  // Track open state — keyed by safeKey (consistent with toggleStatsCategoryDrilldown)
   if (!state.expandedStatsCategories) state.expandedStatsCategories = new Set();
 
   const blocksHTML = sortedKeys.map(key => {
@@ -451,7 +424,6 @@ export function renderCategoryDrilldown(container, groupsData, allExpenses) {
     `;
   }).join('');
 
-  // Append a titled section below the chart
   const section = document.createElement('div');
   section.className = 'mt-6';
   section.innerHTML = `
@@ -461,7 +433,6 @@ export function renderCategoryDrilldown(container, groupsData, allExpenses) {
     ${blocksHTML}
   `;
 
-  // Event delegation — touch-safe (same pattern as edit button fix above)
   section.addEventListener('pointerup', function(e) {
     const btn = e.target.closest('button[data-safekey]');
     if (!btn) return;
@@ -474,8 +445,6 @@ export function renderCategoryDrilldown(container, groupsData, allExpenses) {
 
 /**
  * Toggle a single category drilldown accordion in the stats view.
- * Called via event delegation from renderCategoryDrilldown.
- * @param {string} safeKey - Sanitised category key
  */
 export function toggleStatsCategoryDrilldown(safeKey) {
   if (!state.expandedStatsCategories) state.expandedStatsCategories = new Set();
@@ -491,7 +460,6 @@ export function toggleStatsCategoryDrilldown(safeKey) {
     if (panel) panel.classList.remove('hidden');
   }
 
-  // Flip folder icon on the header button
   const header = panel?.previousElementSibling;
   if (header) {
     const icon = header.querySelector('span.text-base');
@@ -500,9 +468,8 @@ export function toggleStatsCategoryDrilldown(safeKey) {
 }
 
 /**
- * Toggle expanded state for a month
- * @param {string} month       - YYYY-MM
- * @param {string} containerId - Optional (default: 'expenses-list')
+ * Toggle expanded state for a month.
+ * Uses _getActiveList() so the future filter is respected on re-render.
  */
 export function toggleExpenseMonth(month, containerId = 'expenses-list') {
   if (!state.expandedExpenseMonths) state.expandedExpenseMonths = new Set();
@@ -517,14 +484,13 @@ export function toggleExpenseMonth(month, containerId = 'expenses-list') {
     if (window.refreshExpenseStats) window.refreshExpenseStats();
   } else {
     const container = document.getElementById('expenses-list');
-    if (container && state.expensesData) renderExpensesList(state.expensesData);
+    if (container) renderExpensesList(_getActiveList());
   }
 }
 
 /**
- * Toggle expanded state for a day
- * @param {string} day         - YYYY-MM-DD
- * @param {string} containerId - Optional (default: 'expenses-list')
+ * Toggle expanded state for a day.
+ * Uses _getActiveList() so the future filter is respected on re-render.
  */
 export function toggleExpenseDay(day, containerId = 'expenses-list') {
   if (!state.expandedExpenseDays) state.expandedExpenseDays = new Set();
@@ -539,16 +505,12 @@ export function toggleExpenseDay(day, containerId = 'expenses-list') {
     if (window.refreshExpenseStats) window.refreshExpenseStats();
   } else {
     const container = document.getElementById('expenses-list');
-    if (container && state.expensesData) renderExpensesList(state.expensesData);
+    if (container) renderExpensesList(_getActiveList());
   }
 }
 
 /**
- * Render a summary total card — now shows both total and adjusted if future > 0.
- * Used by expenses-stats.js for the pie-categories and pie-tools views.
- * @param {number} total        - Total amount
- * @param {string} containerId  - Target DOM ID
- * @param {number} [future=0]   - Future-category sum (optional)
+ * Render a summary total card.
  */
 export function renderStatsTotal(total, containerId, future = 0) {
   const container = document.getElementById(containerId);
@@ -556,22 +518,12 @@ export function renderStatsTotal(total, containerId, future = 0) {
   container.innerHTML = totalBannerHTML(total, future, total - future);
 }
 
-/**
- * Format month label (YYYY-MM → Month YYYY)
- * @param {string} month - YYYY-MM
- * @returns {string}
- */
 function formatMonthLabel(month) {
   const [year, m] = month.split('-');
   const date = new Date(parseInt(year), parseInt(m) - 1, 1);
   return date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 }
 
-/**
- * Format day label (YYYY-MM-DD → DD Mon)
- * @param {string} day - YYYY-MM-DD
- * @returns {string}
- */
 function formatDayLabel(day) {
   const [year, m, d] = day.split('-');
   const date = new Date(parseInt(year), parseInt(m) - 1, parseInt(d));
