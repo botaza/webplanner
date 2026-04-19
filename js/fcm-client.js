@@ -271,6 +271,5 @@ Object.assign(window, {
 export {
     enableNotifications,
     updateNotifStatus,
-    updateTokenChatOnly,
-    updateTokenActiveBook
+    updateTokenChatOnly
 };
