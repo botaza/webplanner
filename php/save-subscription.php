@@ -1,6 +1,7 @@
 <?php
 // php/save-subscription.php
 // UPDATED: Stores token objects with username, browser, last_seen, AND preserves prefs on re-registration
+// PATCHED: Accepts initial prefs (incl. activeBook) from request body on first registration
 // Structure: [ { token, username, browser, registered_at, last_seen, prefs }, ... ]
 date_default_timezone_set('Asia/Vladivostok');
 header('Content-Type: application/json');
@@ -14,6 +15,8 @@ $input = file_get_contents('php://input');
 $body  = json_decode($input, true);
 $token    = $body['token']    ?? null;
 $username = $body['username'] ?? '';
+// ✅ PATCH: Accept initial prefs from client (e.g. activeBook: 'general')
+$incomingPrefs = isset($body['prefs']) && is_array($body['prefs']) ? $body['prefs'] : [];
 if (!$token || !is_string($token)) {
     http_response_code(400);
     echo json_encode(['error' => 'Invalid or missing FCM token']);
@@ -42,17 +45,21 @@ if (file_exists($tokensFile)) {
 $tokens = array_map(function($t) use ($now) {
     if (is_string($t)) {
         return [
-            'token' => $t,
-            'username' => '',
-            'browser' => 'Unknown',
+            'token'         => $t,
+            'username'      => '',
+            'browser'       => 'Unknown',
             'registered_at' => $now,
-            'last_seen' => $now,
-            'prefs' => ['chatOnly' => false]
+            'last_seen'     => $now,
+            'prefs'         => ['chatOnly' => false, 'activeBook' => 'general']
         ];
     }
     // Ensure prefs exist on legacy objects
     if (!isset($t['prefs']) || !is_array($t['prefs'])) {
-        $t['prefs'] = ['chatOnly' => false];
+        $t['prefs'] = ['chatOnly' => false, 'activeBook' => 'general'];
+    }
+    // Backfill activeBook on tokens that predate this patch
+    if (!isset($t['prefs']['activeBook'])) {
+        $t['prefs']['activeBook'] = 'general';
     }
     return $t;
 }, $tokens);
@@ -64,9 +71,12 @@ foreach ($tokens as &$entry) {
         $entry['last_seen'] = $now;
         if ($username) $entry['username'] = $username;
         if ($browser !== 'Unknown') $entry['browser'] = $browser;
-        // ✅ CRITICAL FIX: Preserve existing prefs on re-registration
+        // ✅ CRITICAL: Preserve existing prefs on re-registration — do NOT overwrite
         if (!isset($entry['prefs']) || !is_array($entry['prefs'])) {
-            $entry['prefs'] = ['chatOnly' => false];
+            $entry['prefs'] = ['chatOnly' => false, 'activeBook' => 'general'];
+        }
+        if (!isset($entry['prefs']['activeBook'])) {
+            $entry['prefs']['activeBook'] = 'general';
         }
         $found = true;
         break;
@@ -74,13 +84,16 @@ foreach ($tokens as &$entry) {
 }
 unset($entry);
 if (!$found) {
+    // ✅ PATCH: Merge client-supplied prefs into defaults for new tokens
+    $defaultPrefs = ['chatOnly' => false, 'activeBook' => 'general'];
+    $mergedPrefs  = array_merge($defaultPrefs, $incomingPrefs);
     $tokens[] = [
         'token'         => $token,
         'username'      => $username,
         'browser'       => $browser,
         'registered_at' => $now,
         'last_seen'     => $now,
-        'prefs'         => ['chatOnly' => false]
+        'prefs'         => $mergedPrefs
     ];
 }
 $dir = dirname($tokensFile);

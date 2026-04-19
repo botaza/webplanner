@@ -3,12 +3,14 @@
 // Handles username prompt, emoji picker, modal interactions, and input handling
 // UPDATED: Username prompt fires when Chat tab is opened (not on first boot)
 // UPDATED: deleteCurrentGuestbook() added for chip × button
+// PATCHED: switchGuestbook now calls updateTokenActiveBook to track active tab per device
 
 import { state } from './state.js';
 import { hideModal } from './utils.js';
 import { addGuestbookMessage, createGuestbook, deleteGuestbook } from './guestbook-crud.js';
 import { renderGuestbookChips, renderGuestbookMessages } from './guestbook-render.js';
 import { api } from './api.js';
+import { updateTokenActiveBook } from './fcm-client.js';
 
 const EMOJI_LIST = ['👍', '❤️', '😂', '🎉', '😮', '🙏', '🔥', '👏', '😢', '😍', '🚀', '🍀'];
 
@@ -66,8 +68,7 @@ export async function sendGuestbookMessage() {
   const success = await addGuestbookMessage(text);
   if (success) {
     input.value = '';
-    // Reload and render
-    await loadGuestbook();   // defined in guestbook.js
+    await loadGuestbook();
   } else {
     alert('Failed to send message. Please try again.');
   }
@@ -142,10 +143,14 @@ export async function clearGuestbook() {
 }
 
 /**
- * Switch to another guestbook
+ * Switch to another guestbook tab.
+ * ✅ PATCH: Also updates the server so this device only receives
+ * push notifications for the book it's currently viewing.
  */
 export function switchGuestbook(key) {
+  if (key === state.currentGuestbookKey) return;
   state.currentGuestbookKey = key;
+  updateTokenActiveBook(key);
   renderGuestbookChips();
   renderGuestbookMessages();
 }
@@ -159,7 +164,6 @@ export function switchGuestbook(key) {
 export function initGuestbookUI() {
   renderEmojiPicker();
 
-  // Show emoji picker when input is focused
   const input = document.getElementById('guestbook-input');
   const picker = document.getElementById('guestbook-emoji-picker');
 
@@ -168,7 +172,6 @@ export function initGuestbookUI() {
       picker.classList.remove('hidden');
     });
 
-    // Hide picker when clicking outside
     document.addEventListener('click', (e) => {
       if (!input.contains(e.target) && !picker.contains(e.target)) {
         picker.classList.add('hidden');

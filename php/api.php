@@ -490,11 +490,15 @@ return [
 'browser' => 'Unknown',
 'registered_at' => date('Y-m-d H:i:s'),
 'last_seen' => date('Y-m-d H:i:s'),
-'prefs' => ['chatOnly' => false]
+'prefs' => ['chatOnly' => false, 'activeBook' => 'general']
 ];
 }
 if (!isset($t['prefs']) || !is_array($t['prefs'])) {
-$t['prefs'] = ['chatOnly' => false];
+$t['prefs'] = ['chatOnly' => false, 'activeBook' => 'general'];
+}
+// Backfill activeBook on tokens that predate this patch
+if (!isset($t['prefs']['activeBook'])) {
+$t['prefs']['activeBook'] = 'general';
 }
 return $t;
 }, $data);
@@ -519,10 +523,12 @@ $tokens = readTokensWithPrefs($tokensFile);
 $updated = false;
 foreach ($tokens as &$t) {
 if ($t['token'] === $tokenStr) {
-// PATCHED: Only update prefs if explicitly sent
+// PATCHED: Merge incoming prefs into existing so individual keys
+// don't overwrite each other (e.g. activeBook won't wipe chatOnly)
 if ($prefsJson !== null) {
-$prefs = json_decode($prefsJson, true) ?: ['chatOnly' => false];
-$t['prefs'] = $prefs;
+$incomingPrefs = json_decode($prefsJson, true) ?: [];
+$existingPrefs = $t['prefs'] ?? ['chatOnly' => false, 'activeBook' => 'general'];
+$t['prefs'] = array_merge($existingPrefs, $incomingPrefs);
 }
 if (isset($_POST['username'])) {
 $t['username'] = $_POST['username'];
@@ -533,13 +539,15 @@ break;
 }
 }
 if (!$updated) {
+$defaultPrefs = ['chatOnly' => false, 'activeBook' => 'general'];
+$incomingPrefs = $prefsJson !== null ? (json_decode($prefsJson, true) ?: []) : [];
 $tokens[] = [
 'token' => $tokenStr,
 'username' => $_POST['username'] ?? 'Guest',
 'browser' => $_POST['browser'] ?? 'Unknown',
 'registered_at' => date('Y-m-d H:i:s'),
 'last_seen' => date('Y-m-d H:i:s'),
-'prefs' => $prefsJson !== null ? (json_decode($prefsJson, true) ?: ['chatOnly' => false]) : ['chatOnly' => false]
+'prefs' => array_merge($defaultPrefs, $incomingPrefs)
 ];
 }
 writeTokensWithPrefs($tokensFile, $tokens);

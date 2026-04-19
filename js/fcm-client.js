@@ -1,7 +1,6 @@
 // js/fcm-client.js
 // UPDATED: Full support for chatOnly token preference
-// Tokens can now be toggled to receive ONLY guestbook/chat notifications
-// FIXED: Removed default chatOnly=false reset on enableNotifications to preserve user preference
+// PATCHED: Added updateTokenActiveBook(); registerFcmToken sends activeBook: 'general' on first registration
 import { state } from './state.js';
 const VAPID_KEY = 'BMlwBTFnXAZuDBkyK8UENXQz-kUTTzZGy1HEoNXbV6l-MmUyTilUJmXbVNs-vetYYHUvjLfAfk24hTHU4lJMxYY';
 
@@ -14,7 +13,9 @@ async function registerFcmToken(token) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 token,
-                username: state.guestbookUsername || ''
+                username: state.guestbookUsername || '',
+                // ✅ PATCH: Send initial activeBook so new tokens don't start with undefined
+                prefs: { activeBook: 'general' }
             })
         });
         if (res.ok) {
@@ -55,9 +56,6 @@ async function enableNotifications() {
         
         if (token) {
             await registerFcmToken(token);
-            // ✅ FIX: Removed default updateTokenChatOnly(token, false)
-            // save-subscription.php now handles defaults for new tokens.
-            // For existing tokens, we MUST NOT reset prefs here or user choice is lost.
         } else {
             console.warn('No FCM token received — will retry next launch.');
         }
@@ -125,7 +123,6 @@ async function updateTokenChatOnly(token, chatOnly) {
         const form = new FormData();
         form.append('action', 'update_token_prefs');
         form.append('token', token);
-        // ✅ Only send prefs when explicitly toggling
         form.append('prefs', JSON.stringify({ chatOnly: chatOnly }));
         const res = await fetch('php/api.php', { method: 'POST', body: form });
         const data = await res.json();
@@ -133,6 +130,23 @@ async function updateTokenChatOnly(token, chatOnly) {
     } catch (err) {
         console.error('Failed to update chatOnly preference:', err);
         return false;
+    }
+}
+
+// ── Token Preference: activeBook update ─────────────────────────────────────
+// ✅ PATCH: Called whenever the user switches guestbook tabs
+export async function updateTokenActiveBook(bookKey) {
+    const token = localStorage.getItem('fcm_registered_token');
+    if (!token) return;
+    try {
+        const form = new FormData();
+        form.append('action', 'update_token_prefs');
+        form.append('token', token);
+        form.append('prefs', JSON.stringify({ activeBook: bookKey }));
+        await fetch('php/api.php', { method: 'POST', body: form });
+        console.log('[fcm] activeBook updated to:', bookKey);
+    } catch (err) {
+        console.warn('[fcm] Failed to update activeBook:', err);
     }
 }
 
@@ -150,7 +164,7 @@ async function loadTokenManager() {
                 return f;
             })()
         });
-        const tokens = await res.json();   // now returns array directly
+        const tokens = await res.json();
         if (!tokens || tokens.length === 0) {
             container.innerHTML = '<div class="text-zinc-500 text-sm text-center py-4">No tokens registered yet</div>';
             return;
@@ -159,8 +173,8 @@ async function loadTokenManager() {
         let html = '';
         tokens.forEach(t => {
             const isMe = t.token === myToken;
-            // ✅ Safe access to prefs with default fallback
             const chatOnly = t.prefs && t.prefs.chatOnly === true;
+            const activeBook = t.prefs && t.prefs.activeBook ? t.prefs.activeBook : 'general';
             const browser = t.browser || 'Unknown Device';
             const user = t.username || '—';
             const seen = t.last_seen ? t.last_seen.slice(0, 16) : '—';
@@ -176,7 +190,7 @@ async function loadTokenManager() {
             <div class="text-xs text-zinc-500 mt-1">
                 👤 ${user} &nbsp;·&nbsp; <span class="font-mono">${short}</span>
             </div>
-            <div class="text-xs text-zinc-600 mt-0.5">last seen ${seen}</div>
+            <div class="text-xs text-zinc-600 mt-0.5">last seen ${seen} &nbsp;·&nbsp; 📖 ${activeBook}</div>
         </div>
         <div class="flex flex-col items-end gap-2">
             <label class="flex items-center gap-2 text-xs cursor-pointer">
@@ -240,7 +254,7 @@ async function deleteAllTokens() {
 window.toggleChatOnly = async function(token, enabled) {
     const success = await updateTokenChatOnly(token, enabled);
     if (success) {
-        await loadTokenManager();   // refresh UI
+        await loadTokenManager();
     } else {
         alert('Failed to update chat-only preference');
     }
@@ -257,5 +271,6 @@ Object.assign(window, {
 export {
     enableNotifications,
     updateNotifStatus,
-    updateTokenChatOnly
+    updateTokenChatOnly,
+    updateTokenActiveBook
 };

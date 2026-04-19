@@ -551,7 +551,7 @@ if (file_exists(GUESTBOOKS_FILE)) {
         
         if (empty($recipientTokens)) {
             echo date('Y-m-d H:i:s') . " [rule7] No recipients after sender exclusion for '{$bookKey}'.\n";
-            $notified[$notifiedKey] = $newestTs;
+            $notified[$notifiedKey] = $now;
             continue;
         }
         
@@ -582,7 +582,7 @@ if (file_exists(GUESTBOOKS_FILE)) {
         
         // ✅ RULE 7 IS ALLOWED FOR chatOnly TOKENS
         notifyWithTokenSkip($accessToken, $recipientTokens, $title, $body, 'rule7_guestbook');
-        $notified[$notifiedKey] = $newestTs;
+        $notified[$notifiedKey] = $now;
         echo date('Y-m-d H:i:s') . " [rule7] Notified '{$bookKey}', pointer → " . date('Y-m-d H:i:s', $newestTs) . "\n";
     }
 }
