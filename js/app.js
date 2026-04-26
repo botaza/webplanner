@@ -1,8 +1,10 @@
+// >> - js/app.js
 // js/app.js
 // MAIN APPLICATION BOOTSTRAP
 // UPDATED: Chat tab is now the default home screen
 // UPDATED: Initialize shopping module and full multi-guestbook module
 // UPDATED: Import updateTokenChatOnly and ensure token manager works with chatOnly preference
+// UPDATED: Initialize planner scratch pad
 
 import { state } from './state.js';
 import { isUnlocked, showLockScreen, getRole, isGuest } from './lockscreen.js';
@@ -16,6 +18,7 @@ import { loadDashboard } from './dashboard.js';
 import { enableNotifications, updateNotifStatus } from './fcm-client.js';
 import { loadNotifications } from './notification-history.js';
 import { initGuestbook, loadGuestbook } from './guestbook.js';
+import { initScratchPad } from './planner-scratch.js';
 
 async function bootApp() {
   // Store role in shared state
@@ -42,6 +45,7 @@ async function bootApp() {
   initIncome();
   initShopping();
   initGuestbook();      // ← Initialize guestbook module
+  initScratchPad();     // ← Initialize planner scratch pad
 
   // Show guest mode banner and apply restrictions
   if (isGuest()) {
@@ -83,3 +87,4 @@ window.onload = async () => {
   }
   await bootApp();
 };
+// << - js/app.js

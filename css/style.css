@@ -1,3 +1,4 @@
+/* >> - css/style.css
 /* css/style.css
  * PLANNER PWA - MAIN STYLESHEET
  * UPDATED: Added Shopping Module styles and Guestbook module (8-tab nav + chat UI)
@@ -685,3 +686,109 @@ nav.fixed.bottom-0 .grid {
     font-size: 22px;
   }
 }
+/* ── Planner: Pinned Events Section ────────────────────────────────────────── */
+.planner-pinned-section {
+  background: linear-gradient(135deg, #1c1a11 0%, #1a1a1e 100%);
+  border: 1px solid #78716c55;
+  border-radius: 1.25rem;
+  padding: 12px 14px 10px;
+}
+
+.pinned-event-card {
+  background: #27272a;
+  border: 1px solid #3f3f46;
+  border-left: 3px solid #f59e0b;
+  border-radius: 0.875rem;
+  padding: 8px 10px;
+  transition: background-color 0.15s;
+}
+
+.pinned-event-card:active {
+  background: #2f2f35;
+}
+
+/* ── Planner: Scratch Pad Section ──────────────────────────────────────────── */
+.planner-scratch-section {
+  background: linear-gradient(135deg, #0f1620 0%, #111827 100%);
+  border: 1px solid #0ea5e933;
+  border-radius: 1.25rem;
+  padding: 12px 14px 10px;
+}
+
+.scratch-input-row {
+  border-radius: 1rem;
+}
+
+.scratch-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: #27272a;
+  border: 1px solid #3f3f46;
+  border-radius: 0.75rem;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.scratch-action-btn:hover {
+  background: #3a3a40;
+}
+
+.scratch-action-btn--recording {
+  background: #7f1d1d;
+  border-color: #ef4444;
+}
+
+.scratch-note-card {
+  background: #18181b;
+  border: 1px solid #27272a;
+  border-radius: 0.875rem;
+  padding: 10px 12px;
+  transition: background-color 0.15s;
+}
+
+.scratch-note-card:active {
+  background: #1f1f24;
+}
+
+.scratch-note-text {
+  font-size: 14px;
+  color: #d4d4d8;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.scratch-note-image {
+  max-height: 140px;
+  border-radius: 0.625rem;
+  border: 1px solid #3f3f46;
+  object-fit: cover;
+  cursor: zoom-in;
+  display: block;
+}
+
+.scratch-note-meta {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #52525b;
+}
+
+/* Pinned section scrollable list on mobile */
+@media (max-width: 480px) {
+  #planner-pinned-list {
+    max-height: 280px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  #planner-pinned-list::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* << - css/style.css
