@@ -1,3 +1,4 @@
+// >> - php/api.php
 <?php
 // php/api.php
 // UPDATED: Added full multi-guestbook support
@@ -633,4 +634,130 @@ echo json_encode(['success' => true]);
 exit;
 }
 echo json_encode(['error' => 'unknown action']);
+
+// ── Scratch Notes ──
+$scratchFile = $dataDir . '/scratch.json';
+$scratchMedia = $dataDir . '/scratch-media';
+if (!is_dir($scratchMedia)) mkdir($scratchMedia, 0777, true);
+
+// Max upload size in bytes (8 MB default — change as needed)
+define('SCRATCH_MAX_BYTES', 18 * 1024 * 1024);
+
+if ($action === 'get_scratch') {
+    $notes = file_exists($scratchFile) ? (json_decode(file_get_contents($scratchFile), true) ?: []) : [];
+    echo json_encode($notes);
+    exit;
+}
+
+if ($action === 'add_scratch') {
+    $notes = file_exists($scratchFile) ? (json_decode(file_get_contents($scratchFile), true) ?: []) : [];
+    $id  = (string)(time() . rand(10000, 99999));
+    $note = [
+        'id'    => $id,
+        'ts'    => time() * 1000,
+        'text'  => trim($_POST['text'] ?? ''),
+        'media' => []   // will be filled by upload_scratch_media separately
+    ];
+    array_unshift($notes, $note);
+    file_put_contents($scratchFile, json_encode($notes, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    echo json_encode(['success' => true, 'id' => $id]);
+    exit;
+}
+
+if ($action === 'upload_scratch_media') {
+    $noteId = trim($_POST['note_id'] ?? '');
+    $kind   = trim($_POST['kind'] ?? '');   // 'image' or 'audio'
+    if (!$noteId || !in_array($kind, ['image','audio'])) {
+        echo json_encode(['error' => 'bad params']); exit;
+    }
+    if (empty($_FILES['file']['tmp_name'])) {
+        echo json_encode(['error' => 'no file']); exit;
+    }
+    $size = $_FILES['file']['size'];
+    if ($size > SCRATCH_MAX_BYTES) {
+        echo json_encode(['error' => 'File too large. Max ' . (SCRATCH_MAX_BYTES / 1024 / 1024) . ' MB.']); exit;
+    }
+    // Validate mime
+    $mime = mime_content_type($_FILES['file']['tmp_name']);
+    $allowed = $kind === 'image'
+        ? ['image/jpeg','image/png','image/gif','image/webp']
+        : ['audio/webm','audio/ogg','audio/mpeg','audio/mp4','audio/wav','video/webm'];
+    if (!in_array($mime, $allowed)) {
+        echo json_encode(['error' => 'File type not allowed: ' . $mime]); exit;
+    }
+    $ext = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION) ?: ($kind === 'image' ? 'jpg' : 'webm');
+    $filename = $noteId . '_' . $kind . '_' . time() . '.' . $ext;
+    $dest = $scratchMedia . '/' . $filename;
+    if (!move_uploaded_file($_FILES['file']['tmp_name'], $dest)) {
+        echo json_encode(['error' => 'Upload failed']); exit;
+    }
+    // Attach to note record
+    $notes = file_exists($scratchFile) ? (json_decode(file_get_contents($scratchFile), true) ?: []) : [];
+    foreach ($notes as &$n) {
+        if ($n['id'] === $noteId) {
+            $n['media'][] = ['kind' => $kind, 'file' => $filename];
+            break;
+        }
+    }
+    file_put_contents($scratchFile, json_encode($notes, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    echo json_encode(['success' => true, 'file' => $filename]);
+    exit;
+}
+
+if ($action === 'delete_scratch') {
+    $noteId = trim($_POST['id'] ?? '');
+    if (!$noteId) { echo json_encode(['error' => 'no id']); exit; }
+    $notes = file_exists($scratchFile) ? (json_decode(file_get_contents($scratchFile), true) ?: []) : [];
+    // Delete media files for this note
+    foreach ($notes as $n) {
+        if ($n['id'] === $noteId) {
+            foreach ($n['media'] ?? [] as $m) {
+                $path = $scratchMedia . '/' . $m['file'];
+                if (file_exists($path)) unlink($path);
+            }
+            break;
+        }
+    }
+    $notes = array_values(array_filter($notes, fn($n) => $n['id'] !== $noteId));
+    file_put_contents($scratchFile, json_encode($notes, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+if ($action === 'serve_scratch_media') {
+    // Serve a media file safely (no directory traversal)
+    $filename = basename($_POST['file'] ?? '');
+    if (!$filename) { http_response_code(400); echo 'bad request'; exit; }
+    $path = $scratchMedia . '/' . $filename;
+    if (!file_exists($path)) { http_response_code(404); echo 'not found'; exit; }
+    $mime = mime_content_type($path);
+    header('Content-Type: ' . $mime);
+    header('Content-Length: ' . filesize($path));
+    header('Cache-Control: private, max-age=86400');
+    readfile($path);
+    exit;
+}
+
+// ── Pinned Event IDs ──
+$pinnedFile = $dataDir . '/pinned.json';
+
+if ($action === 'get_pinned') {
+    $ids = file_exists($pinnedFile) ? (json_decode(file_get_contents($pinnedFile), true) ?: []) : [];
+    echo json_encode($ids);
+    exit;
+}
+
+if ($action === 'set_pinned') {
+    // Accepts a JSON-encoded array of IDs
+    $raw = $_POST['ids'] ?? '[]';
+    $ids = json_decode($raw, true);
+    if (!is_array($ids)) $ids = [];
+    file_put_contents($pinnedFile, json_encode(array_values($ids), JSON_PRETTY_PRINT));
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+echo json_encode(['error' => 'unknown action']);
 ?>
+
+// << - php/api.php
