@@ -632,7 +632,7 @@ if (file_exists($notifLog)) unlink($notifLog);
 echo json_encode(['success' => true]);
 exit;
 }
-echo json_encode(['error' => 'unknown action']);
+// (catch-all for original actions — new actions below)
 
 // ── Scratch Notes ──
 $scratchFile = $dataDir . '/scratch.json';
