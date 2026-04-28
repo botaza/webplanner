@@ -1,4 +1,3 @@
-// >> - php/api.php
 <?php
 // php/api.php
 // UPDATED: Added full multi-guestbook support
@@ -641,7 +640,7 @@ $scratchMedia = $dataDir . '/scratch-media';
 if (!is_dir($scratchMedia)) mkdir($scratchMedia, 0777, true);
 
 // Max upload size in bytes (8 MB default — change as needed)
-define('SCRATCH_MAX_BYTES', 18 * 1024 * 1024);
+define('SCRATCH_MAX_BYTES', 8 * 1024 * 1024);
 
 if ($action === 'get_scratch') {
     $notes = file_exists($scratchFile) ? (json_decode(file_get_contents($scratchFile), true) ?: []) : [];
@@ -759,5 +758,3 @@ if ($action === 'set_pinned') {
 
 echo json_encode(['error' => 'unknown action']);
 ?>
-
-// << - php/api.php
