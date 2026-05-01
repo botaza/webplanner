@@ -196,7 +196,7 @@ function setExpBackDate(daysBack) {
     const yyyy = d.getFullYear();
     const mm   = String(d.getMonth() + 1).padStart(2, '0');
     const dd   = String(d.getDate()).padStart(2, '0');
-    dateEl.value = ;
+    dateEl.value = yyyy + '-' + mm + '-' + dd;
     // Highlight active button
     document.querySelectorAll('.exp-back-btn').forEach((btn, i) => {
         btn.classList.toggle('bg-emerald-700', i === daysBack);
