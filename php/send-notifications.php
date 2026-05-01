@@ -469,6 +469,8 @@ if (isWithinTimeWindow(8, 0)) {
         $buckets = [3 => [], 7 => [], 14 => []];
         foreach ($events as $e) {
             if (empty($e['dt'])) continue;
+            // Skip events tagged #class — they are routine and not worth a horizon alert
+            if (($e['hashtag'] ?? '') === '#class') continue;
             $days = daysFromNow($e['dt']);
             if ($days <= 0) continue;
             if ($days >= 2.5 && $days < 3.5) $buckets[3][] = $e;

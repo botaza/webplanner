@@ -1,3 +1,4 @@
+// >> - js/expenses.js
 // js/expenses.js
 // ORCHESTRATOR MODULE FOR EXPENSES
 // Coordinates UI, CRUD, Rendering, Stats, and Housekeeping
@@ -179,6 +180,30 @@ function showAddExpenseModal() {
 
     _setModalMode('add');
     _resetMultiDateUI();
+    setTimeout(() => setExpBackDate(0), 0);
+}
+// ── BACK-DATE SHORTCUTS ──
+
+/**
+ * Set the expense date input to N days before today and highlight the button.
+ * @param {number} daysBack - 0 = today, 1 = yesterday, …, 6 = six days ago
+ */
+function setExpBackDate(daysBack) {
+    const dateEl = document.getElementById('exp-date');
+    if (!dateEl) return;
+    const d = new Date();
+    d.setDate(d.getDate() - daysBack);
+    const yyyy = d.getFullYear();
+    const mm   = String(d.getMonth() + 1).padStart(2, '0');
+    const dd   = String(d.getDate()).padStart(2, '0');
+    dateEl.value = ;
+    // Highlight active button
+    document.querySelectorAll('.exp-back-btn').forEach((btn, i) => {
+        btn.classList.toggle('bg-emerald-700', i === daysBack);
+        btn.classList.toggle('text-white',     i === daysBack);
+        btn.classList.toggle('border-emerald-600', i === daysBack);
+        btn.classList.toggle('bg-zinc-800',    i !== daysBack);
+    });
 }
 
 // ── EDIT EXPENSE FLOW ──
@@ -438,6 +463,9 @@ Object.assign(window, {
     selectExpenseTool,
     selectExpenseCategory,
 
+    // Back-date shortcuts
+    setExpBackDate,
+
     // Multi-date
     toggleMultiDateMode,
     addMultiDate,
@@ -466,3 +494,4 @@ Object.assign(window, {
     renderExpenseTools:      (tools) => renderExpenseTools(tools || EXPENSE_TOOLS),
     renderExpenseCategories: (cats)  => renderExpenseCategories(cats || EXPENSE_CATEGORIES)
 });
+// << - js/expenses.js

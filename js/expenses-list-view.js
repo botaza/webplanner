@@ -1,3 +1,4 @@
+// >> - js/expenses-list-view.js
 // js/expenses-list-view.js
 // EXPANDABLE MONTHLY LIST VIEW
 // Groups expenses by month and allows collapsing/expanding sections
@@ -55,7 +56,7 @@ export function renderExpandableMonthlyList(containerId, expenses) {
                 <div class="flex justify-between items-center">
                     <div class="flex items-center gap-3">
                         <div class="text-emerald-500 text-lg">
-                            ${isExpanded ? '📂' : '📁'}
+                            ${isExpanded ? '▾' : '▸'}
                         </div>
                         <div>
                             <div class="font-semibold text-zinc-200">${formatMonthLabel(month)}</div>
@@ -122,7 +123,7 @@ export function toggleExpenseMonth(month) {
         if (headerEl) {
             const iconEl = headerEl.querySelector('.text-emerald-500');
             if (iconEl) {
-                iconEl.textContent = expandedMonths.has(month) ? '📂' : '📁';
+                iconEl.textContent = expandedMonths.has(month) ? '▾' : '▸';
             }
         }
     }
@@ -147,7 +148,7 @@ export function expandAllMonths() {
     containers.forEach(el => el.classList.remove('hidden'));
     // Update icons
     document.querySelectorAll('.text-emerald-500').forEach(icon => {
-        if (icon.textContent === '📁') icon.textContent = '📂';
+        if (icon.textContent === '▸') icon.textContent = '▾';
     });
     // Clear state set (optional, keeps state in sync)
     // expandedMonths.clear(); 
@@ -161,6 +162,7 @@ export function collapseAllMonths() {
     containers.forEach(el => el.classList.add('hidden'));
     // Update icons
     document.querySelectorAll('.text-emerald-500').forEach(icon => {
-        if (icon.textContent === '📂') icon.textContent = '📁';
+        if (icon.textContent === '▾') icon.textContent = '▸';
     });
 }
+// << - js/expenses-list-view.js

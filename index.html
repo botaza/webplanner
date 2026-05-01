@@ -157,6 +157,11 @@ firebase.initializeApp(firebaseConfig);
             🖼
             <input type="file" accept="image/*" id="scratch-image-input" class="hidden" onchange="window.scratchAttachImage(this)">
           </label>
+          <!-- Document attach -->
+          <label class="scratch-action-btn" title="Attach document">
+            📎
+            <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar" id="scratch-doc-input" class="hidden" onchange="window.scratchAttachDoc(this)">
+          </label>
           <!-- Voice record -->
           <button onclick="window.scratchToggleRecording()" id="scratch-record-btn"
             class="scratch-action-btn" title="Record voice note">🎙</button>
@@ -572,6 +577,23 @@ firebase.initializeApp(firebaseConfig);
 
         <!-- SINGLE DATE (default) -->
         <div id="exp-single-date-row">
+          <!-- Quick back-date buttons -->
+          <div class="flex flex-wrap gap-1.5 mb-2">
+            <button type="button" onclick="window.setExpBackDate(0)"
+              class="exp-back-btn text-xs px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-emerald-900/50 hover:text-emerald-400 border border-zinc-700 hover:border-emerald-700 transition">today</button>
+            <button type="button" onclick="window.setExpBackDate(1)"
+              class="exp-back-btn text-xs px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-emerald-900/50 hover:text-emerald-400 border border-zinc-700 hover:border-emerald-700 transition">−1d</button>
+            <button type="button" onclick="window.setExpBackDate(2)"
+              class="exp-back-btn text-xs px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-emerald-900/50 hover:text-emerald-400 border border-zinc-700 hover:border-emerald-700 transition">−2d</button>
+            <button type="button" onclick="window.setExpBackDate(3)"
+              class="exp-back-btn text-xs px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-emerald-900/50 hover:text-emerald-400 border border-zinc-700 hover:border-emerald-700 transition">−3d</button>
+            <button type="button" onclick="window.setExpBackDate(4)"
+              class="exp-back-btn text-xs px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-emerald-900/50 hover:text-emerald-400 border border-zinc-700 hover:border-emerald-700 transition">−4d</button>
+            <button type="button" onclick="window.setExpBackDate(5)"
+              class="exp-back-btn text-xs px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-emerald-900/50 hover:text-emerald-400 border border-zinc-700 hover:border-emerald-700 transition">−5d</button>
+            <button type="button" onclick="window.setExpBackDate(6)"
+              class="exp-back-btn text-xs px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-emerald-900/50 hover:text-emerald-400 border border-zinc-700 hover:border-emerald-700 transition">−6d</button>
+          </div>
           <input id="exp-date" type="date"
                  class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
         </div>

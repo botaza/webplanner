@@ -665,8 +665,8 @@ if ($action === 'add_scratch') {
 
 if ($action === 'upload_scratch_media') {
     $noteId = trim($_POST['note_id'] ?? '');
-    $kind   = trim($_POST['kind'] ?? '');   // 'image' or 'audio'
-    if (!$noteId || !in_array($kind, ['image','audio'])) {
+    $kind   = trim($_POST['kind'] ?? '');   // 'image', 'audio', or 'doc'
+    if (!$noteId || !in_array($kind, ['image','audio','doc'])) {
         echo json_encode(['error' => 'bad params']); exit;
     }
     if (empty($_FILES['file']['tmp_name'])) {
@@ -678,13 +678,30 @@ if ($action === 'upload_scratch_media') {
     }
     // Validate mime
     $mime = mime_content_type($_FILES['file']['tmp_name']);
-    $allowed = $kind === 'image'
-        ? ['image/jpeg','image/png','image/gif','image/webp']
-        : ['audio/webm','audio/ogg','audio/mpeg','audio/mp4','audio/wav','video/webm'];
+    if ($kind === 'image') {
+        $allowed = ['image/jpeg','image/png','image/gif','image/webp'];
+    } elseif ($kind === 'audio') {
+        $allowed = ['audio/webm','audio/ogg','audio/mpeg','audio/mp4','audio/wav','video/webm'];
+    } else {
+        // doc — broad set; trust the client-side file picker extension list
+        $allowed = [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'text/plain','text/csv',
+            'application/zip','application/x-zip-compressed','application/x-rar-compressed',
+            'application/octet-stream', // generic fallback (some zips/rars report this)
+            'video/mp4','video/quicktime',
+        ];
+    }
     if (!in_array($mime, $allowed)) {
         echo json_encode(['error' => 'File type not allowed: ' . $mime]); exit;
     }
-    $ext = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION) ?: ($kind === 'image' ? 'jpg' : 'webm');
+    $ext = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION) ?: ($kind === 'image' ? 'jpg' : ($kind === 'audio' ? 'webm' : 'bin'));
     $filename = $noteId . '_' . $kind . '_' . time() . '.' . $ext;
     $dest = $scratchMedia . '/' . $filename;
     if (!move_uploaded_file($_FILES['file']['tmp_name'], $dest)) {

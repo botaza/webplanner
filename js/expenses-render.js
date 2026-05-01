@@ -1,3 +1,4 @@
+// >> - js/expenses-render.js
 // js/expenses-render.js
 // RENDERING LOGIC FOR EXPENSES LIST
 // Handles drawing the expense cards in the main view and stats views
@@ -143,7 +144,7 @@ export function renderExpensesList(list) {
         <div class="flex justify-between items-center">
           <div class="flex items-center gap-3">
             <div class="text-emerald-500 text-lg">
-              ${isMonthExpanded ? '📂' : '📁'}
+              ${isMonthExpanded ? '▾' : '▸'}
             </div>
             <div>
               <div class="font-semibold text-zinc-200">
@@ -172,7 +173,7 @@ export function renderExpensesList(list) {
               <div class="flex justify-between items-center">
                 <div class="flex items-center gap-3">
                   <div class="text-emerald-500 text-base">
-                    ${isDayExpanded ? '📂' : '📁'}
+                    ${isDayExpanded ? '▾' : '▸'}
                   </div>
                   <div class="text-sm text-zinc-300">${dayLabel}</div>
                   <div class="text-xs text-zinc-500">(${dayCount})</div>
@@ -289,7 +290,7 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
         <div class="flex justify-between items-center">
           <div class="flex items-center gap-3">
             <div class="text-emerald-500 text-lg">
-              ${isMonthExpanded ? '📂' : '📁'}
+              ${isMonthExpanded ? '▾' : '▸'}
             </div>
             <div>
               <div class="font-semibold text-zinc-200">${monthLabel}</div>
@@ -318,7 +319,7 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
               <div class="flex justify-between items-center">
                 <div class="flex items-center gap-3">
                   <div class="text-emerald-500 text-base">
-                    ${isDayExpanded ? '📂' : '📁'}</div>
+                    ${isDayExpanded ? '▾' : '▸'}</div>
                   <div class="text-sm text-zinc-300">${dayLabel}</div>
                   <div class="text-xs text-zinc-500">(${dayCount})</div>
                 </div>
@@ -411,7 +412,7 @@ export function renderCategoryDrilldown(container, groupsData, allExpenses) {
                 data-safekey="${safeKey}"
                 class="w-full bg-zinc-900 rounded-2xl px-4 py-3 hover:bg-zinc-800 transition flex justify-between items-center text-left">
           <div class="flex items-center gap-2 pointer-events-none">
-            <span class="text-base">${isOpen ? '📂' : '📁'}</span>
+            <span class="text-base">${isOpen ? '▾' : '▸'}</span>
             <span class="font-medium text-zinc-200">${label}</span>
             <span class="text-xs text-zinc-500">${count} entr${count !== 1 ? 'ies' : 'y'}</span>
           </div>
@@ -463,7 +464,7 @@ export function toggleStatsCategoryDrilldown(safeKey) {
   const header = panel?.previousElementSibling;
   if (header) {
     const icon = header.querySelector('span.text-base');
-    if (icon) icon.textContent = isOpen ? '📁' : '📂';
+    if (icon) icon.textContent = isOpen ? '▸' : '▾';
   }
 }
 
@@ -529,3 +530,4 @@ function formatDayLabel(day) {
   const date = new Date(parseInt(year), parseInt(m) - 1, parseInt(d));
   return date.toLocaleString('en-US', { day: 'numeric', month: 'short' });
 }
+// << - js/expenses-render.js
