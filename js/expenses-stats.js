@@ -42,8 +42,12 @@ export function initExpenseStats() {
 
     // Set default date range (current month)
     const today    = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
-    const lastDay  = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+    const year  = today.getFullYear();
+    const month = today.getMonth() + 1; // JS months are 0-indexed; convert to 1–12
+    const mm    = String(month).padStart(2, '0');
+    const firstDay = `${year}-${mm}-01`;
+    const lastDayNum = new Date(year, month, 0).getDate(); // day 0 of next month = last day of this month
+    const lastDay = `${year}-${mm}-${String(lastDayNum).padStart(2, '0')}`;
 
     currentStatsStartDate = firstDay;
     currentStatsEndDate   = lastDay;
@@ -69,8 +73,12 @@ export function setStatsView(view) {
 export function setStatsMonth(month) {
     currentStatsMonth = month;
     const [year, m] = month.split('-');
-    const firstDay  = new Date(parseInt(year), parseInt(m) - 1, 1).toISOString().slice(0, 10);
-    const lastDay   = new Date(parseInt(year), parseInt(m), 0).toISOString().slice(0, 10);
+    const y    = parseInt(year);
+    const mNum = parseInt(m); // human month 1–12
+    const mm   = String(mNum).padStart(2, '0');
+    const firstDay = `${y}-${mm}-01`;
+    const lastDayNum = new Date(y, mNum, 0).getDate(); // day 0 of next month = last day of this month
+    const lastDay = `${y}-${mm}-${String(lastDayNum).padStart(2, '0')}`;
 
     currentStatsStartDate = firstDay;
     currentStatsEndDate   = lastDay;
@@ -117,8 +125,12 @@ export function setStatsDateRange() {
 
 export function resetStatsDateRange() {
     const today    = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
-    const lastDay  = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+    const year  = today.getFullYear();
+    const month = today.getMonth() + 1; // JS months are 0-indexed; convert to 1–12
+    const mm    = String(month).padStart(2, '0');
+    const firstDay = `${year}-${mm}-01`;
+    const lastDayNum = new Date(year, month, 0).getDate(); // day 0 of next month = last day of this month
+    const lastDay = `${year}-${mm}-${String(lastDayNum).padStart(2, '0')}`;
 
     currentStatsStartDate = firstDay;
     currentStatsEndDate   = lastDay;
