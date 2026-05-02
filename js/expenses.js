@@ -1,4 +1,3 @@
-// >> - js/expenses.js
 // js/expenses.js
 // ORCHESTRATOR MODULE FOR EXPENSES
 // Coordinates UI, CRUD, Rendering, Stats, and Housekeeping
@@ -7,6 +6,7 @@
 // FIXED: closeExpenseModal defined locally so Cancel/× always resets modal mode to Add
 // PATCHED: Multi-date support for add flow
 // PATCHED: Future-expense filter for main list view
+// UPDATED: Cashback field support (boolean → '1'/'0' for FormData POST)
 
 import { requireAdmin } from './readonly-guard.js';
 import { state } from './state.js';
@@ -47,6 +47,7 @@ import {
     initExpenseStats,
     setStatsView,
     setStatsMonth,
+    shiftStatsMonth,
     showStatsMonthPicker,
     renderStatsContainer
 } from './expenses-stats.js';
@@ -159,14 +160,16 @@ function showAddExpenseModal() {
     _multiDateMode = false;
     _selectedDates = [];
 
-    const dateEl   = document.getElementById('exp-date');
-    const amountEl = document.getElementById('exp-amount');
-    const descEl   = document.getElementById('exp-desc');
-    const otherEl  = document.getElementById('exp-tool-other');
-    if (dateEl)   dateEl.value   = todayString();
-    if (amountEl) amountEl.value = '';
-    if (descEl)   descEl.value   = '';
-    if (otherEl)  otherEl.value  = '';
+    const dateEl     = document.getElementById('exp-date');
+    const amountEl   = document.getElementById('exp-amount');
+    const descEl     = document.getElementById('exp-desc');
+    const otherEl    = document.getElementById('exp-tool-other');
+    const cashbackEl = document.getElementById('exp-cashback');
+    if (dateEl)     dateEl.value      = todayString();
+    if (amountEl)   amountEl.value    = '';
+    if (descEl)     descEl.value      = '';
+    if (otherEl)    otherEl.value     = '';
+    if (cashbackEl) cashbackEl.checked = false;
 
     state.selectedExpenseTool     = null;
     state.selectedExpenseCategory = null;
@@ -182,6 +185,7 @@ function showAddExpenseModal() {
     _resetMultiDateUI();
     setTimeout(() => setExpBackDate(0), 0);
 }
+
 // ── BACK-DATE SHORTCUTS ──
 
 /**
@@ -197,7 +201,6 @@ function setExpBackDate(daysBack) {
     const mm   = String(d.getMonth() + 1).padStart(2, '0');
     const dd   = String(d.getDate()).padStart(2, '0');
     dateEl.value = yyyy + '-' + mm + '-' + dd;
-    // Highlight active button
     document.querySelectorAll('.exp-back-btn').forEach((btn, i) => {
         btn.classList.toggle('bg-emerald-700', i === daysBack);
         btn.classList.toggle('text-white',     i === daysBack);
@@ -329,8 +332,10 @@ async function handleSaveExpense() {
     if (_editingExpenseId) {
         const formData = getExpenseFormData();
         if (!formData) return;
+        // Convert cashback boolean to '1'/'0' for FormData POST
+        const payload = { ...formData, cashback: formData.cashback ? '1' : '0' };
         try {
-            const res = await updateExpenseData(_editingExpenseId, formData);
+            const res = await updateExpenseData(_editingExpenseId, payload);
             if (res?.success) {
                 await loadExpenses();
                 await loadDashboard();
@@ -360,10 +365,13 @@ async function handleSaveExpense() {
         datesToSave = [formData.date];
     }
 
+    // Convert cashback boolean to '1'/'0' for FormData POST
+    const cashbackStr = formData.cashback ? '1' : '0';
+
     try {
         let allOk = true;
         for (const date of datesToSave) {
-            const res = await saveExpenseData({ ...formData, date });
+            const res = await saveExpenseData({ ...formData, date, cashback: cashbackStr });
             if (!res?.success) {
                 allOk = false;
                 console.error('[expenses.js] Failed to save for date', date, res);
@@ -480,6 +488,7 @@ Object.assign(window, {
     // Stats functions
     setStatsView,
     setStatsMonth,
+    shiftStatsMonth,
     showStatsMonthPicker,
     refreshExpenseStats,
 
@@ -494,4 +503,3 @@ Object.assign(window, {
     renderExpenseTools:      (tools) => renderExpenseTools(tools || EXPENSE_TOOLS),
     renderExpenseCategories: (cats)  => renderExpenseCategories(cats || EXPENSE_CATEGORIES)
 });
-// << - js/expenses.js

@@ -1,4 +1,3 @@
-// >> - js/expenses-render.js
 // js/expenses-render.js
 // RENDERING LOGIC FOR EXPENSES LIST
 // Handles drawing the expense cards in the main view and stats views
@@ -8,6 +7,7 @@
 // FIXED: Edit button on touch screens — replaced inline onclick with event delegation
 // UPDATED: Main list and stats show both total and adjusted (total − future) amounts
 // PATCHED: toggleExpenseMonth / toggleExpenseDay now respect the active future filter
+// UPDATED: Cashback support — calcTotals, month/day headers, stats lists
 
 import { state } from './state.js';
 import { requireAdmin } from './readonly-guard.js';
@@ -15,17 +15,27 @@ import { requireAdmin } from './readonly-guard.js';
 // ── HELPERS ──
 
 function calcTotals(list) {
-    const total   = list.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-    const future  = list.filter(e => e.category === 'future')
-                        .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-    return { total, future, adjusted: total - future };
+    const total    = list.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+    const future   = list.filter(e => e.category === 'future')
+                         .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+    const cashback = list.filter(e => e.cashback === true || e.cashback === 1)
+                         .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+    return { total, future, adjusted: total - future, cashback, net: total - cashback };
 }
 
-function totalBannerHTML(total, future, adjusted) {
+/**
+ * Build the summary banner HTML for a stats view.
+ * Shows: expenses | cashback | adjusted (expenses−cashback)
+ * Falls back to single-number display when no cashback/future.
+ */
+function totalBannerHTML(total, future, adjusted, cashback = 0) {
     const fmtTotal    = total.toLocaleString('ru-RU');
     const fmtAdjusted = adjusted.toLocaleString('ru-RU');
+    const net         = total - cashback;
+    const fmtNet      = net.toLocaleString('ru-RU');
+    const fmtCashback = cashback.toLocaleString('ru-RU');
 
-    if (future === 0) {
+    if (future === 0 && cashback === 0) {
         return `
             <div class="bg-zinc-900 rounded-3xl p-5 mb-4 text-center">
                 <div class="text-xs text-zinc-500 uppercase tracking-wide">Total</div>
@@ -33,19 +43,59 @@ function totalBannerHTML(total, future, adjusted) {
             </div>`;
     }
 
-    const fmtFuture = future.toLocaleString('ru-RU');
+    if (future > 0 && cashback === 0) {
+        const fmtFuture = future.toLocaleString('ru-RU');
+        return `
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div class="bg-zinc-900 rounded-3xl p-4 text-center">
+                    <div class="text-xs text-zinc-500 uppercase tracking-wide mb-1">Total</div>
+                    <div class="text-2xl font-semibold text-emerald-400">−${fmtTotal}</div>
+                </div>
+                <div class="bg-zinc-900 rounded-3xl p-4 text-center">
+                    <div class="text-xs text-zinc-500 uppercase tracking-wide mb-1">Adjusted</div>
+                    <div class="text-2xl font-semibold text-zinc-200">−${fmtAdjusted}</div>
+                    <div class="text-xs text-zinc-600 mt-0.5">excl. 🔮 ${fmtFuture}</div>
+                </div>
+            </div>`;
+    }
+
+    // Has cashback — show all three numbers
     return `
-        <div class="grid grid-cols-2 gap-3 mb-4">
-            <div class="bg-zinc-900 rounded-3xl p-4 text-center">
-                <div class="text-xs text-zinc-500 uppercase tracking-wide mb-1">Total</div>
-                <div class="text-2xl font-semibold text-emerald-400">−${fmtTotal}</div>
+        <div class="grid grid-cols-3 gap-2 mb-4">
+            <div class="bg-zinc-900 rounded-3xl p-3 text-center">
+                <div class="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Expenses</div>
+                <div class="text-lg font-semibold text-emerald-400">−${fmtTotal}</div>
             </div>
-            <div class="bg-zinc-900 rounded-3xl p-4 text-center">
-                <div class="text-xs text-zinc-500 uppercase tracking-wide mb-1">Adjusted</div>
-                <div class="text-2xl font-semibold text-zinc-200">−${fmtAdjusted}</div>
-                <div class="text-xs text-zinc-600 mt-0.5">excl. 🔮 ${fmtFuture}</div>
+            <div class="bg-zinc-900 rounded-3xl p-3 text-center">
+                <div class="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Cashback</div>
+                <div class="text-lg font-semibold text-sky-400">+${fmtCashback}</div>
+            </div>
+            <div class="bg-zinc-900 rounded-3xl p-3 text-center">
+                <div class="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Adjusted</div>
+                <div class="text-lg font-semibold text-zinc-200">−${fmtNet}</div>
             </div>
         </div>`;
+}
+
+/**
+ * Build a compact 1–2 line summary for month/day headers.
+ * Line 1: adjusted total (just the number, right-aligned)
+ * Line 2 (only if cashback > 0): full calc  total − cashback = net
+ */
+function _headerAmountHTML(total, cashback) {
+    const fmtTotal    = total.toLocaleString('ru-RU');
+    const fmtCashback = cashback.toLocaleString('ru-RU');
+    const net         = total - cashback;
+    const fmtNet      = net.toLocaleString('ru-RU');
+
+    if (cashback === 0) {
+        return `<div class="text-emerald-400 font-semibold">−${fmtTotal}</div>`;
+    }
+
+    return `<div class="text-right">
+        <div class="text-emerald-400 font-semibold">−${fmtNet}</div>
+        <div class="text-xs text-zinc-500">−${fmtTotal} − 🔙${fmtCashback}</div>
+    </div>`;
 }
 
 // ── EVENT DELEGATION SETUP ──
@@ -65,8 +115,6 @@ function _attachExpensesListDelegation(container) {
 }
 
 // ── HELPER: get the currently-active list (respects future filter) ──
-// expenses.js exposes window._getExpenseListData() so this module
-// doesn't need to know about the filter state directly.
 function _getActiveList() {
     if (typeof window._getExpenseListData === 'function') {
         return window._getExpenseListData();
@@ -111,18 +159,19 @@ export function renderExpensesList(list) {
 
   const html = months.map(month => {
     const monthList       = groupedByMonth[month];
-    const { total: mTotal, future: mFuture, adjusted: mAdj } = calcTotals(monthList);
+    const { total: mTotal, future: mFuture, adjusted: mAdj, cashback: mCashback } = calcTotals(monthList);
     const isMonthExpanded = state.expandedExpenseMonths.has(month);
     const count           = monthList.length;
     const monthLabel      = formatMonthLabel(month);
     const isCurrentMonth  = month === currentMonth;
 
+    // Month header amount: 1–2 lines
     const adjNote = mFuture > 0
         ? `<div class="text-right">
                <div class="text-emerald-400 font-semibold">−${mTotal.toLocaleString('ru-RU')}</div>
                <div class="text-xs text-zinc-400">adj −${mAdj.toLocaleString('ru-RU')}</div>
            </div>`
-        : `<div class="text-emerald-400 font-semibold">−${mTotal.toLocaleString('ru-RU')}</div>`;
+        : _headerAmountHTML(mTotal, mCashback);
 
     const groupedByDay = {};
     monthList.forEach(exp => {
@@ -132,11 +181,6 @@ export function renderExpensesList(list) {
     });
 
     const days = Object.keys(groupedByDay).sort().reverse();
-
-    const dayTotals = {};
-    days.forEach(d => {
-      dayTotals[d] = groupedByDay[d].reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
-    });
 
     const monthHeader = `
       <div class="bg-zinc-900 rounded-3xl p-4 mb-3 cursor-pointer hover:bg-zinc-800 transition"
@@ -163,8 +207,11 @@ export function renderExpensesList(list) {
            id="month-content-${month}">
         ${days.map(day => {
           const isDayExpanded = state.expandedExpenseDays.has(day);
-          const dayTotal      = dayTotals[day].toLocaleString('ru-RU');
-          const dayCount      = groupedByDay[day].length;
+          const dayList       = groupedByDay[day];
+          const dayTotal      = dayList.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+          const dayCashback   = dayList.filter(e => e.cashback === true || e.cashback === 1)
+                                       .reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+          const dayCount      = dayList.length;
           const dayLabel      = formatDayLabel(day);
 
           const dayHeader = `
@@ -178,8 +225,8 @@ export function renderExpensesList(list) {
                   <div class="text-sm text-zinc-300">${dayLabel}</div>
                   <div class="text-xs text-zinc-500">(${dayCount})</div>
                 </div>
-                <div class="text-emerald-400 text-sm font-medium">
-                  −${dayTotal}
+                <div class="text-sm font-medium">
+                  ${_headerAmountHTML(dayTotal, dayCashback)}
                 </div>
               </div>
             </div>
@@ -188,19 +235,20 @@ export function renderExpensesList(list) {
           const dayContent = `
             <div class="ml-8 space-y-2 ${isDayExpanded ? '' : 'hidden'}"
                  id="day-content-${day}">
-              ${groupedByDay[day].map(exp => {
+              ${dayList.map(exp => {
                 const amount   = parseFloat(exp.amount || 0).toLocaleString('ru-RU');
                 const tool     = exp.tool     || '?';
                 const category = exp.category ? ` • ${exp.category}` : '';
                 const desc     = exp.desc     ? ` • ${exp.desc}`     : '';
                 const isFuture = exp.category === 'future';
+                const isCashback = exp.cashback === true || exp.cashback === 1;
                 return `
                   <div class="bg-zinc-900/30 rounded-xl p-3 flex justify-between items-center text-sm">
                     <div class="flex-1">
-                      <div class="text-zinc-300 ${isFuture ? 'opacity-60' : ''}">${tool}${category}${desc}</div>
+                      <div class="text-zinc-300 ${isFuture ? 'opacity-60' : ''}">${tool}${category}${desc}${isCashback ? ' <span class="text-sky-400 text-xs">🔙</span>' : ''}</div>
                     </div>
                     <div class="flex items-center gap-2">
-                      <div class="font-medium ${isFuture ? 'text-zinc-500' : 'text-emerald-400'}">−${amount}</div>
+                      <div class="font-medium ${isFuture ? 'text-zinc-500' : isCashback ? 'text-sky-400' : 'text-emerald-400'}">−${amount}</div>
                       ${!window.isGuest() ? `
                       <button data-edit-id="${exp.id}"
                               class="text-zinc-400 hover:text-white text-base transition px-1 touch-manipulation"
@@ -247,7 +295,7 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
     return;
   }
 
-  const { total, future, adjusted } = calcTotals(list);
+  const { total, future, adjusted, cashback } = calcTotals(list);
 
   const sorted = [...list].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   const groupedByMonth = {};
@@ -258,31 +306,26 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
   });
 
   const months = Object.keys(groupedByMonth).sort().reverse();
-  const monthTotals = {};
-  months.forEach(m => {
-    monthTotals[m] = groupedByMonth[m].reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
-  });
 
   if (!state.expandedExpenseMonths) state.expandedExpenseMonths = new Set();
   if (!state.expandedExpenseDays)   state.expandedExpenseDays   = new Set();
 
   const html = months.map(month => {
     const isMonthExpanded = state.expandedExpenseMonths.has(month);
-    const monthTotal      = monthTotals[month].toLocaleString('ru-RU');
-    const count           = groupedByMonth[month].length;
+    const mList           = groupedByMonth[month];
+    const mTotal          = mList.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+    const mCashback       = mList.filter(e => e.cashback === true || e.cashback === 1)
+                                 .reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+    const count           = mList.length;
     const monthLabel      = formatMonthLabel(month);
 
     const groupedByDay = {};
-    groupedByMonth[month].forEach(exp => {
+    mList.forEach(exp => {
       const day = exp.date || 'unknown';
       if (!groupedByDay[day]) groupedByDay[day] = [];
       groupedByDay[day].push(exp);
     });
     const days = Object.keys(groupedByDay).sort().reverse();
-    const dayTotals = {};
-    days.forEach(d => {
-      dayTotals[d] = groupedByDay[d].reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
-    });
 
     const monthHeader = `
       <div class="bg-zinc-900 rounded-3xl p-4 mb-3 cursor-pointer hover:bg-zinc-800 transition"
@@ -297,9 +340,7 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
               <div class="text-xs text-zinc-500">${count} expense${count !== 1 ? 's' : ''}</div>
             </div>
           </div>
-          <div class="text-emerald-400 font-semibold">
-            −${monthTotal}
-          </div>
+          ${_headerAmountHTML(mTotal, mCashback)}
         </div>
       </div>
     `;
@@ -309,8 +350,11 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
            id="month-content-${month}">
         ${days.map(day => {
           const isDayExpanded = state.expandedExpenseDays.has(day);
-          const dayTotal      = dayTotals[day].toLocaleString('ru-RU');
-          const dayCount      = groupedByDay[day].length;
+          const dList         = groupedByDay[day];
+          const dayTotal      = dList.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+          const dayCashback   = dList.filter(e => e.cashback === true || e.cashback === 1)
+                                     .reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+          const dayCount      = dList.length;
           const dayLabel      = formatDayLabel(day);
 
           const dayHeader = `
@@ -323,8 +367,8 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
                   <div class="text-sm text-zinc-300">${dayLabel}</div>
                   <div class="text-xs text-zinc-500">(${dayCount})</div>
                 </div>
-                <div class="text-emerald-400 text-sm font-medium">
-                  −${dayTotal}
+                <div class="text-sm font-medium">
+                  ${_headerAmountHTML(dayTotal, dayCashback)}
                 </div>
               </div>
             </div>
@@ -333,17 +377,18 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
           const dayContent = `
             <div class="ml-8 space-y-2 ${isDayExpanded ? '' : 'hidden'}"
                  id="day-content-${day}">
-              ${groupedByDay[day].map(exp => {
-                const amount   = parseFloat(exp.amount || 0).toLocaleString('ru-RU');
-                const tool     = exp.tool     || '?';
-                const category = exp.category ? ` • ${exp.category}` : '';
-                const desc     = exp.desc     ? ` • ${exp.desc}`     : '';
+              ${dList.map(exp => {
+                const amount     = parseFloat(exp.amount || 0).toLocaleString('ru-RU');
+                const tool       = exp.tool     || '?';
+                const category   = exp.category ? ` • ${exp.category}` : '';
+                const desc       = exp.desc     ? ` • ${exp.desc}`     : '';
+                const isCashback = exp.cashback === true || exp.cashback === 1;
                 return `
                   <div class="bg-zinc-900/30 rounded-xl p-3 flex justify-between items-center text-sm">
                     <div class="flex-1">
-                      <div class="text-zinc-300">${tool}${category}${desc}</div>
+                      <div class="text-zinc-300">${tool}${category}${desc}${isCashback ? ' <span class="text-sky-400 text-xs">🔙</span>' : ''}</div>
                     </div>
-                    <div class="font-medium text-emerald-400">−${amount}</div>
+                    <div class="font-medium ${isCashback ? 'text-sky-400' : 'text-emerald-400'}">−${amount}</div>
                   </div>
                 `;
               }).join('')}
@@ -356,7 +401,7 @@ export function renderStatsList(list, containerId = 'expenses-stats-list') {
     return monthHeader + monthContent;
   }).join('');
 
-  container.innerHTML = totalBannerHTML(total, future, adjusted)
+  container.innerHTML = totalBannerHTML(total, future, adjusted, cashback)
                       + `<div class="pb-20">${html}</div>`;
 }
 
@@ -392,16 +437,18 @@ export function renderCategoryDrilldown(container, groupsData, allExpenses) {
     const isOpen   = state.expandedStatsCategories.has(safeKey);
 
     const rows = entries.map(exp => {
-      const amount = parseFloat(exp.amount || 0).toLocaleString('ru-RU');
-      const tool   = exp.tool || '?';
-      const desc   = exp.desc ? ` • ${exp.desc}` : '';
+      const amount     = parseFloat(exp.amount || 0).toLocaleString('ru-RU');
+      const tool       = exp.tool || '?';
+      const desc       = exp.desc ? ` • ${exp.desc}` : '';
+      const isCashback = exp.cashback === true || exp.cashback === 1;
       return `
         <div class="flex justify-between items-center text-sm py-2 border-b border-zinc-800/60 last:border-0">
           <div class="flex-1 min-w-0 pointer-events-none">
             <span class="text-zinc-400 text-xs">${exp.date || '—'}</span>
             <span class="text-zinc-300 ml-2">${tool}${desc}</span>
+            ${isCashback ? '<span class="text-sky-400 text-xs ml-1">🔙</span>' : ''}
           </div>
-          <div class="font-medium text-emerald-400 shrink-0 ml-3 pointer-events-none">−${amount}</div>
+          <div class="font-medium ${isCashback ? 'text-sky-400' : 'text-emerald-400'} shrink-0 ml-3 pointer-events-none">−${amount}</div>
         </div>
       `;
     }).join('');
@@ -513,10 +560,10 @@ export function toggleExpenseDay(day, containerId = 'expenses-list') {
 /**
  * Render a summary total card.
  */
-export function renderStatsTotal(total, containerId, future = 0) {
+export function renderStatsTotal(total, containerId, future = 0, cashback = 0) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  container.innerHTML = totalBannerHTML(total, future, total - future);
+  container.innerHTML = totalBannerHTML(total, future, total - future, cashback);
 }
 
 function formatMonthLabel(month) {
@@ -530,4 +577,3 @@ function formatDayLabel(day) {
   const date = new Date(parseInt(year), parseInt(m) - 1, parseInt(d));
   return date.toLocaleString('en-US', { day: 'numeric', month: 'short' });
 }
-// << - js/expenses-render.js

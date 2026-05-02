@@ -3,6 +3,8 @@
 // Manages view switching and data aggregation for stats screens
 // FIXED: Monthly view now correctly respects the selected date range
 // FIXED: Monthly view now shows Total + Adjusted banner (when future expenses exist)
+// UPDATED: Cashback support — 3-number display (expenses / cashback / adjusted)
+// UPDATED: −1m / +1m quick navigation buttons for month navigation
 
 import { state } from './state.js';
 import {
@@ -82,6 +84,22 @@ export function setStatsMonth(month) {
     renderStatsContainer();
 }
 
+/**
+ * Navigate months by delta (-1 = previous month, +1 = next month)
+ * Always snaps to 1st→last of the target month.
+ */
+export function shiftStatsMonth(delta) {
+    const [year, m] = currentStatsMonth.split('-').map(Number);
+    let newYear  = year;
+    let newMonth = m + delta;
+
+    if (newMonth < 1)  { newMonth += 12; newYear -= 1; }
+    if (newMonth > 12) { newMonth -= 12; newYear += 1; }
+
+    const monthStr = `${newYear}-${String(newMonth).padStart(2, '0')}`;
+    setStatsMonth(monthStr);
+}
+
 export function setStatsDateRange() {
     const startInput = document.getElementById('stats-date-start');
     const endInput   = document.getElementById('stats-date-end');
@@ -148,9 +166,23 @@ function renderStatsControls() {
             filterControls.classList.add('hidden');
         }
     }
+
+    // Update −1m / +1m button display label
+    const monthNavLabel = document.getElementById('stats-month-nav-label');
+    if (monthNavLabel) {
+        const [year, m] = currentStatsMonth.split('-').map(Number);
+        const label = new Date(year, m - 1, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
+        monthNavLabel.textContent = label;
+    }
 }
 
 // ── PRIVATE HELPERS ──
+function _cashbackFromList(list) {
+    return (list || [])
+        .filter(e => e.cashback === true || e.cashback === 1)
+        .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+}
+
 function _futureFromGroups(groups) {
     return parseFloat(groups?.future?.amount || 0);
 }
@@ -180,11 +212,12 @@ export async function renderStatsContainer() {
         } else if (currentStatsView === 'pie-tools') {
             await _renderToolsView(container);
         } else if (currentStatsView === 'list-monthly') {
-            await _renderMonthlyView(container);   // ← Fixed version with banner
+            await _renderMonthlyView(container);
         } else if (currentStatsView === 'filtered-limit') {
-            const data   = await getExpensesByLimit(currentStatsStartDate, currentStatsEndDate, currentLimit);
-            const future = _futureFromList(data);
-            const total  = data.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+            const data     = await getExpensesByLimit(currentStatsStartDate, currentStatsEndDate, currentLimit);
+            const future   = _futureFromList(data);
+            const cashback = _cashbackFromList(data);
+            const total    = data.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
 
             container.innerHTML = `
                 <div id="expenses-stats-total"></div>
@@ -192,7 +225,7 @@ export async function renderStatsContainer() {
                     <div id="expenses-stats-list"></div>
                 </div>
             `;
-            renderStatsTotal(total, 'expenses-stats-total', future);
+            renderStatsTotal(total, 'expenses-stats-total', future, cashback);
             renderStatsList(data, 'expenses-stats-list');
         }
     } catch (err) {
@@ -210,15 +243,17 @@ async function _renderCategoriesView(container) {
     const data   = await getExpensesByCategory(currentStatsStartDate, currentStatsEndDate);
     const future = _futureFromGroups(data.groups);
 
-    renderPieChart(container, data, 'category');
-    renderStatsTotal(data.total, 'expenses-stats-total', future);
-
     const periodExpenses = (state.expensesData || []).filter(exp => {
         if (!exp.date) return false;
         if (currentStatsStartDate && exp.date < currentStatsStartDate) return false;
         if (currentStatsEndDate   && exp.date > currentStatsEndDate)   return false;
         return true;
     });
+
+    const cashback = _cashbackFromList(periodExpenses);
+
+    renderPieChart(container, data, 'category');
+    renderStatsTotal(data.total, 'expenses-stats-total', future, cashback);
 
     renderCategoryDrilldown(container, data, periodExpenses);
 }
@@ -233,13 +268,14 @@ async function _renderToolsView(container) {
         if (currentStatsEndDate   && exp.date > currentStatsEndDate)   return false;
         return true;
     });
-    const future = _futureFromList(periodExpenses);
+    const future   = _futureFromList(periodExpenses);
+    const cashback = _cashbackFromList(periodExpenses);
 
     renderPieChart(container, data, 'tool');
-    renderStatsTotal(data.total, 'expenses-stats-total', future);
+    renderStatsTotal(data.total, 'expenses-stats-total', future, cashback);
 }
 
-// ── PRIVATE: MONTHLY VIEW (NOW WITH TOTAL + ADJUSTED BANNER) ──
+// ── PRIVATE: MONTHLY VIEW (WITH CASHBACK + TOTAL + ADJUSTED BANNER) ──
 async function _renderMonthlyView(container) {
     const filteredExpenses = (state.expensesData || []).filter(exp => {
         if (!exp.date) return false;
@@ -257,10 +293,9 @@ async function _renderMonthlyView(container) {
         return;
     }
 
-    // Overall banner for the selected period
-    const periodTotal   = filteredExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-    const periodFuture  = filteredExpenses.filter(e => e.category === 'future')
-                                          .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+    const periodTotal    = filteredExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+    const periodFuture   = _futureFromList(filteredExpenses);
+    const periodCashback = _cashbackFromList(filteredExpenses);
 
     const grouped = {};
     filteredExpenses.forEach(exp => {
@@ -280,23 +315,22 @@ async function _renderMonthlyView(container) {
         const isOpen    = expandedMonths.has(month);
         const isCurrent = month === new Date().toISOString().slice(0, 7);
 
-        const total     = entries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-        const future    = entries.filter(e => e.category === 'future')
-                                 .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-        const adjTotal  = total - future;
+        const total    = entries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+        const future   = _futureFromList(entries);
+        const cashback = _cashbackFromList(entries);
+        const adjTotal = total - future;
+        const netTotal = total - cashback;
 
         const [year, m] = month.split('-');
         const label     = new Date(+year, +m - 1, 1)
             .toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
-        const adjColor = adjTotal >= 0 ? 'text-emerald-400' : 'text-red-400';
-        const adjSign  = adjTotal >= 0 ? '+' : '';
-
         const sorted = [...entries].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
         const entryRows = sorted.map(exp => {
-            const amount = parseFloat(exp.amount || 0).toLocaleString('ru-RU');
-            const isFuture = exp.category === 'future';
+            const amount     = parseFloat(exp.amount || 0).toLocaleString('ru-RU');
+            const isFuture   = exp.category === 'future';
+            const isCashback = exp.cashback === true || exp.cashback === 1;
             return `
                 <div class="bg-zinc-900/50 rounded-2xl p-3 flex justify-between items-center text-sm ${isFuture ? 'opacity-75' : ''}">
                     <div class="flex-1 min-w-0">
@@ -304,14 +338,33 @@ async function _renderMonthlyView(container) {
                             <span class="text-zinc-500 text-xs">${exp.date || '—'}</span>
                             ${exp.tool ? `<span class="text-xs bg-zinc-800 px-2 py-0.5 rounded-full">${exp.tool}</span>` : ''}
                             ${exp.category ? `<span class="text-xs bg-zinc-800 px-2 py-0.5 rounded-full">${exp.category}</span>` : ''}
+                            ${isCashback ? '<span class="text-sky-400 text-xs">🔙 cashback</span>' : ''}
                         </div>
                         ${exp.desc ? `<div class="text-zinc-400 text-xs mt-0.5">${exp.desc}</div>` : ''}
                     </div>
-                    <div class="font-medium ${isFuture ? 'text-zinc-500' : 'text-emerald-400'}">
+                    <div class="font-medium ${isFuture ? 'text-zinc-500' : isCashback ? 'text-sky-400' : 'text-emerald-400'}">
                         −${amount}
                     </div>
                 </div>`;
         }).join('');
+
+        // Build compact month header amount block
+        let amountBlock;
+        if (future > 0) {
+            amountBlock = `
+                <div class="text-right">
+                    <div class="text-emerald-400 font-semibold">−${adjTotal.toLocaleString('ru-RU')}</div>
+                    <div class="text-xs text-zinc-500">total −${total.toLocaleString('ru-RU')} (excl. 🔮 ${future.toLocaleString('ru-RU')})</div>
+                </div>`;
+        } else if (cashback > 0) {
+            amountBlock = `
+                <div class="text-right">
+                    <div class="text-emerald-400 font-semibold">−${netTotal.toLocaleString('ru-RU')}</div>
+                    <div class="text-xs text-zinc-500">−${total.toLocaleString('ru-RU')} − 🔙${cashback.toLocaleString('ru-RU')}</div>
+                </div>`;
+        } else {
+            amountBlock = `<div class="text-emerald-400 font-semibold">−${total.toLocaleString('ru-RU')}</div>`;
+        }
 
         return `
             <div class="bg-zinc-900 rounded-3xl p-4 mb-3 cursor-pointer hover:bg-zinc-800 transition"
@@ -327,12 +380,7 @@ async function _renderMonthlyView(container) {
                             <div class="text-xs text-zinc-500">${entries.length} entr${entries.length !== 1 ? 'ies' : 'y'}</div>
                         </div>
                     </div>
-                    <div class="text-right">
-                        <div class="${adjColor} font-semibold">${adjSign}${adjTotal.toLocaleString('ru-RU')}</div>
-                        ${future > 0 
-                            ? `<div class="text-xs text-zinc-500">total −${total.toLocaleString('ru-RU')} (excl. 🔮 ${future.toLocaleString('ru-RU')})</div>`
-                            : `<div class="text-xs text-zinc-500">−${total.toLocaleString('ru-RU')}</div>`}
-                    </div>
+                    ${amountBlock}
                 </div>
             </div>
             <div id="stats-month-${month}" class="ml-2 space-y-2 mb-5 ${isOpen ? '' : 'hidden'}">
@@ -340,16 +388,53 @@ async function _renderMonthlyView(container) {
             </div>`;
     }).join('');
 
-    // Final HTML: banner first, then months
+    // Build the 3-number banner for the period
+    let bannerHTML;
+    if (periodCashback > 0) {
+        const netTotal = periodTotal - periodCashback;
+        bannerHTML = `
+            <div class="grid grid-cols-3 gap-2 mb-4">
+                <div class="bg-zinc-900 rounded-3xl p-3 text-center">
+                    <div class="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Expenses</div>
+                    <div class="text-lg font-semibold text-emerald-400">−${periodTotal.toLocaleString('ru-RU')}</div>
+                </div>
+                <div class="bg-zinc-900 rounded-3xl p-3 text-center">
+                    <div class="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Cashback</div>
+                    <div class="text-lg font-semibold text-sky-400">+${periodCashback.toLocaleString('ru-RU')}</div>
+                </div>
+                <div class="bg-zinc-900 rounded-3xl p-3 text-center">
+                    <div class="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Adjusted</div>
+                    <div class="text-lg font-semibold text-zinc-200">−${netTotal.toLocaleString('ru-RU')}</div>
+                </div>
+            </div>`;
+    } else if (periodFuture > 0) {
+        const adjTotal = periodTotal - periodFuture;
+        bannerHTML = `
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div class="bg-zinc-900 rounded-3xl p-4 text-center">
+                    <div class="text-xs text-zinc-500 uppercase tracking-wide mb-1">Total</div>
+                    <div class="text-2xl font-semibold text-emerald-400">−${periodTotal.toLocaleString('ru-RU')}</div>
+                </div>
+                <div class="bg-zinc-900 rounded-3xl p-4 text-center">
+                    <div class="text-xs text-zinc-500 uppercase tracking-wide mb-1">Adjusted</div>
+                    <div class="text-2xl font-semibold text-zinc-200">−${adjTotal.toLocaleString('ru-RU')}</div>
+                    <div class="text-xs text-zinc-600 mt-0.5">excl. 🔮 ${periodFuture.toLocaleString('ru-RU')}</div>
+                </div>
+            </div>`;
+    } else {
+        bannerHTML = `
+            <div class="bg-zinc-900 rounded-3xl p-5 mb-4 text-center">
+                <div class="text-xs text-zinc-500 uppercase tracking-wide">Total</div>
+                <div class="text-3xl font-semibold text-emerald-400 mt-1">−${periodTotal.toLocaleString('ru-RU')}</div>
+            </div>`;
+    }
+
     container.innerHTML = `
-        <div id="expenses-stats-total"></div>
+        ${bannerHTML}
         <div class="bg-zinc-900 rounded-3xl p-5">
             ${monthBlocks}
         </div>
     `;
-
-    // Render the overall Total + Adjusted banner
-    renderStatsTotal(periodTotal, 'expenses-stats-total', periodFuture);
 }
 
 // ── MONTH PICKER ──
@@ -366,6 +451,7 @@ export function showStatsMonthPicker() {
 Object.assign(window, {
     setStatsDateRange,
     resetStatsDateRange,
+    shiftStatsMonth,
     toggleStatsMonth: (month) => {
         if (expandedMonths.has(month)) {
             expandedMonths.delete(month);

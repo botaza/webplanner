@@ -248,6 +248,20 @@ firebase.initializeApp(firebaseConfig);
               onchange="window.setStatsDateRange()">
           </div>
         </div>
+
+        <div class="flex gap-2 items-center">
+          <button onclick="window.shiftStatsMonth(-1)"
+            class="bg-zinc-800 hover:bg-zinc-700 py-2 px-4 rounded-xl text-xs text-zinc-400 flex items-center gap-1 flex-shrink-0 transition">
+            ◀ −1m
+          </button>
+          <span id="stats-month-nav-label"
+                class="flex-1 text-center text-xs text-zinc-400 font-medium truncate"></span>
+          <button onclick="window.shiftStatsMonth(1)"
+            class="bg-zinc-800 hover:bg-zinc-700 py-2 px-4 rounded-xl text-xs text-zinc-400 flex items-center gap-1 flex-shrink-0 transition">
+            +1m ▶
+          </button>
+        </div>
+
         <button onclick="window.resetStatsDateRange()"
           class="w-full bg-zinc-800 hover:bg-zinc-700 py-2 rounded-xl text-xs text-zinc-400 flex items-center justify-center gap-2">
           <span>🔄</span>
@@ -651,6 +665,16 @@ firebase.initializeApp(firebaseConfig);
         <input id="exp-desc" type="text" placeholder="Lunch / Taxi / Gift for mom"
                class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 text-base">
       </div>
+      
+       <div class="flex items-center gap-3 pt-1">
+        <input type="checkbox" id="exp-cashback"
+               class="w-5 h-5 rounded bg-zinc-800 border-zinc-600 text-sky-500 focus:ring-sky-500 accent-sky-500">
+        <label for="exp-cashback" class="text-sm text-zinc-300">
+          🔙 Cashback entry
+          <span class="text-xs text-zinc-500">(counted separately)</span>
+        </label>
+      </div>     
+      
     </div>
     <div class="px-6 py-4 border-t border-zinc-800 flex gap-3 shrink-0">
       <button onclick="closeExpenseModal()"

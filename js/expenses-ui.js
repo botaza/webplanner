@@ -3,6 +3,7 @@
 // Handles modal visibility, button rendering, and form data gathering
 // UPDATED: Added populateExpenseForm to pre-fill modal for editing
 // UPDATED: Added 'future' category (🔮) for earmarked future expenses
+// UPDATED: Added cashback checkbox support
 
 import { state } from './state.js';
 import { hideModal } from './utils.js';
@@ -146,6 +147,7 @@ export function getExpenseFormData() {
     const amountEl = document.getElementById('exp-amount');
     const descEl   = document.getElementById('exp-desc');
     const otherEl  = document.getElementById('exp-tool-other');
+    const cashbackEl = document.getElementById('exp-cashback');
 
     if (!dateEl || !amountEl) return null;
 
@@ -153,6 +155,7 @@ export function getExpenseFormData() {
     const amountStr = amountEl.value.trim();
     const amount    = parseFloat(amountStr);
     const desc      = descEl ? descEl.value.trim() : '';
+    const cashback  = cashbackEl ? cashbackEl.checked : false;
 
     if (!date) {
         alert("Please select a date");
@@ -186,24 +189,27 @@ export function getExpenseFormData() {
         amount,
         tool: toolValue,
         category: state.selectedExpenseCategory,
-        desc
+        desc,
+        cashback
     };
 }
 
 /**
  * Pre-populate the expense modal with an existing expense's values.
  * Call this before showExpenseModal() when editing.
- * @param {Object} expense - Existing expense object { id, date, amount, tool, category, desc }
+ * @param {Object} expense - Existing expense object { id, date, amount, tool, category, desc, cashback }
  */
 export function populateExpenseForm(expense) {
     const dateEl   = document.getElementById('exp-date');
     const amountEl = document.getElementById('exp-amount');
     const descEl   = document.getElementById('exp-desc');
     const otherEl  = document.getElementById('exp-tool-other');
+    const cashbackEl = document.getElementById('exp-cashback');
 
     if (dateEl)   dateEl.value   = expense.date   || '';
     if (amountEl) amountEl.value = expense.amount != null ? expense.amount : '';
     if (descEl)   descEl.value   = expense.desc   || '';
+    if (cashbackEl) cashbackEl.checked = expense.cashback === true || expense.cashback === 1;
 
     // Resolve tool — check if it matches a known code, otherwise treat as "other"
     const knownTool = EXPENSE_TOOLS.find(t => t.code === expense.tool);
@@ -239,11 +245,13 @@ export function resetExpenseForm() {
     const amountEl = document.getElementById('exp-amount');
     const descEl   = document.getElementById('exp-desc');
     const otherEl  = document.getElementById('exp-tool-other');
+    const cashbackEl = document.getElementById('exp-cashback');
 
     if (dateEl)   dateEl.value   = '';
     if (amountEl) amountEl.value = '';
     if (descEl)   descEl.value   = '';
     if (otherEl)  otherEl.value  = '';
+    if (cashbackEl) cashbackEl.checked = false;
 
     state.selectedExpenseTool     = null;
     state.selectedExpenseCategory = null;

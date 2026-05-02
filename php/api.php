@@ -125,7 +125,8 @@ $data[] = [
 'amount' => (float)($_POST['amount'] ?? 0),
 'tool' => $_POST['tool'] ?? '',
 'category' => $_POST['category'] ?? '',
-'desc' => $_POST['desc'] ?? ''
+'desc' => $_POST['desc'] ?? '',
+'cashback' => isset($_POST['cashback']) && $_POST['cashback'] === '1'
 ];
 write($files['expenses'], $data);
 echo json_encode(['success' => true]);
@@ -141,6 +142,7 @@ if (isset($_POST['amount'])) $e['amount'] = (float)$_POST['amount'];
 if (isset($_POST['tool'])) $e['tool'] = $_POST['tool'];
 if (isset($_POST['category'])) $e['category'] = $_POST['category'];
 if (isset($_POST['desc'])) $e['desc'] = $_POST['desc'];
+if (isset($_POST['cashback'])) $e['cashback'] = $_POST['cashback'] === '1';
 $updated = true;
 break;
 }
